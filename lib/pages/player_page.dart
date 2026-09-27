@@ -110,7 +110,7 @@ class _PlayerPageState extends State<PlayerPage> {
             : (song.coverUrl != null && song.coverUrl!.isNotEmpty
                 ? song.coverUrl!
                 : (song.coverArt != null
-                    ? widget.controller.client.coverUrl(song.coverArt!, size: 500)
+                    ? widget.controller.client.coverUrl(song.coverArt!, size: 500).toString()
                     : null));
         return Scaffold(
           backgroundColor: bg,
