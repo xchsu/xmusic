@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../app_version.dart';
 import '../permissions.dart';
 import '../player_controller.dart';
+import '../lyric_overlay.dart';
 import '../settings.dart';
 import '../widgets.dart';
 
@@ -273,7 +274,66 @@ class SettingsPage extends StatelessWidget {
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.lyricFuture), borderRadius: BorderRadius.circular(4)))
                 : const Text('默认'),
             onTap: () => _showColorPicker(context, '未唱行颜色', settings.lyricFuture, (c) => settings.setLyricColors(future: c)),
-          ),          const Divider(),
+          ),
+          const Divider(),
+
+          // ===== 歌词悬浮窗（车机桌面） =====
+          _sectionTitle(theme, '歌词悬浮窗'),
+          SwitchListTile(
+            secondary: const Icon(Icons.language_rounded),
+            title: const Text('歌词悬浮窗'),
+            subtitle: const Text('开启后，播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；需先授予下方三项权限'),
+            value: settings.lyricOverlay,
+            onChanged: (v) async {
+              await settings.setLyricOverlay(v);
+              if (v) {
+                await LyricOverlay.enable();
+              } else {
+                await LyricOverlay.disable();
+              }
+            },
+          ),
+          FutureBuilder<Map<dynamic, dynamic>?>(
+            future: LyricOverlay.checkPermissions(),
+            builder: (context, snap) {
+              final p = snap.data ?? const <dynamic, dynamic>{};
+              final overlay = (p['overlay'] ?? false) == true;
+              final usage = (p['usageStats'] ?? false) == true;
+              final acc = (p['accessibility'] ?? false) == true;
+              return Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.ondemand_video_rounded),
+                    title: const Text('悬浮窗权限'),
+                    subtitle: Text(overlay ? '已授予' : '未授予'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestOverlay(),
+                      child: Text(overlay ? '已开启' : '去开启'),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.insert_chart_outlined_rounded),
+                    title: const Text('使用情况访问权限'),
+                    subtitle: Text(usage ? '已授予' : '未授予'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestUsageStats(),
+                      child: Text(usage ? '已开启' : '去开启'),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.accessible_rounded),
+                    title: const Text('无障碍服务'),
+                    subtitle: Text(acc ? '已开启' : '未开启'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestAccessibility(),
+                      child: Text(acc ? '已开启' : '去开启'),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const Divider(),
 
           // ===== 源 =====
           _sectionTitle(theme, '源'),

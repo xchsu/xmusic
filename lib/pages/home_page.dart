@@ -268,6 +268,7 @@ class _HomePageState extends State<HomePage> {
                         title: '在线',
                         subtitle: online.isNotEmpty ? '${online.length}首 · 飙升/新歌/原创' : '加载中...',
                         icon: Icons.cloud_download_rounded,
+                        coverUrl: online.isNotEmpty ? online.first.coverUrl : null,
                         colors: const [Color(0xFF3A6DF0), Color(0xFF5B8CFA)],
                         onTap: online.isNotEmpty
                             ? () => _openPlaylist('每日30首·在线', '', songs: online)
@@ -416,6 +417,7 @@ class _HomePageState extends State<HomePage> {
     required String subtitle,
     required IconData icon,
     required List<Color> colors,
+    String? coverUrl,
     VoidCallback? onTap,
   }) {
     return Material(
@@ -438,7 +440,11 @@ class _HomePageState extends State<HomePage> {
                   Container(
                     width: 36, height: 36,
                     decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(8)),
-                    child: Icon(icon, color: Colors.white, size: 22),
+                    clipBehavior: Clip.antiAlias,
+                    child: (coverUrl != null && coverUrl!.isNotEmpty)
+                        ? Image.network(coverUrl!, width: 36, height: 36, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(icon, color: Colors.white, size: 22))
+                        : Icon(icon, color: Colors.white, size: 22),
                   ),
                   const Spacer(),
                   const Icon(Icons.play_arrow_rounded, color: Colors.white70),
