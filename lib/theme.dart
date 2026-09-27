@@ -13,7 +13,7 @@ import 'settings.dart';
 class AppTheme {
   const AppTheme._();
 
-  static const Color _lightSurface = Color(0xFFF5F2EA); // 暖白象牙
+  static const Color _lightSurface = Color(0xFFFFFFFF); // 纯白
   static const Color _lightPrimary = Color(0xFF4452C7); // 精炼靛蓝
   static const Color _lightOnSurface = Color(0xFF1C2130);
 
@@ -22,11 +22,11 @@ class AppTheme {
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
   // 背景通透度：浅色稍实（暖白底保证可读），深色保持玻璃但更沉稳（避免发灰发脏）。
-  static const double _lightBgAlpha = 0.70;
+  static const double _lightBgAlpha = 0.55;
   static const double _darkBgAlpha = 0.42;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
-  static const double _lightPanelAlpha = 0.94;
-  static const double _lightSheetAlpha = 0.97;
+  static const double _lightPanelAlpha = 0.75;
+  static const double _lightSheetAlpha = 0.85;
   static const double _darkPanelAlpha = 0.88;
   static const double _darkSheetAlpha = 0.94;
 
