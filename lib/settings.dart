@@ -44,9 +44,9 @@ class AppSettings extends ChangeNotifier {
   String webdavName = '';
   double _lyricScale = 1.0;
   int _bgColor = 0;
-  int _lyricActive = 0;
-  int _lyricPast = 0;
-  int _lyricFuture = 0;
+  int _lyricActive = 0xfffdd475;
+  int _lyricPast = 0xffdddddd;
+  int _lyricFuture = 0xff00ff88;
   bool _autoPlay = true;
   String downloadPath = '';
   String qqCookie = '';
