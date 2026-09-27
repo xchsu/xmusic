@@ -268,7 +268,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-27 右侧按钮再缩小：图标 car 48 / phone 36、栏宽 58/48（NAS 不再偏大）
+    // [xmusic] 2026-09-27 右侧按钮：歌词/收藏/下载 car 48；NAS 单独缩到 car 36（用户嫌 NAS 大）、栏宽 58/48
     final car = isCarScreen(context);
     return Container(
       width: car ? 58 : 48,
@@ -293,7 +293,7 @@ class _PlayerPageState extends State<PlayerPage> {
           ),
           IconButton(
             tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined, size: car ? 48 : 36),
+            icon: Icon(Icons.cloud_upload_outlined, size: car ? 36 : 30),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
@@ -912,8 +912,8 @@ class _MiniCornerButton extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              width: isCarScreen(context) ? 64 : 40, height: isCarScreen(context) ? 64 : 40,
-              child: Icon(icon, size: isCarScreen(context) ? 32 : 20, color: theme.colorScheme.onSurface),
+              width: isCarScreen(context) ? 80 : 40, height: isCarScreen(context) ? 80 : 40,
+              child: Icon(icon, size: isCarScreen(context) ? 44 : 20, color: theme.colorScheme.onSurface),
             ),
           ),
         ),
