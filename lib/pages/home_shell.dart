@@ -5,6 +5,7 @@ import '../settings.dart';
 import 'home_page.dart';
 import 'library_page.dart';
 import 'mini_player.dart';
+import 'player_page.dart';
 import 'search_page.dart';
 import 'settings_page.dart';
 
@@ -26,6 +27,8 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
+  /// [xmusic] 打开 App 默认进入播放界面：冷启动首次挂载时自动 push 播放页（仅一次）。
+  bool _autoOpened = false;
   /// 跨页面（播放页"主页"按钮）请求切换 tab：值 = 目标 tab 下标。
   static final ValueNotifier<int> _tabRequest = ValueNotifier<int>(0);
 
@@ -33,6 +36,17 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _tabRequest.addListener(_onTabRequest);
+    // [xmusic] 冷启动默认进播放页：首帧渲染后 push 一次（不重复）。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _autoOpened) return;
+      _autoOpened = true;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              PlayerPage(settings: widget.settings, controller: widget.controller),
+        ),
+      );
+    });
   }
 
   @override
