@@ -314,62 +314,6 @@ class SettingsPage extends StatelessWidget {
           const Divider(),
 
           // ===== 权限 =====
-          _sectionTitle(theme, '权限'),          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('权限检查'),
-            subtitle: const Text('通知 / 存储 / 音乐 / 图片 缺失权限一键补全\n（车机识别与通知栏媒体控制需要通知权限）'),
-            isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () async {
-              final missing = await ensureAppPermissions();
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(missing.isEmpty
-                    ? '所有权限已授予'
-                    : '以下权限未授予：' + missing.join('、')),
-              ));
-            },
-          ),
-          // [xmusic] 2026-09-24 通知权限 + 媒体服务自检：车机识别排查入口
-          ListTile(
-            leading: const Icon(Icons.notifications_active_outlined),
-            title: const Text('通知权限（媒体控制）'),
-            subtitle: const Text('通知栏播放控制需要；Android 12- 自动授予不弹框，点击检查状态'),
-            onTap: () async {
-              try {
-                final granted = await notificationGranted();
-                if (!context.mounted) return;
-                if (granted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('通知权限已授予，通知栏会显示播放控制')));
-                } else {
-                  final missing = await ensureAppPermissions();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(missing.contains('通知')
-                          ? '通知未授权：请在系统设置-应用-音素-通知 中手动打开'
-                          : '通知权限已授予')));
-                }
-              } catch (_) {}
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings_remote_outlined),
-            title: const Text('媒体服务自检'),
-            subtitle: const Text('点击检查系统媒体服务是否就绪（车机桌面识别的前提）'),
-            onTap: () async {
-              final playing = controller.player.playing;
-              final hasItem = controller.current != null;
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  duration: const Duration(seconds: 2),
-                  content: Text(!hasItem
-                      ? '还没播放：先点一首歌'
-                      : playing
-                          ? '正在播放${controller.current!.title}。若迪友仍看不到，请在系统设置给音素开"通知使用权"，或在迪友设置里把音素加入音乐应用列表'
-                          : '已暂停：正在播放时车机才能识别')));
-            },
-          ),
           ListTile(
             leading: const Icon(Icons.folder_open_rounded),
             title: const Text('申请存储权限'),
