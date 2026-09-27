@@ -113,21 +113,19 @@ class _SearchPageState extends State<SearchPage> {
       _error = null;
     });
     final api = _externalApi;
-    // 聚合全部可用源：网易云直连 / B站(经聚合或官方) / QQ / 酷我 / 聚合API。
+    // 聚合全部可用源：LX(网易云/QQ聚合) / 网易云直连 / 聚合API(gdstudio内置) / QQ / 酷我(KW)。
     // 每个源独立 try，单个失败不影响其它源。
     final futures = <Future<List<Song>>>[
       api.searchNeteaseDirect(q),
-      if (api.isConfigured) ...[
-        api.search(q),
-        api.search(q, source: 'bilibili'),
-      ],
+      api.lxSearch(q),
+      api.search(q),
       api.searchQq(q),
       api.searchKuwo(q),
     ];
     final lists = await Future.wait(
         futures.map((f) => f.catchError((_) => const <Song>[])));
     if (!mounted) return;
-    // 合并去重：同歌名+歌手只保留一条（源优先：聚合 > 网易云 > B站 > QQ）
+    // 合并去重：同歌名+歌手只保留一条（源优先：聚合 > LX > 网易云 > QQ > 酷我）
     final seen = <String>{};
     final merged = <Song>[];
     for (final list in lists) {
@@ -433,8 +431,25 @@ class _SearchPageState extends State<SearchPage> {
         return ListTile(
           leading: CoverImage(client: _client, coverId: s.coverArt, coverUrl: s.coverUrl, size: 48, radius: 8, requestSize: 200),
           title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${s.artist}  ·  ${_srcLabel(s.externalSource)}',
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(s.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(_srcLabel(s.externalSource),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSecondaryContainer)),
+              ),
+            ],
+          ),
+          isThreeLine: true,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -461,10 +476,10 @@ class _SearchPageState extends State<SearchPage> {
       );
 
   String _srcLabel(String? src) => switch (src) {
-        'bilibili' => 'B站',
+        'lx' => 'LX',
         'qq' => 'QQ',
-        'kuwo' => '酷我',
+        'kuwo' => '酷我(KW)',
         'netease' => '网易云',
-        _ => '外网',
+        _ => '聚合',
       };
 }

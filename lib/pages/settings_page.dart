@@ -348,7 +348,9 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.api_rounded),
             title: const Text('外部API地址'),
-            subtitle: Text(settings.externalApiUrl),
+            subtitle: Text(settings.externalApiUrl.trim().isEmpty
+                ? '留空则用内置聚合 API（gdstudio），可填第三方聚合地址'
+                : settings.externalApiUrl),
             onTap: () => _showExternalApiDialog(context),
           ),
           // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源），
@@ -356,7 +358,7 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.public_rounded),
             title: const Text('外网搜索源'),
-            subtitle: const Text('在线搜索自动聚合：聚合API + 网易云 + B站 + QQ\n播放按来源分发、受版权/VIP 自动切换，点击查看'),
+            subtitle: const Text('LX(网易云/QQ聚合) + 网易云直连 + QQ + 酷我 + 聚合API\n已移除 B站；播放按来源分发，点击查看详情'),
             isThreeLine: true,
             onTap: () => _showSourcesInfo(context),
           ),
@@ -492,13 +494,17 @@ class SettingsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _srcRow('聚合API（当前）', settings.externalApiUrl),
+              _srcRow('聚合API', settings.externalApiUrl.trim().isEmpty
+                  ? 'https://music-api.gdstudio.xyz（内置默认）'
+                  : settings.externalApiUrl),
+              _srcRow('LX（网易云/QQ聚合）', 'music-api.gdstudio.xyz / injahow'),
               _srcRow('网易云直连', 'https://music.163.com'),
-              _srcRow('B站直连', 'https://api.bilibili.com'),
               _srcRow('QQ音乐', 'https://c.y.qq.com（播放受版权/VIP限制）'),
+              _srcRow('酷我(KW)', 'http://www.kuwo.cn'),
               const SizedBox(height: 8),
-              Text('搜索外网时自动聚合以上全部源，播放按歌曲来源分发；'
-                  '聚合API地址可在上方“外部API地址”填写修改。',
+              Text('搜索在线歌曲时自动聚合：LX + 网易云直连 + QQ + 酷我 + 聚合API（gdstudio 内置，已移除 B站）。'
+                  '播放按歌曲来源分发、受版权/VIP 自动切换音源；'
+                  '如需自定义聚合，可在上方「外部API地址」填写第三方地址。',
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                       color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
             ],
