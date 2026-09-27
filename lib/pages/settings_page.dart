@@ -330,30 +330,6 @@ class SettingsPage extends StatelessWidget {
               ));
             },
           ),
-          // [xmusic] 2026-09-24 悬浮窗权限入口：车机能识别的音乐应用(如 MobiMusic)通常有此权限，
-          // 提供入口可手动开启，排除该变量。
-          ListTile(
-            leading: const Icon(Icons.picture_in_picture_alt_outlined),
-            title: const Text('允许出现在其他应用上（悬浮窗）'),
-            subtitle: const Text('车机能识别的音乐应用普遍开启，点击前往系统设置开启'),
-            onTap: () async {
-              try {
-                final st = await Permission.systemAlertWindow.status;
-                if (st.isGranted) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('悬浮窗权限已开启')));
-                } else {
-                  final res = await Permission.systemAlertWindow.request();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(res.isGranted
-                          ? '悬浮窗权限已开启'
-                          : '未开启：请在系统设置-应用-音素-允许出现在其他应用上 中手动打开')));
-                }
-              } catch (_) {}
-            },
-          ),
           // [xmusic] 2026-09-24 通知权限 + 媒体服务自检：车机识别排查入口
           ListTile(
             leading: const Icon(Icons.notifications_active_outlined),
