@@ -48,32 +48,61 @@ jobs:
           sed -i 's|<category android:name="android.intent.category.LAUNCHER"/>|<category android:name="android.intent.category.LAUNCHER"/>\n            <category android:name="android.intent.category.APP_MUSIC"/>\n            <category android:name="com.android.launcher.category.APP_MUSIC"/>\n            <action android:name="android.intent.action.MUSIC_PLAYER"/>|' "$f"
           grep -n "INTERNET\|FOREGROUND_SERVICE\|MANAGE_EXTERNAL_STORAGE\|requestLegacyExternalStorage\|APP_MUSIC\|MUSIC_PLAYER" "$f"
 
-      - name: Patch audio service
+      - name: Patch audio service (audio + lyric overlay)
         run: |
           python3 <<'PYEOF'
-          import glob
+          import glob, os, shutil
           matches = glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True)
           ma = matches[0] if matches else None
-          if ma:
-              pk = ma.replace("android/app/src/main/kotlin/", "").replace("/MainActivity.kt", "").replace("/", ".")
-              with open(ma, "w") as f:
-                  f.write("package " + pk + "\n\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity()\n")
-              print("Wrote " + ma)
-              print(open(ma).read())
-          else:
+          if not ma:
               print("WARNING: MainActivity.kt not found!")
               print(glob.glob("android/app/src/main/**/*.kt", recursive=True))
-          p = "android/app/src/main/AndroidManifest.xml"
-          s = open(p).read()
-          if 'xmlns:tools' not in s:
-              s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
-          if 'AudioService' not in s:
-              svc = "\n      <service android:name=\"com.ryanheise.audioservice.AudioService\" android:foregroundServiceType=\"mediaPlayback\" android:exported=\"true\" tools:ignore=\"Instantiatable\">\n        <intent-filter>\n          <action android:name=\"android.media.browse.MediaBrowserService\" />\n        </intent-filter>\n      </service>\n      <receiver android:name=\"com.ryanheise.audioservice.MediaButtonReceiver\" android:exported=\"true\" tools:ignore=\"Instantiatable\">\n        <intent-filter>\n          <action android:name=\"android.intent.action.MEDIA_BUTTON\" />\n        </intent-filter>\n      </receiver>\n  </application>"
-              s = s.replace("</application>", svc)
-          open(p, "w").write(s)
-          print("=== MANIFEST ===")
-          print(open(p).read())
-          print("=== END ===")
+          else:
+              pk = ma.replace("android/app/src/main/kotlin/", "").replace("/MainActivity.kt", "").replace("/", ".")
+              kdir = os.path.dirname(ma)
+              # 歌词浮窗原生服务（双前台检测：无障碍 + UsageStats）
+              for name in ["LyricOverlayService.kt", "LyricAccessibilityService.kt"]:
+                  src = os.path.join("android_overlay", name)
+                  dst = os.path.join(kdir, name)
+                  open(dst, "w").write(open(src).read().replace("__PKG__", pk))
+                  print("Wrote " + dst)
+              # MainActivity 带 lyric_overlay MethodChannel
+              ma_data = open("android_overlay/MainActivity.kt").read().replace("__PKG__", pk)
+              open(ma, "w").write(ma_data)
+              print("Wrote MainActivity with lyric overlay channel")
+              print(open(ma).read())
+              # 无障碍配置 xml
+              os.makedirs("android/app/src/main/res/xml", exist_ok=True)
+              shutil.copy("android_overlay/lyric_accessibility_config.xml", "android/app/src/main/res/xml/lyric_accessibility_config.xml")
+              # 无障碍描述字符串
+              desc = '    <string name="lyric_accessibility_desc">识别当前前台是否为车机桌面，决定歌词悬浮窗是否显示</string>'
+              vals = glob.glob("android/app/src/main/res/values*/strings.xml")
+              if vals:
+                  sp = vals[0]; s = open(sp).read()
+                  if 'lyric_accessibility_desc' not in s:
+                      s = s.replace('</resources>', desc + '\n</resources>')
+                      open(sp, "w").write(s)
+              else:
+                  os.makedirs("android/app/src/main/res/values", exist_ok=True)
+                  open("android/app/src/main/res/values/strings.xml", "w").write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n' + desc + '\n</resources>\n')
+              # manifest：权限 + 服务
+              p = "android/app/src/main/AndroidManifest.xml"
+              s = open(p).read()
+              if 'xmlns:tools' not in s:
+                  s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
+              for perm in ['SYSTEM_ALERT_WINDOW', 'PACKAGE_USAGE_STATS', 'FOREGROUND_SERVICE_SPECIAL_USE']:
+                  if ('android.permission.' + perm) not in s:
+                      s = s.replace('<application', '<uses-permission android:name="android.permission.' + perm + '" tools:ignore="ProtectedPermissions"/>\n    <application', 1)
+              if 'AudioService' not in s:
+                  svc = '\n      <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true" tools:ignore="Instantiatable">\n        <intent-filter>\n          <action android:name="android.media.browse.MediaBrowserService" />\n        </intent-filter>\n      </service>\n      <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver" android:exported="true" tools:ignore="Instantiatable">\n        <intent-filter>\n          <action android:name="android.intent.action.MEDIA_BUTTON" />\n        </intent-filter>\n      </receiver>\n  </application>'
+                  s = s.replace('</application>', svc)
+              if 'LyricOverlayService' not in s:
+                  extra = '\n      <service android:name=".LyricOverlayService" android:exported="false" android:foregroundServiceType="specialUse">\n        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="lyric_overlay"/>\n      </service>\n      <service android:name=".LyricAccessibilityService" android:exported="false" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:label="音素音乐歌词悬浮窗">\n        <intent-filter>\n          <action android:name="android.accessibilityservice.AccessibilityService"/>\n        </intent-filter>\n        <meta-data android:name="android.accessibilityservice" android:resource="@xml/lyric_accessibility_config"/>\n      </service>\n  </application>'
+                  s = s.replace('</application>', extra)
+              open(p, "w").write(s)
+              print("=== MANIFEST ===")
+              print(open(p).read())
+              print("=== END ===")
           PYEOF
 
       - name: Generate app icons
