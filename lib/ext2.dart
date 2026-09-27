@@ -556,45 +556,23 @@ class ExternalApi {
     return songs;
   }
 
-  /// QQ 精选歌单：从 y.qq.com/n/ryqq_v2/category 抓歌单ID，每天 shuffle 取8个
+  /// 精选歌单：走 LX /personalized 推荐
   Future<List<Map<String, dynamic>>> qqPlaylists() async {
-    try {
-      final html = await http
-          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'),
-              headers: {'User-Agent': 'Mozilla/5.0'})
-          .then((r) => r.body);
-      final re = RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>');
-      final maps = <Map<String, dynamic>>[];
-      final seen = <String>{};
-      for (final m in re.allMatches(html)) {
-        final id = m.group(1)!;
-        final name = m.group(2)!.trim();
-        if (!seen.add(id)) continue;
-        maps.add({'dissid': id, 'name': name});
-      }
-      maps.shuffle();
-      final pick = maps.take(8).toList();
-      // 并行拉封面
-      await Future.wait(pick.map((pl) async {
-        try {
-          final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
-              .replace(queryParameters: {
-            'type': '1', 'utf8': '1', 'disstid': pl['dissid'], 'format': 'json',
-            'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
-            'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
-            'hostUin': '0', 'song_num': '1', 'song_begin': '0',
-          });
-          final resp = await http.get(u, headers: {
-            'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
-          final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-          final cd = (j['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
-          if (cd != null && cd['logo'] != null) pl['coverImgUrl'] = cd['logo'].toString();
-        } catch (_) {}
-      }));
-      return pick;
-    } catch (_) {
-      return const [];
+    for (final base in lxBases) {
+      try {
+        final r = await http.get(Uri.parse("$base/personalized"),
+            headers: _hlx).timeout(const Duration(seconds: 8));
+        final list = (jsonDecode(utf8.decode(r.bodyBytes)) as List?) ?? [];
+        if (list.isNotEmpty) {
+          return list.cast<Map>().take(12).map((m) => {
+            'dissid': m['id'].toString(),
+            'name': m['name'].toString(),
+            'coverImgUrl': (m['picUrl'] ?? '').toString(),
+          }).toList();
+        }
+      } catch (_) { continue; }
     }
+    return const [];
   }
 
   /// QQ 歌单歌曲（qzone 匿名接口）
