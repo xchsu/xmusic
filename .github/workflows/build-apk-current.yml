@@ -57,7 +57,7 @@ jobs:
           if ma:
               pk = ma.replace("android/app/src/main/kotlin/", "").replace("/MainActivity.kt", "").replace("/", ".")
               with open(ma, "w") as f:
-                  f.write("package " + pk + "\n\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity()\n")
+                  f.write("package " + pk + "\n\nimport android.os.Bundle\nimport android.view.WindowManager\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity() {\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)\n    }\n}\n")
               print("Wrote " + ma)
               print(open(ma).read())
           else:
