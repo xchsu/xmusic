@@ -397,13 +397,13 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.folder_open_rounded),
             title: const Text('申请存储权限'),
-            subtitle: const Text('Android 11+ 写入公共目录需要（如 /Music）'),
+            subtitle: const Text('访问本地音乐需要'),
             onTap: () async {
-              final status = await Permission.manageExternalStorage.request();
+              final status = await Permission.audio.request();
               if (!context.mounted) return;
               final msg = status.isGranted
                   ? '已授予存储权限'
-                  : '未授予，请在系统设置-应用-音素-权限中手动开启"所有文件访问"';
+                  : '未授予，请在系统设置-应用-音素-权限中手动开启';
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
             },
           ),          const Divider(),
