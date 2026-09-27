@@ -29,6 +29,7 @@ class AppSettings extends ChangeNotifier {
   static const _kAutoPlay = 'auto_play';
   static const _kDownloadPath = 'download_path';
   static const _kQqCookie = 'qq_cookie';
+  static const _kLyricOverlay = 'lyric_overlay';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -53,6 +54,7 @@ class AppSettings extends ChangeNotifier {
   int _lyricPast = lyricPastDefault;
   int _lyricFuture = lyricFutureDefault;
   bool _autoPlay = true;
+  bool _lyricOverlay = false;
   String downloadPath = '';
   String qqCookie = '';
   AppThemeMode _themeMode = AppThemeMode.system;
@@ -63,6 +65,7 @@ class AppSettings extends ChangeNotifier {
   int get lyricPast => _lyricPast;
   int get lyricFuture => _lyricFuture;
   bool get autoPlay => _autoPlay;
+  bool get lyricOverlay => _lyricOverlay;
   AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
@@ -93,6 +96,7 @@ class AppSettings extends ChangeNotifier {
     _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
+    _lyricOverlay = _prefs.getBool(_kLyricOverlay) ?? false;
   }
 
   SubsonicClient buildClient() {
@@ -164,6 +168,13 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setInt(_kLyricActive, _lyricActive);
     await _prefs.setInt(_kLyricPast, _lyricPast);
     await _prefs.setInt(_kLyricFuture, _lyricFuture);
+  }
+
+  Future<void> setLyricOverlay(bool v) async {
+    if (v == _lyricOverlay) return;
+    _lyricOverlay = v;
+    notifyListeners();
+    await _prefs.setBool(_kLyricOverlay, v);
   }
 
   Future<void> setAutoPlay(bool v) async {

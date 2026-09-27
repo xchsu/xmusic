@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'audio_handler.dart';
 import 'external_api.dart';
 import 'lyrics.dart';
+import 'lyric_overlay.dart';
 import 'local_library.dart';
 import 'main.dart';
 import 'settings.dart';
@@ -32,6 +33,7 @@ class PlayerController extends ChangeNotifier {
     _positionSub = player.positionStream.listen((pos) {
       _lastPos = pos;
       _lastPosTime = DateTime.now();
+      _maybePushOverlayLyric(pos);
     });
     _stuckTimer = Timer.periodic(const Duration(seconds: 3), (_) => _checkStuck());
     // 通知栏/车机的 next/prev 按键回调。
@@ -63,6 +65,8 @@ class PlayerController extends ChangeNotifier {
   Duration _lastPos = Duration.zero;
   DateTime _lastPosTime = DateTime.now();
   int _loadToken = 0;
+  /// 已推送到悬浮窗的歌词行号（避免重复推送）。
+  int _overlayLine = -1;
   /// 播放加载令牌：快速连点切歌/自动播放时，只允许最新一次加载真正生效，
   /// 旧加载在关键节点放弃，避免两次 setUrl 相互覆盖造成竞态。
   int _playToken = 0;
@@ -390,6 +394,19 @@ class PlayerController extends ChangeNotifier {
     // 每次切歌/开始播放都保存最新状态（曲目+进度），
     // 退出或清后台后恢复的就是退出时正在播的歌，而不是停留在最初点开的那首。
     unawaited(saveLastState());
+  }
+
+  /// 开启歌词悬浮窗时，把当前歌词行推给原生浮窗（只在行号变化时推一次）。
+  void _maybePushOverlayLyric(Duration pos) {
+    if (!settings.lyricOverlay) return;
+    final ly = lyrics;
+    if (ly == null || !ly.synced || ly.lines.isEmpty) return;
+    final idx = ly.indexAt(pos);
+    if (idx == _overlayLine) return;
+    _overlayLine = idx;
+    if (idx >= 0 && idx < ly.lines.length) {
+      LyricOverlay.updateLyric(ly.lines[idx].text);
+    }
   }
 
   void _checkStuck() {
