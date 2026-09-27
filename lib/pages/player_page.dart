@@ -150,39 +150,15 @@ class _PlayerPageState extends State<PlayerPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Center(
-                    child: Container(
-                      width: s * 1.16,
-                      height: s * 1.16,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        // 环境光晕：主题色低透明度大光斑，让黑胶浮在玻璃上
-                        gradient: RadialGradient(
-                          colors: [
-                            theme.colorScheme.primary.withValues(alpha: 0.14),
-                            Colors.transparent,
-                          ],
-                          stops: const [0.0, 0.75],
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: StreamBuilder<bool>(
-                        stream: widget.controller.player.playingStream,
-                        builder: (context, snap) {
-                          return _SpinRotator(
-                            spinning: snap.data ?? false,
-                            child: Container(
-                              width: s, height: s,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: theme.colorScheme.surfaceContainerHighest,
-                                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0,10))],
-                              ),
-                              padding: const EdgeInsets.all(8),
-                              child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
-                            ),
-                          );
-                        },
-                      ),
+                    child: StreamBuilder<bool>(
+                      stream: widget.controller.player.playingStream,
+                      builder: (context, snap) {
+                        return _CdDisc(
+                          size: s,
+                          spinning: snap.data ?? false,
+                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.76, requestSize: 800),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -320,30 +296,17 @@ class _PlayerPageState extends State<PlayerPage> {
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 左：大黑胶（带环境光晕，浮在玻璃上）+ 歌曲信息
-                  Container(
-                    width: s * 1.14,
-                    height: s * 1.14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          theme.colorScheme.primary.withValues(alpha: 0.15),
-                          Colors.transparent,
-                        ],
-                        stops: const [0.0, 0.78],
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: s, height: s,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withOpacity(0.35), blurRadius: 26, offset: const Offset(0, 8))],
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      child: ClipOval(child: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 800)),
+                  // 左：CD 唱片（带环境光晕 + 识别卡针）+ 歌曲信息
+                  Center(
+                    child: StreamBuilder<bool>(
+                      stream: widget.controller.player.playingStream,
+                      builder: (context, snap) {
+                        return _CdDisc(
+                          size: s,
+                          spinning: snap.data ?? false,
+                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.76, requestSize: 800),
+                        );
+                      },
                     ),
                   ),
                   // [xmusic] 2026-09-24 车机横屏：歌名/歌手/专辑 下移并放大（黑胶与信息间距拉大、字号加大）
@@ -894,6 +857,185 @@ class _SpinRotatorState extends State<_SpinRotator> with SingleTickerProviderSta
   void dispose() { _c.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
+}
+/// [xmusic] 2026-09-27 CD 唱片：金属盘面 + 专辑封面(留金属边) + 反光扫过 + 中心孔，
+/// 播放时整体旋转；叠加识别卡针（播放落下搭在唱片上，暂停抬起）。
+class _CdDisc extends StatelessWidget {
+  const _CdDisc({super.key, required this.cover, required this.size, required this.spinning});
+  /// 专辑封面（已按 label 尺寸构建，label ≈ size*0.76）
+  final Widget cover;
+  /// 唱片直径
+  final double size;
+  /// 播放中（驱动旋转 + 卡针落下）
+  final bool spinning;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: size * 1.14,
+      height: size * 1.14,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 环境光晕：主题色低透明度大光斑，让唱片浮在玻璃上
+          Container(
+            width: size * 1.14,
+            height: size * 1.14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  theme.colorScheme.primary.withValues(alpha: 0.14),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.75],
+              ),
+            ),
+          ),
+          // 旋转的 CD 唱片
+          _SpinRotator(
+            spinning: spinning,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 金属盘面（CD 本体）
+                Container(
+                  width: size, height: size,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const SweepGradient(colors: [
+                      Color(0xFF8C92A2), Color(0xFFD5D9E2), Color(0xFF697082),
+                      Color(0xFFB9BFCC), Color(0xFF8C92A2),
+                    ]),
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0, 10))],
+                  ),
+                ),
+                // 专辑封面：居中并留出金属边 = CD 盘面
+                Padding(
+                  padding: EdgeInsets.all(size * 0.12),
+                  child: ClipOval(child: cover),
+                ),
+                // 反光扫过（随唱片旋转）
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: const Alignment(-0.7, -1.0),
+                          end: const Alignment(0.7, 1.0),
+                          colors: [
+                            Colors.transparent,
+                            Colors.white.withValues(alpha: 0.13),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.44, 0.52, 0.60],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // 中心孔
+                Container(
+                  width: size * 0.055, height: size * 0.055,
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF14161C)),
+                ),
+              ],
+            ),
+          ),
+          // 识别卡针（不随唱片旋转，叠在唱片上）
+          SizedBox(
+            width: size, height: size,
+            child: _Tonearm(spinning: spinning, discSize: size),
+          ),
+        ],
+      ),
+    );
+  }
+}
+/// CD 识别卡针：播放时落下搭在唱片上，暂停时抬起。
+class _Tonearm extends StatefulWidget {
+  const _Tonearm({super.key, required this.spinning, required this.discSize});
+  final bool spinning;
+  final double discSize;
+  @override
+  State<_Tonearm> createState() => _TonearmState();
+}
+class _TonearmState extends State<_Tonearm> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+    reverseDuration: const Duration(milliseconds: 450),
+  );
+  late final Animation<double> _anim = CurvedAnimation(parent: _c, curve: Curves.easeInOutCubic);
+  @override
+  void initState() { super.initState(); _c.value = widget.spinning ? 1.0 : 0.0; }
+  @override
+  void didUpdateWidget(covariant _Tonearm old) {
+    super.didUpdateWidget(old);
+    if (widget.spinning && _c.value < 1.0) _c.forward();
+    else if (!widget.spinning && _c.value > 0.0) _c.reverse();
+  }
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(widget.discSize),
+      painter: _TonearmPainter(lift: 1.0 - _anim.value),
+    );
+  }
+}
+class _TonearmPainter extends CustomPainter {
+  _TonearmPainter({required this.lift});
+  /// 0 = 落下(播放)，1 = 抬起(暂停)
+  final double lift;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.width / 2;
+    final r = size.width / 2;
+    // 转轴：唱片顶部、偏右
+    final pivot = Offset(c + r * 0.10, r * 0.02);
+    // 针落点：唱片内右侧，半径 0.55r、角度 18°
+    const a = 0.32;
+    final needle = Offset(c + r * 0.55 * math.cos(a), c + r * 0.55 * math.sin(a));
+    // 抬起：暂停绕转轴逆时针抬起（针离开唱片朝上），播放归位
+    final liftRad = -lift * 0.42;
+    canvas.save();
+    canvas.translate(pivot.dx, pivot.dy);
+    canvas.rotate(liftRad);
+    final dx = needle.dx - pivot.dx;
+    final dy = needle.dy - pivot.dy;
+    final armLen = math.sqrt(dx * dx + dy * dy);
+    canvas.rotate(math.atan2(dy, dx));
+    // 臂：沿 +x 到臂长，微渐变
+    final armPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.centerLeft, end: Alignment.centerRight,
+        colors: [Color(0xFF2C3140), Color(0xFF565E70)],
+      ).createShader(Rect.fromLTWH(0, -3, armLen, 6));
+    final armPath = Path()
+      ..moveTo(0, -2.4)
+      ..lineTo(armLen, -1.5)
+      ..lineTo(armLen + r * 0.06, 1.8)
+      ..lineTo(0, 2.4)
+      ..close();
+    canvas.drawPath(armPath, armPaint);
+    // 针头（卡针）：臂末端小圆头，斜向唱片
+    canvas.translate(armLen, 0);
+    canvas.rotate(-0.75);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(-6, -2.2, 16, 5.5), const Radius.circular(2.8)),
+      Paint()..color = const Color(0xFF1A1D24),
+    );
+    canvas.drawCircle(const Offset(11, 0), 2.5, Paint()..color = const Color(0xFF8B93A5));
+    canvas.restore();
+    // 转轴座（盖在最上层）
+    canvas.drawCircle(pivot, 7, Paint()..color = const Color(0xFF3A4150));
+    canvas.drawCircle(pivot, 3.6, Paint()..color = const Color(0xFF14161C));
+  }
+  @override
+  bool shouldRepaint(_TonearmPainter old) => old.lift != lift;
 }
 /// 小玻璃圆钮（歌名行两侧：首页/返回）
 class _MiniCornerButton extends StatelessWidget {
