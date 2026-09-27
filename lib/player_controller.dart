@@ -463,6 +463,9 @@ class PlayerController extends ChangeNotifier {
             }
           } catch (_) {}
         }
+      } else if (s.lrcUrl != null && s.lrcUrl!.isNotEmpty) {
+        // 外源歌曲自带歌词直链（LX/meting 的 lrc）：直接用直链拉词，不走通用歌词查询。
+        result = await external.lxLrc(s.lrcUrl!);
       } else if (s.fromExternal) {
         // 用歌曲自己的音源查歌词；仅网易云源在无歌词时回退网易云
         // （其他音源的ID与网易云不一致，回退也是空查，反而拖慢刷新）

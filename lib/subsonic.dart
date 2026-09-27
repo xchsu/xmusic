@@ -102,6 +102,7 @@ class Song {
     this.streamUrl,
     this.fromExternal = false,
     this.externalSource,
+    this.lrcUrl,
   });
 
   final String id;
@@ -118,6 +119,8 @@ class Song {
   final String? streamUrl;
   final bool fromExternal;
   final String? externalSource;
+  /// 外源歌曲自带歌词直链（如 LX/meting 的 lrc 接口），有则播放页直接用，不再走通用歌词查询。
+  final String? lrcUrl;
 
   factory Song.fromJson(Map<String, dynamic> j) => Song(
         id: j['id'].toString(),

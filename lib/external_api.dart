@@ -572,6 +572,7 @@ class ExternalApi {
             album: (s['album'] ?? '').toString(),
             coverUrl: (s['pic'] ?? '').toString(),
             streamUrl: (s['url'] ?? '').toString(),
+            lrcUrl: (s['lrc'] ?? '').toString(),
             durationSec: int.tryParse(s['interval']?.toString() ?? '') ?? 0,
             fromExternal: true, externalSource: 'lx',
           ));
@@ -580,6 +581,16 @@ class ExternalApi {
       } catch (_) { continue; }
     }
     return const [];
+  }
+
+  /// LX/meting 歌词直链：拉取 LRC 文本并解析为 Lyrics（失败/无词返回 null）。
+  Future<Lyrics?> lxLrc(String lrcUrl) async {
+    try {
+      final r = await http.get(Uri.parse(lrcUrl), headers: _hlx).timeout(const Duration(seconds: 12));
+      final raw = utf8.decode(r.bodyBytes);
+      if (raw.trim().isEmpty) return null;
+      return Lyrics.fromLrc(raw);
+    } catch (_) { return null; }
   }
   /// LX 先行版预置：网易云榜单/精选歌单（id 已实测非空可拉）。
   static const List<Map<String, String>> lxPresets = [
