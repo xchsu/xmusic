@@ -29,6 +29,11 @@ class AppSettings extends ChangeNotifier {
   static const _kAutoPlay = 'auto_play';
   static const _kDownloadPath = 'download_path';
   static const _kQqCookie = 'qq_cookie';
+  /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
+  /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
+  static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
+  static const int lyricPastDefault = 0xffdddddd;   // 浅灰（已唱）
+  static const int lyricFutureDefault = 0xff00ff88; // 亮绿（未唱）
 
   late final SharedPreferences _prefs;
 
@@ -44,9 +49,9 @@ class AppSettings extends ChangeNotifier {
   String webdavName = '';
   double _lyricScale = 1.0;
   int _bgColor = 0;
-  int _lyricActive = 0xfffdd475;
-  int _lyricPast = 0xffdddddd;
-  int _lyricFuture = 0xff00ff88;
+  int _lyricActive = lyricActiveDefault;
+  int _lyricPast = lyricPastDefault;
+  int _lyricFuture = lyricFutureDefault;
   bool _autoPlay = true;
   String downloadPath = '';
   String qqCookie = '';
@@ -82,9 +87,9 @@ class AppSettings extends ChangeNotifier {
     _lyricScale = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;
-    _lyricActive = _prefs.getInt(_kLyricActive) ?? 0;
-    _lyricPast = _prefs.getInt(_kLyricPast) ?? 0;
-    _lyricFuture = _prefs.getInt(_kLyricFuture) ?? 0;
+    _lyricActive = _prefs.getInt(_kLyricActive) ?? lyricActiveDefault;
+    _lyricPast = _prefs.getInt(_kLyricPast) ?? lyricPastDefault;
+    _lyricFuture = _prefs.getInt(_kLyricFuture) ?? lyricFutureDefault;
     _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';

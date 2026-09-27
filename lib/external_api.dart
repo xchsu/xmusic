@@ -549,7 +549,49 @@ class ExternalApi {
     }
     return null;
   }
-  /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
+  /// LX 先行版（meting，已验证可用）：网易云歌单/榜单拉取。
+  /// meting 返回数组 [{name, artist, url, pic, lrc}]，url 即直链、pic 即封面。
+  /// id 为网易云歌单/榜单 id。歌曲直接带 streamUrl，播放不再二次解析。
+  Future<List<Song>> lxMetingPlaylistSongs(String id) async {
+    for (final b in <String>['https://api.injahow.cn/meting', lxBase]) {
+      try {
+        final uri = Uri.parse(b).replace(queryParameters: {'type': 'playlist', 'id': id});
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 12));
+        final j = jsonDecode(utf8.decode(r.bodyBytes));
+        if (j is! List) continue;
+        final list = j.cast<Map<String, dynamic>>();
+        if (list.isEmpty) continue;
+        final out = <Song>[];
+        for (final s in list) {
+          final title = (s['name'] ?? '').toString();
+          if (title.isEmpty) continue;
+          out.add(Song(
+            id: 'lx_' + (s['url']?.toString() ?? ''),
+            title: title,
+            artist: (s['artist'] ?? '').toString(),
+            album: (s['album'] ?? '').toString(),
+            coverUrl: (s['pic'] ?? '').toString(),
+            streamUrl: (s['url'] ?? '').toString(),
+            durationSec: int.tryParse(s['interval']?.toString() ?? '') ?? 0,
+            fromExternal: true, externalSource: 'lx',
+          ));
+        }
+        if (out.isNotEmpty) return out;
+      } catch (_) { continue; }
+    }
+    return const [];
+  }
+  /// LX 先行版预置：网易云榜单/精选歌单（id 已实测非空可拉）。
+  static const List<Map<String, String>> lxPresets = [
+    {'id': '19723756', 'name': '飙升榜'},
+    {'id': '3778678', 'name': '热歌榜'},
+    {'id': '3779629', 'name': '新歌榜'},
+    {'id': '2884035', 'name': '原创榜'},
+    {'id': '3136952023', 'name': '华语精选'},
+    {'id': '1978921795', 'name': '抖音热歌'},
+    {'id': '2809577409', 'name': '欧美热歌'},
+    {'id': '2250011882', 'name': '抖音热门'},
+  ];  /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
   Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
     final songs = await qqToplistCp('4', limit: count);
     if (songs.isEmpty) return daily30FromKugou(count: count); // 榜单接口异常时兜底
