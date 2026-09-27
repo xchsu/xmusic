@@ -209,7 +209,7 @@ class AppTheme {
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final sel = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: sel ? primary : onSurface.withValues(alpha: 0.65),
+            color: sel ? primary : onSurface,
           );
         }),
       ),
@@ -237,11 +237,11 @@ class AppTheme {
       // ---- 列表/条目 ----
       listTileTheme: ListTileThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        iconColor: onSurface.withValues(alpha: 0.75),
+        iconColor: onSurface,
         textColor: onSurface,
         titleTextStyle: TextStyle(color: onSurface, fontSize: 15),
         subtitleTextStyle: TextStyle(
-          color: onSurface.withValues(alpha: 0.6),
+          color: onSurface.withValues(alpha: 0.7),
           fontSize: 12.5,
         ),
       ),
