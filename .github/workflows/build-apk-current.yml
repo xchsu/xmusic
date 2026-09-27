@@ -35,11 +35,13 @@ jobs:
           fi
           g=android/app/build.gradle.kts
           if [ -f "$g" ]; then
-            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId = "com.xmusic.player"|' "$g"
-          ficn.yinsu.x_musicgrep -n "android:label" "$f"
+            sed -i -E 's|applicationId[ =]*"[^"]*"|applicationId = "cn.yinsu.x_music"|' "$g"
+          fi
+          grep -n "android:label" "$f"
           grep -rn "applicationId" android/app/build.gradle* || true
 
-      - name: Patch AndroidManifest (network + 车机媒体识别)cn.yinsu.x_musicrun: |
+      - name: Patch AndroidManifest (network + 车机媒体识别)
+        run: |
           f=android/app/src/main/AndroidManifest.xml
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>\n    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>\n    <application android:usesCleartextTraffic="true" android:requestLegacyExternalStorage="true"|' "$f"
           # 车机媒体识别：声明音乐应用 category + MUSIC_PLAYER action（迪友等车机桌面按此枚举音乐播放器）
@@ -103,7 +105,7 @@ jobs:
 
       - name: Sync version string
         run: |
-          echo "const String appVersion = '0.3.${{ github.run_number }}';" > lib/app_version.dart
+          echo "const String appVersion = '0.4.${{ github.run_number }}';" > lib/app_version.dart
           cat lib/app_version.dart
 
       - name: Transparent window background
@@ -138,7 +140,7 @@ jobs:
             sed -i 's|android {|android {\n    lintOptions { checkReleaseBuilds false; abortOnError false }|' "$f"
           fi
           grep -n lint "$f"
-      - run: flutter build apk --release --build-number=${{ github.run_number }} --build-name=0.3.${{ github.run_number }}
+      - run: flutter build apk --release --build-number=${{ github.run_number }} --build-name=0.4.${{ github.run_number }}
 
       - uses: actions/upload-artifact@v4
         with:
