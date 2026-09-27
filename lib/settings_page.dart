@@ -109,6 +109,19 @@ class SettingsPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (isTheme) ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('用当前歌曲封面主色透出背景'),
+                      subtitle: const Text('跟随系统/深浅主题，背景透出当前封面颜色'),
+                      value: settings.coverColorBg,
+                      onChanged: (v) {
+                        setD(() {});
+                        settings.setCoverColorBg(v);
+                      },
+                    ),
+                    const Divider(height: 8),
+                  ],
                   // 十六进制
                   Row(children: [
                     Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),

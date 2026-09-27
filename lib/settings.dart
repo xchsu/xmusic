@@ -23,6 +23,7 @@ class AppSettings extends ChangeNotifier {
   static const _kDavPath = 'webdav_path';
   static const _kDavName = 'webdav_name';
   static const _kBgColor = 'bg_color';
+  static const _kCoverColorBg = 'cover_color_bg';
   static const _kLyricActive = 'lyric_active';
   static const _kLyricPast = 'lyric_past';
   static const _kLyricFuture = 'lyric_future';
@@ -50,6 +51,7 @@ class AppSettings extends ChangeNotifier {
   String webdavName = '';
   double _lyricScale = 1.0;
   int _bgColor = 0;
+  bool _coverColorBg = false;
   int _lyricActive = lyricActiveDefault;
   int _lyricPast = lyricPastDefault;
   int _lyricFuture = lyricFutureDefault;
@@ -61,6 +63,7 @@ class AppSettings extends ChangeNotifier {
 
   double get lyricScale => _lyricScale;
   int get bgColor => _bgColor;
+  bool get coverColorBg => _coverColorBg;
   int get lyricActive => _lyricActive;
   int get lyricPast => _lyricPast;
   int get lyricFuture => _lyricFuture;
@@ -90,6 +93,7 @@ class AppSettings extends ChangeNotifier {
     _lyricScale = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;
+    _coverColorBg = _prefs.getBool(_kCoverColorBg) ?? false;
     _lyricActive = _prefs.getInt(_kLyricActive) ?? lyricActiveDefault;
     _lyricPast = _prefs.getInt(_kLyricPast) ?? lyricPastDefault;
     _lyricFuture = _prefs.getInt(_kLyricFuture) ?? lyricFutureDefault;
@@ -158,6 +162,12 @@ class AppSettings extends ChangeNotifier {
     _bgColor = v;
     notifyListeners();
     await _prefs.setInt(_kBgColor, v);
+  }
+
+  Future<void> setCoverColorBg(bool v) async {
+    _coverColorBg = v;
+    notifyListeners();
+    await _prefs.setBool(_kCoverColorBg, v);
   }
 
   Future<void> setLyricColors({int? active, int? past, int? future}) async {
