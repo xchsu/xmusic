@@ -80,11 +80,12 @@ class _PlayerPageState extends State<PlayerPage> {
     });
   }
 
-  Future<void> _extractCoverColor(Song song, String key) async {
+  Future<void> _extractCoverColor(Song? song, String key) async {
+    if (song == null) return;
     try {
       final url = song.coverUrl?.isNotEmpty == true
           ? song.coverUrl!
-          : widget.controller.client.coverUrl(song.coverArt, size: 600);
+          : widget.controller.client.coverUrl(song.coverArt, size: 600).toString();
       final resp = await http
           .get(Uri.parse(url), headers: const {'User-Agent': 'Mozilla/5.0'})
           .timeout(const Duration(seconds: 8));
