@@ -556,24 +556,34 @@ class ExternalApi {
     return songs;
   }
 
-  /// QQ 精选歌单：从 y.qq.com/n/ryqq_v2/category 抓歌单ID，每天 shuffle 取8个
+  /// QQ 精选歌单：用歌单分类接口 fcg_get_diss_by_tag.fcg 一次拉50个候选（含名称+封面），
+  /// 预检 qzone songlist 非空才保留，shuffle 取12个（车机6列2行/手机3列4行）。
   Future<List<Map<String, dynamic>>> qqPlaylists() async {
     try {
-      final html = await http
-          .get(Uri.parse('https://y.qq.com/n/ryqq_v2/category'),
-              headers: {'User-Agent': 'Mozilla/5.0'})
-          .then((r) => r.body);
-      final re = RegExp(r'href="/n/ryqq_v2/playlist/(\d+)"[^>]*>([^<]{1,40})</a>');
+      final uri = Uri.parse('https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg')
+          .replace(queryParameters: {
+        'categoryId': '10000000', // 综合/流行
+        'sortId': '5',            // 综合排序
+        'sin': '0', 'ein': '49',  // 取 0-49 共 50 个候选
+        'format': 'json', 'inCharset': 'utf8', 'outCharset': 'utf-8',
+      });
+      final resp = await http.get(uri, headers: {
+        'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final list = (((j['data'] as Map?)?['list']) as List?) ?? const [];
       final maps = <Map<String, dynamic>>[];
       final seen = <String>{};
-      for (final m in re.allMatches(html)) {
-        final id = m.group(1)!;
-        final name = m.group(2)!.trim();
-        if (!seen.add(id)) continue;
-        maps.add({'dissid': id, 'name': name});
+      for (final it in list.cast<Map>()) {
+        final id = it['dissid']?.toString() ?? '';
+        if (id.isEmpty || !seen.add(id)) continue;
+        maps.add({
+          'dissid': id,
+          'name': it['dissname']?.toString() ?? '歌单',
+          'coverImgUrl': it['imgurl']?.toString(),
+        });
       }
-            maps.shuffle();
-      // [xmusic] 2026-09-27 修复"首页歌单没数据"：qzone 对部分歌单返回空 cdlist（如 9551957075 空）。
+      maps.shuffle();
+      // [xmusic] 2026-09-27 修复"首页歌单没数据"：qzone 对部分歌单返回空 cdlist（如 7707261125 空）。
       // 预检歌曲非空才保留，过滤无数据歌单，确保首页 QQ 歌单卡片/点进都有数据。
       final valid = <Map<String, dynamic>>[];
       final checks = maps.take(40).toList();
@@ -586,10 +596,10 @@ class ExternalApi {
             'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
             'hostUin': '0', 'song_num': '1', 'song_begin': '0',
           });
-          final resp = await http.get(u, headers: {
+          final resp2 = await http.get(u, headers: {
             'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
-          final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-          final cd = (j['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
+          final jj = jsonDecode(utf8.decode(resp2.bodyBytes)) as Map<String, dynamic>;
+          final cd = (jj['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
           if (cd == null) return;
           final songlist = (cd['songlist'] as List?) ?? const [];
           if (songlist.isEmpty) return; // 无歌曲 → 丢弃
@@ -598,7 +608,7 @@ class ExternalApi {
         } catch (_) {}
       }));
       valid.shuffle();
-      return valid.take(8).toList();
+      return valid.take(12).toList();
     } catch (_) {
       return const [];
     }
