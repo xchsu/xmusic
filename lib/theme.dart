@@ -58,7 +58,7 @@ class AppTheme {
       final lum = surfaceColor.computeLuminance();
       onSurfaceColor = lum > 0.5 ? const Color(0xFF1C2130) : const Color(0xFFE8EBF2);
     }
-    final scheme = ColorScheme.light(
+    final scheme = ColorScheme.light(/* light */
       primary: _lightPrimary,
       onPrimary: Colors.white,
       secondary: Color(0xFF6E7BD9),
@@ -76,7 +76,7 @@ class AppTheme {
       outlineVariant: Color(0xFFD5CFC0),
       shadow: Color(0xFF2A2A33),
       scrim: Color(0xFF141414),
-      inverseSurface: Color(0xFF32363F),
+      inverseSurface: Color(0xFF222222),
       onInverseSurface: Color(0xFFF2F0EB),
       inversePrimary: Color(0xFFBEC4FF),
       surfaceTint: _lightPrimary,
