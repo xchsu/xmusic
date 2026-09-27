@@ -81,7 +81,7 @@ class AppSettings extends ChangeNotifier {
     username = _prefs.getString(_kUser) ?? '';
     salt = _prefs.getString(_kSalt) ?? '';
     token = _prefs.getString(_kToken) ?? '';
-    externalApiUrl = _prefs.getString(_kExternal) ?? 'https://music-api.gdstudio.xyz';
+    externalApiUrl = _prefs.getString(_kExternal) ?? '';
     webdavUrl = _prefs.getString(_kDavUrl) ?? '';
     webdavUser = _prefs.getString(_kDavUser) ?? '';
     webdavPass = _prefs.getString(_kDavPass) ?? '';

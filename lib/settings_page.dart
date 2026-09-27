@@ -1,11 +1,16 @@
 import 'dart:io';
+import '../toast.dart';
 
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../app_version.dart';
+import '../permissions.dart';
 import '../player_controller.dart';
+import '../lyric_overlay.dart';
 import '../settings.dart';
+import '../widgets.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -197,13 +202,23 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 车机横屏大屏：整页文字放大 1.35x
     final theme = Theme.of(context);
-    return Scaffold(
+    final _mq = MediaQuery.of(context);
+    final _car = isCarScreen(context);
+    return MediaQuery(
+      data: _car ? _mq.copyWith(textScaler: const TextScaler.linear(1.35)) : _mq,
+      child: Builder(
+        builder: (ctx) {
+          return IconTheme(
+        // [xmusic] 2026-09-24 车机图标适配：设置页列表图标整体放大
+        data: IconThemeData(size: _car ? 28 : 24),
+        child: Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
-          // ===== 主题 =====
-          _sectionTitle(theme, '主题'),
+          // ===== 个性化（主题 + 歌词） =====
+          _sectionTitle(theme, '个性化'),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
             title: const Text('主题模式'),
@@ -224,47 +239,6 @@ class SettingsPage extends StatelessWidget {
             value: settings.autoPlay,
             onChanged: (v) => settings.setAutoPlay(v),
           ),
-          const Divider(),
-
-          // ===== 源 =====
-          _sectionTitle(theme, '源'),
-          ListTile(
-            leading: const Icon(Icons.dns_rounded),
-            title: const Text('Navidrome 服务器'),
-            subtitle: Text(settings.hasLogin ? '${settings.username}@${settings.serverUrl}' : '未登录'),
-            trailing: settings.hasLogin
-                ? TextButton(onPressed: () => settings.clearLogin(), child: const Text('退出'))
-                : const Icon(Icons.chevron_right),
-          ),
-          ListTile(
-            leading: const Icon(Icons.api_rounded),
-            title: const Text('外部API地址'),
-            subtitle: Text(settings.externalApiUrl),
-            onTap: () => _showExternalApiDialog(context),
-          ),
-          // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源），
-          // 点进去展示具体地址，只读不可改。
-          ListTile(
-            leading: const Icon(Icons.public_rounded),
-            title: const Text('外网搜索源'),
-            subtitle: const Text('自动聚合：网易云 / B站 / QQ / 聚合API\nQQ 播放受版权/VIP 限制，点击查看详情'),
-            isThreeLine: true,
-            onTap: () => _showSourcesInfo(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.music_note_rounded, color: Colors.orange),
-            title: const Text('QQ音乐 Cookie'),
-            subtitle: Text(settings.qqCookie.trim().isEmpty
-                ? '未设置：每日30首用酷狗+网易云兜底\n设置后解锁 QQ 榜单与播放（点击查看获取方法）'
-                : '已设置：每日30首/QQ榜单自动启用\n点击可修改（Cookie 含登录态，勿外泄）'),
-            isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showQqCookieDialog(context),
-          ),
-          const Divider(),
-
-          // ===== 歌词 =====
-          _sectionTitle(theme, '歌词'),
           ListTile(
             leading: const Icon(Icons.format_size_rounded),
             title: const Text('歌词大小'),
@@ -303,27 +277,126 @@ class SettingsPage extends StatelessWidget {
           ),
           const Divider(),
 
+          // ===== 歌词悬浮窗（车机桌面） =====
+          _sectionTitle(theme, '歌词悬浮窗'),
+          SwitchListTile(
+            secondary: const Icon(Icons.language_rounded),
+            title: const Text('歌词悬浮窗'),
+            subtitle: const Text('开启后，播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；需先授予下方三项权限'),
+            value: settings.lyricOverlay,
+            onChanged: (v) async {
+              await settings.setLyricOverlay(v);
+              if (v) {
+                await LyricOverlay.enable();
+              } else {
+                await LyricOverlay.disable();
+              }
+            },
+          ),
+          FutureBuilder<Map<dynamic, dynamic>?>(
+            future: LyricOverlay.checkPermissions(),
+            builder: (context, snap) {
+              final p = snap.data ?? const <dynamic, dynamic>{};
+              final overlay = (p['overlay'] ?? false) == true;
+              final usage = (p['usageStats'] ?? false) == true;
+              final acc = (p['accessibility'] ?? false) == true;
+              return Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.ondemand_video_rounded),
+                    title: const Text('悬浮窗权限'),
+                    subtitle: Text(overlay ? '已授予' : '未授予'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestOverlay(),
+                      child: Text(overlay ? '已开启' : '去开启'),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.insert_chart_outlined_rounded),
+                    title: const Text('使用情况访问权限'),
+                    subtitle: Text(usage ? '已授予' : '未授予'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestUsageStats(),
+                      child: Text(usage ? '已开启' : '去开启'),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.accessible_rounded),
+                    title: const Text('无障碍服务'),
+                    subtitle: Text(acc ? '已开启' : '未开启'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestAccessibility(),
+                      child: Text(acc ? '已开启' : '去开启'),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const Divider(),
+
+          // ===== 源 =====
+          _sectionTitle(theme, '源'),
+          ListTile(
+            leading: const Icon(Icons.dns_rounded),
+            title: const Text('Navidrome 服务器'),
+            subtitle: Text(settings.hasLogin ? '${settings.username}@${settings.serverUrl}' : '未登录'),
+            trailing: settings.hasLogin
+                ? TextButton(onPressed: () => settings.clearLogin(), child: const Text('退出'))
+                : const Icon(Icons.chevron_right),
+          ),
+          ListTile(
+            leading: const Icon(Icons.api_rounded),
+            title: const Text('外部API地址'),
+            subtitle: Text(settings.externalApiUrl.trim().isEmpty
+                ? '留空则用内置聚合 API（gdstudio），可填第三方聚合地址'
+                : settings.externalApiUrl),
+            onTap: () => _showExternalApiDialog(context),
+          ),
+          // 外网搜索源：展示说明（不做单选，搜索时自动聚合全部源），
+          // 点进去展示具体地址，只读不可改。
+          ListTile(
+            leading: const Icon(Icons.public_rounded),
+            title: const Text('外网搜索源'),
+            subtitle: const Text('LX(网易云/QQ聚合) + 网易云直连 + QQ + 酷我 + 聚合API\n已移除 B站；播放按来源分发，点击查看详情'),
+            isThreeLine: true,
+            onTap: () => _showSourcesInfo(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.music_note_rounded, color: Colors.orange),
+            title: const Text('QQ音乐 Cookie'),
+            subtitle: Text(settings.qqCookie.trim().isEmpty
+                ? '未设置：QQ 榜单/每日30首已匿名可用\n填 Cookie 解锁会员/付费的 QQ 直连播放（点击查看）'
+                : '已设置：解锁会员/付费 QQ 直连播放\n点击可修改（Cookie 含登录态，勿外泄）'),
+            isThreeLine: true,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showQqCookieDialog(context),
+          ),
+
+          const Divider(),
+
           // ===== 下载 =====
           _sectionTitle(theme, '下载'),
+          ListTile(
+            leading: const Icon(Icons.folder_open_rounded),
+            title: const Text('申请存储权限'),
+            subtitle: const Text('访问本地音乐需要'),
+            onTap: () async {
+              final status = await Permission.audio.request();
+              if (!context.mounted) return;
+              final msg = status.isGranted
+                  ? '已授予存储权限'
+                  : '未授予，请在系统设置-应用-音素-权限中手动开启';
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
             title: const Text('本地下载路径'),
             subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music（默认）' : settings.downloadPath),
             onTap: () => _pickDownloadDirectory(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.folder_open_rounded),
-            title: const Text('申请存储权限'),
-            subtitle: const Text('Android 11+ 写入公共目录需要（如 /Music）'),
-            onTap: () async {
-              final status = await Permission.manageExternalStorage.request();
-              if (!context.mounted) return;
-              final msg = status.isGranted
-                  ? '已授予存储权限'
-                  : '未授予，请在系统设置-应用-音素-权限中手动开启"所有文件访问"';
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-            },
-          ),
+
           ListTile(
             leading: const Icon(Icons.cloud_download_outlined),
             title: const Text('WebDAV (NAS)'),
@@ -346,6 +419,10 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 24),
         ],
+      ),
+      ),
+      );
+        },
       ),
     );
   }
@@ -417,13 +494,17 @@ class SettingsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _srcRow('聚合API（当前）', settings.externalApiUrl),
+              _srcRow('聚合API', settings.externalApiUrl.trim().isEmpty
+                  ? 'https://music-api.gdstudio.xyz（内置默认）'
+                  : settings.externalApiUrl),
+              _srcRow('LX（网易云/QQ聚合）', 'music-api.gdstudio.xyz / injahow'),
               _srcRow('网易云直连', 'https://music.163.com'),
-              _srcRow('B站直连', 'https://api.bilibili.com'),
               _srcRow('QQ音乐', 'https://c.y.qq.com（播放受版权/VIP限制）'),
+              _srcRow('酷我(KW)', 'http://www.kuwo.cn'),
               const SizedBox(height: 8),
-              Text('搜索外网时自动聚合以上全部源，播放按歌曲来源分发；'
-                  '聚合API地址可在上方“外部API地址”填写修改。',
+              Text('搜索在线歌曲时自动聚合：LX + 网易云直连 + QQ + 酷我 + 聚合API（gdstudio 内置，已移除 B站）。'
+                  '播放按歌曲来源分发、受版权/VIP 自动切换音源；'
+                  '如需自定义聚合，可在上方「外部API地址」填写第三方地址。',
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                       color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
             ],
@@ -473,7 +554,10 @@ class SettingsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('填写后解锁 QQ 每日30首 / 各榜单，播放直接走 QQ。',
+              const Text(
+                  'QQ 每日30首 / 各榜单现已匿名可用（无需 Cookie 也能刷出来）。\n'
+                  '填写 Cookie 可进一步解锁会员/付费歌曲的 QQ 直连播放；'
+                  '若播放受版权限制会自动切换其他音源。',
                   style: TextStyle(fontSize: 13)),
               const SizedBox(height: 10),
               TextField(
@@ -492,11 +576,15 @@ class SettingsPage extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(height: 4),
               const Text(
-                '1. 电脑浏览器登录 https://y.qq.com（建议用 Chrome/Edge）\n'
-                '2. 按 F12 打开开发者工具 → 切到 Network（网络）面板\n'
-                '3. 刷新页面，任选一个请求，复制请求头里的 Cookie 整串\n'
-                '4. 粘贴到上方输入框并保存\n'
-                '提示：Cookie 含登录态，勿分享给他人；失效后重新获取即可。',
+                '1. 电脑浏览器（Chrome/Edge）登录 https://y.qq.com，随便播放一首歌\n'
+                '2. 按 F12 → Network（网络）面板 → 刷新页面，在请求列表里找\n'
+                '   名称含 musicu.fcg 的请求（找不到就点开任意歌曲再刷新）\n'
+                '3. 点开该请求 → Request Headers（请求标头）→ 复制 Cookie 一行的\n'
+                '   完整值（很长一串，从 pac_uid 一直到 ts_last）\n'
+                '4. 整串粘贴，不要删改任何字段、不要打码\n'
+                '重要：必须从请求头复制！浏览器「应用」面板里看不到 HttpOnly\n'
+                '字段（psrf_qqaccess_token 等），从那里复制会缺关键登录凭证，\n'
+                '验证必失败。Cookie 含登录态勿外泄，失效后重新获取即可。',
                 style: TextStyle(fontSize: 12, height: 1.6),
               ),
             ],
@@ -504,12 +592,45 @@ class SettingsPage extends StatelessWidget {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
-          FilledButton(
-            onPressed: () {
-              settings.setQqCookie(ctl.text.trim());
-              Navigator.of(ctx).pop();
+          TextButton(
+            onPressed: () async {
+              final cookie = ctl.text.trim();
+              if (cookie.isEmpty) {
+                showTopToast(ctx, '请先粘贴 Cookie 再验证');
+                return;
+              }
+              showTopToast(ctx, '验证中...', duration: const Duration(seconds: 2));
+              final res = await controller.external.qqCookieValidDetailed(cookie);
+              if (!ctx.mounted) return;
+              showTopToast(
+                ctx,
+                res.$1 ? 'Cookie 有效，QQ 榜单/播放已解锁' : 'Cookie 无效：\n${res.$2}',
+                duration: const Duration(seconds: 4),
+              );
             },
-            child: const Text('保存'),
+            child: const Text('验证'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final cookie = ctl.text.trim();
+              if (cookie.isEmpty) {
+                showTopToast(ctx, '请先粘贴 Cookie 再保存');
+                return;
+              }
+              showTopToast(ctx, '保存并验证中...', duration: const Duration(seconds: 2));
+              final res = await controller.external.qqCookieValidDetailed(cookie);
+              settings.setQqCookie(cookie);
+              if (!ctx.mounted) return;
+              Navigator.of(ctx).pop();
+              showTopToast(
+                ctx,
+                res.$1
+                    ? '已保存，Cookie 有效，QQ 榜单/播放已解锁'
+                    : '已保存，但 Cookie 无效：\n${res.$2}',
+                duration: const Duration(seconds: 4),
+              );
+            },
+            child: const Text('保存并验证'),
           ),
         ],
       ),

@@ -27,7 +27,11 @@ class ExternalApi {
   };
 
   bool get isConfigured => baseUrl.trim().isNotEmpty;
-  String get _root => baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  /// 内置默认聚合 API（gdstudio）；「外部API地址」留空时自动使用。
+  static const String defaultAggregate = 'https://music-api.gdstudio.xyz';
+  String get _root =>
+      (baseUrl.trim().isEmpty ? defaultAggregate : baseUrl.trim())
+          .replaceAll(RegExp(r'/+$'), '');
 
   Future<dynamic> _getJson(String types, String source, Map<String, String> params) async {
     final uri = Uri.parse('$_root/api.php').replace(queryParameters: {
