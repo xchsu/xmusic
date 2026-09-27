@@ -89,7 +89,7 @@ class _HomePageState extends State<HomePage> {
     if (_localRecDay == today && _localRecCached.isNotEmpty) return _localRecCached;
     final pool = await _client.randomSongs(size: 60).catchError((_) => <Song>[]);
     pool.shuffle(Random(today.year * 10000 + today.month * 100 + today.day));
-    final picked = pool.take(12).toList();
+    final picked = pool.take(30).toList();
     _localRecDay = today;
     _localRecCached = picked;
     return picked;
@@ -347,7 +347,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisSpacing: isCarScreen(context) ? 12 : 10,
               crossAxisSpacing: isCarScreen(context) ? 10 : 10,
               childAspectRatio: isCarScreen(context) ? 0.80 : 0.72,
-              children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!)).toList(),
+              children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
             ),
             // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
             Padding(
@@ -384,7 +384,7 @@ class _HomePageState extends State<HomePage> {
                   final songs = snap.data!;
                   return _miniCard(
                     title: '本地推荐',
-                    subtitle: '${songs.length > 12 ? 12 : songs.length}首 · 随机推荐',
+                    subtitle: '${songs.length > 30 ? 30 : songs.length}首 · 随机推荐',
                     icon: Icons.queue_music_rounded,
                     colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
                     onTap: () => _openLocalRec(songs),
@@ -632,14 +632,15 @@ class _HomePageState extends State<HomePage> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500, height: 1.25)),
+              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500, height: 1.25)),
         ],
       ),
     );
   }
 
-  /// LX 精选卡（网易云榜单/精选歌单，meting 先行版）：渐变封面 + 下方标题。
-  Widget _lxCard(String name, String id) {
+  /// LX 精选卡（网易云榜单/精选歌单，meting 先行版）：真实封面(可回退渐变) + 下方标题。
+  Widget _lxCard(String name, String id, String? coverUrl) {
+    final theme = Theme.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _openLxPlaylist(name, id),
@@ -650,15 +651,31 @@ class _HomePageState extends State<HomePage> {
             aspectRatio: 1,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
-                  ),
-                ),
-                child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
-              ),
+              child: (coverUrl != null && coverUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                      placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                      errorWidget: (_, __, ___) => Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft, end: Alignment.bottomRight,
+                            colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+                          ),
+                        ),
+                        child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
+                      ),
+                    )
+                  : Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                          colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+                        ),
+                      ),
+                      child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
+                    ),
             ),
           ),
           const SizedBox(height: 6),
@@ -666,7 +683,7 @@ class _HomePageState extends State<HomePage> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500, height: 1.25)),
+              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500, height: 1.25)),
         ],
       ),
     );

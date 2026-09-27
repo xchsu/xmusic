@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../toast.dart';
 import 'home_shell.dart';
 import 'dart:math' as math;
@@ -96,41 +95,17 @@ class _PlayerPageState extends State<PlayerPage> {
         final song = widget.controller.current;
         final landscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
-        // 背景跟随主题：自定义背景色优先，否则透明玻璃（通透度由主题统一处理）
-        final bg = widget.settings.bgColor != 0
-            ? Color(widget.settings.bgColor)
-            : Theme.of(context).scaffoldBackgroundColor;
-
         final cs = Theme.of(context).colorScheme;
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        // [xmusic] 2026-09-27 玻璃背景：模糊当前封面透出（透出封面的玻璃感，非灰）。
-        // 无封面时回退纯色 bg。真正的设备壁纸透出需 Android FLAG_SHOW_WALLPAPER（原生层）。
-        final coverBg = song == null
-            ? null
-            : (song.coverUrl != null && song.coverUrl!.isNotEmpty
-                ? song.coverUrl!
-                : (song.coverArt != null
-                    ? widget.controller.client.coverUrl(song.coverArt!, size: 500).toString()
-                    : null));
+        // [xmusic] 玻璃背景：默认透出桌面壁纸（配合原生 FLAG_SHOW_WALLPAPER），不铺封面、不做纯色底。
+        // 自定义背景色（设置里 bgColor）仍优先铺纯色；否则透明，玻璃洗色让壁纸透出且内容可读。
         return Scaffold(
-          backgroundColor: bg,
+          backgroundColor: widget.settings.bgColor != 0
+              ? Color(widget.settings.bgColor)
+              : Colors.transparent,
           body: Stack(
             children: [
-              if (coverBg != null)
-                Positioned.fill(
-                  child: ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: Opacity(
-                      opacity: 0.40,
-                      child: CachedNetworkImage(
-                        imageUrl: coverBg,
-                        fit: BoxFit.cover,
-                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
-                      ),
-                    ),
-                  ),
-                ),
-              // 玻璃洗色：透出封面又保内容可读（浅色更透、深色沉稳）
+              // 玻璃洗色：半透明主题色打底，透出壁纸又保内容可读（浅色更透、深色沉稳）
               Container(
                 decoration: BoxDecoration(
                   color: cs.surface.withValues(alpha: isDark ? 0.50 : 0.36),
