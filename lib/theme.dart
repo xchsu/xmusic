@@ -22,11 +22,11 @@ class AppTheme {
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
   // 背景通透度：浅色稍实（暖白底保证可读），深色保持玻璃但更沉稳（避免发灰发脏）。
-  static const double _lightBgAlpha = 0.55;
+  static const double _lightBgAlpha = 0.92;
   static const double _darkBgAlpha = 0.42;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
-  static const double _lightPanelAlpha = 0.75;
-  static const double _lightSheetAlpha = 0.85;
+  static const double _lightPanelAlpha = 0.95;
+  static const double _lightSheetAlpha = 0.97;
   static const double _darkPanelAlpha = 0.88;
   static const double _darkSheetAlpha = 0.94;
 
@@ -67,11 +67,11 @@ class AppTheme {
       onError: Colors.white,
       surface: surfaceColor,
       onSurface: onSurfaceColor,
-      surfaceContainerLowest: Color(0xFFFFFDF7),
-      surfaceContainerLow: Color(0xFFFBF8F0),
-      surfaceContainer: Color(0xFFF3EFE4),
-      surfaceContainerHigh: Color(0xFFEAE5D7),
-      surfaceContainerHighest: Color(0xFFE0DAC9),
+      surfaceContainerLowest: Color(0xFFFFFFFF),
+      surfaceContainerLow: Color(0xFFFAFAFA),
+      surfaceContainer: Color(0xFFF5F5F5),
+      surfaceContainerHigh: Color(0xFFEEEEEE),
+      surfaceContainerHighest: Color(0xFFE8E8E8),
       outline: Color(0xFF7A746A),
       outlineVariant: Color(0xFFD5CFC0),
       shadow: Color(0xFF2A2A33),
