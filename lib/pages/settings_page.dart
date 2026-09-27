@@ -356,7 +356,7 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.public_rounded),
             title: const Text('外网搜索源'),
-            subtitle: const Text('自动聚合：网易云 / B站 / QQ / 聚合API\nQQ 播放受版权/VIP 限制，点击查看详情'),
+            subtitle: const Text('在线搜索自动聚合：聚合API + 网易云 + B站 + QQ\n播放按来源分发、受版权/VIP 自动切换，点击查看'),
             isThreeLine: true,
             onTap: () => _showSourcesInfo(context),
           ),
@@ -364,8 +364,8 @@ class SettingsPage extends StatelessWidget {
             leading: const Icon(Icons.music_note_rounded, color: Colors.orange),
             title: const Text('QQ音乐 Cookie'),
             subtitle: Text(settings.qqCookie.trim().isEmpty
-                ? '未设置：每日30首用酷狗+网易云兜底\n设置后解锁 QQ 榜单与播放（点击查看获取方法）'
-                : '已设置：每日30首/QQ榜单自动启用\n点击可修改（Cookie 含登录态，勿外泄）'),
+                ? '未设置：QQ 榜单/每日30首已匿名可用\n填 Cookie 解锁会员/付费的 QQ 直连播放（点击查看）'
+                : '已设置：解锁会员/付费 QQ 直连播放\n点击可修改（Cookie 含登录态，勿外泄）'),
             isThreeLine: true,
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showQqCookieDialog(context),
@@ -373,7 +373,8 @@ class SettingsPage extends StatelessWidget {
 
           const Divider(),
 
-          // ===== 权限 =====
+          // ===== 下载 =====
+          _sectionTitle(theme, '下载'),
           ListTile(
             leading: const Icon(Icons.folder_open_rounded),
             title: const Text('申请存储权限'),
@@ -386,9 +387,7 @@ class SettingsPage extends StatelessWidget {
                   : '未授予，请在系统设置-应用-音素-权限中手动开启';
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
             },
-          ),          const Divider(),
-          // ===== 下载 =====
-          _sectionTitle(theme, '下载'),
+          ),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
             title: const Text('本地下载路径'),
