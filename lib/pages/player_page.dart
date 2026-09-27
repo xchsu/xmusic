@@ -349,14 +349,26 @@ class _PlayerPageState extends State<PlayerPage> {
                   // [xmusic] 2026-09-24 车机横屏：歌名/歌手/专辑 下移并放大（黑胶与信息间距拉大、字号加大）
                   SizedBox(height: isCarScreen(context) ? 40 : 20),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: isCarScreen(context) ? 34 : 24)),
-                        SizedBox(height: isCarScreen(context) ? 10 : 6),
-                        Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: isCarScreen(context) ? 22 : 15)),
+                        _MiniCornerButton(icon: Icons.home_rounded, onTap: () {
+                          Navigator.of(context).popUntil((r) => r.isFirst);
+                          HomeShell.switchToHome();
+                        }),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: isCarScreen(context) ? 34 : 24)),
+                              SizedBox(height: isCarScreen(context) ? 10 : 6),
+                              Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: isCarScreen(context) ? 22 : 15)),
+                            ],
+                          ),
+                        ),
+                        _MiniCornerButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).maybePop()),
                       ],
                     ),
                   ),
@@ -900,8 +912,8 @@ class _MiniCornerButton extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              width: 40, height: 40,
-              child: Icon(icon, size: 20, color: theme.colorScheme.onSurface),
+              width: isCarScreen(context) ? 64 : 40, height: isCarScreen(context) ? 64 : 40,
+              child: Icon(icon, size: isCarScreen(context) ? 32 : 20, color: theme.colorScheme.onSurface),
             ),
           ),
         ),
