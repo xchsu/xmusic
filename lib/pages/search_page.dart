@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../external_api.dart';
+import '../local_library.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
@@ -11,7 +12,7 @@ import 'album_page.dart';
 import 'artist_page.dart';
 import 'player_page.dart';
 
-/// Search page: 本地 (Subsonic search3) / 外网 (self-hosted music API).
+/// Search page: 本地(本地下载) / NAS(Subsonic search3) / 在线(外网 self-hosted API).
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key, required this.settings, required this.controller});
 
@@ -30,7 +31,7 @@ class _SearchPageState extends State<SearchPage> {
   bool _externalLoading = false;
   bool _loading = false;
   String? _error;
-  int _mode = 0; // 0 = 本地, 1 = 外网
+  int _mode = 0; // 0 = 本地(本地下载), 1 = NAS(Subsonic服务器), 2 = 在线(外网)
 
   SubsonicClient get _client => widget.controller.client;
   ExternalApi get _externalApi => ExternalApi(widget.settings.externalApiUrl);
@@ -59,6 +60,8 @@ class _SearchPageState extends State<SearchPage> {
     final q = _query.text.trim();
     if (q.isEmpty) return;
     if (_mode == 0) {
+      await _searchLocalDownloads(q);
+    } else if (_mode == 1) {
       await _searchLocal(q);
     } else {
       await _searchExternal(q);
@@ -83,6 +86,24 @@ class _SearchPageState extends State<SearchPage> {
         _loading = false;
         _error = '搜索失败：$e';
       });
+    }
+  }
+
+  /// 搜索本地下载的歌曲（设备本地已下载内容）：按 标题/歌手/专辑 过滤。
+  Future<void> _searchLocalDownloads(String q) async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final all = await LocalLibrary.load();
+      final ql = q.toLowerCase();
+      final hits = all.where((s) =>
+          s.title.toLowerCase().contains(ql) ||
+          s.artist.toLowerCase().contains(ql) ||
+          s.album.toLowerCase().contains(ql)).toList();
+      if (!mounted) return;
+      setState(() { _results = SearchResults(songs: hits); _loading = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _loading = false; _error = '搜索失败：$e'; });
     }
   }
 
@@ -279,11 +300,16 @@ class _SearchPageState extends State<SearchPage> {
                 ButtonSegment(
                   value: 0,
                   label: Text('本地'),
-                  icon: Icon(Icons.dns_outlined),
+                  icon: Icon(Icons.folder_rounded),
                 ),
                 ButtonSegment(
                   value: 1,
-                  label: Text('外网'),
+                  label: Text('NAS'),
+                  icon: Icon(Icons.dns_outlined),
+                ),
+                ButtonSegment(
+                  value: 2,
+                  label: Text('在线'),
                   icon: Icon(Icons.public_rounded),
                 ),
               ],
@@ -296,7 +322,7 @@ class _SearchPageState extends State<SearchPage> {
           ),
         ),
       ),
-      body: _mode == 0 ? _localBody(context, r) : _externalBody(),
+      body: _mode <= 1 ? _localBody(context, r) : _externalBody(),
     );
   }
 

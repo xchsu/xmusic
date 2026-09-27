@@ -97,15 +97,15 @@ class _PlayerPageState extends State<PlayerPage> {
             MediaQuery.of(context).orientation == Orientation.landscape;
         final cs = Theme.of(context).colorScheme;
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        // [xmusic] 玻璃背景：默认透出桌面壁纸（配合原生 FLAG_SHOW_WALLPAPER），不铺封面、不做纯色底。
-        // 自定义背景色（设置里 bgColor）仍优先铺纯色；否则透明，玻璃洗色让壁纸透出且内容可读。
+        // [xmusic] 玻璃背景：跟随主题的磨砂玻璃（浅色浅、深色深），不铺封面、不透壁纸。
+        // 壁纸透出需原生 FLAG_SHOW_WALLPAPER，但车机上会显示成黑底，故弃用；确保浅色不黑。
         return Scaffold(
           backgroundColor: widget.settings.bgColor != 0
               ? Color(widget.settings.bgColor)
-              : Colors.transparent,
+              : cs.surface,
           body: Stack(
             children: [
-              // 玻璃洗色：半透明主题色打底，透出壁纸又保内容可读（浅色更透、深色沉稳）
+              // 玻璃洗色：主题色轻渐变打底，做出玻璃通透感（浅色更透、深色沉稳）
               Container(
                 decoration: BoxDecoration(
                   color: cs.surface.withValues(alpha: isDark ? 0.50 : 0.36),

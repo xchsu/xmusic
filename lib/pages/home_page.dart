@@ -207,11 +207,13 @@ class _HomePageState extends State<HomePage> {
     ));
   }
 
-  /// 本地推荐：点歌单卡先进歌单列表页（不再点卡片直接播单曲）
-  Future<void> _openLocalRec(List<Song> songs) async {
+  /// 每日30首·本地：每天随机30首本地歌，点卡先进歌单列表页。
+  Future<void> _openDailyLocal() async {
+    final songs = await _dailyLocalRec();
+    if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
-        title: '本地推荐',
+        title: '每日30首·本地',
         songs: songs,
         client: _client,
         settings: widget.settings,
@@ -241,12 +243,55 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            // 每日30首大卡片
+            // 每日30首：在线 + 本地 两栏（横屏下整块限宽，避免图片过大）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('每日30首',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
             FutureBuilder<List<Song>>(
               future: _daily30,
               builder: (context, snap) {
-                if (!snap.hasData || snap.data!.isEmpty) return const SizedBox.shrink();
-                return _dailyCard(snap.data!);
+                final car = isCarScreen(context);
+                final online = snap.hasData ? snap.data! : const <Song>[];
+                final card = Row(
+                  children: [
+                    Expanded(
+                      child: _daily30Card(
+                        title: '在线',
+                        subtitle: online.isNotEmpty ? '${online.length}首 · 飙升/新歌/原创' : '加载中...',
+                        icon: Icons.cloud_download_rounded,
+                        colors: const [Color(0xFF3A6DF0), Color(0xFF5B8CFA)],
+                        onTap: online.isNotEmpty
+                            ? () => _openPlaylist('每日30首·在线', '', songs: online)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _daily30Card(
+                        title: '本地',
+                        subtitle: '每天变化 · 本地随机',
+                        icon: Icons.folder_rounded,
+                        colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
+                        onTap: _openDailyLocal,
+                      ),
+                    ),
+                  ],
+                );
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: car
+                      ? Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: card))
+                      : card,
+                );
               },
             ),
             // 排行榜网格
@@ -269,14 +314,15 @@ class _HomePageState extends State<HomePage> {
                 // [xmusic] 2026-09-24 车机横屏参考网易云车机版：一行6个、方形封面+下方标题，
                 // 卡片更小不占满整屏；手机仍 3 列。
                 final car = isCarScreen(context);
-                return GridView.count(
-                  crossAxisCount: car ? 6 : 3,
+                // [xmusic] 2026-09-28 横屏减小卡片：GridView.extent 自动多列、每图限宽~176
+                return GridView.extent(
+                  maxCrossAxisExtent: car ? 176 : 118,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   mainAxisSpacing: car ? 12 : 10,
                   crossAxisSpacing: car ? 10 : 10,
-                  childAspectRatio: car ? 0.92 : 1.1,
+                  childAspectRatio: car ? 0.98 : 1.1,
                   children: lists.map((t) => _toplistCard(
                     t['name'] as String,
                     t['id'] as String,
@@ -310,14 +356,14 @@ class _HomePageState extends State<HomePage> {
               future: _qqPlaylists,
               builder: (context, snap) {
                 final list = snap.data ?? const [];
-                return GridView.count(
-                  crossAxisCount: isCarScreen(context) ? 6 : 3,
+                return GridView.extent(
+                  maxCrossAxisExtent: isCarScreen(context) ? 176 : 118,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   mainAxisSpacing: isCarScreen(context) ? 12 : 10,
                   crossAxisSpacing: isCarScreen(context) ? 10 : 10,
-                  childAspectRatio: isCarScreen(context) ? 0.80 : 0.72,
+                  childAspectRatio: isCarScreen(context) ? 0.86 : 0.72,
                   children: list.map((p) => _qqPlaylistCard(
                     p['name'] as String,
                     p['dissid'] as String,
@@ -339,14 +385,14 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            GridView.count(
-              crossAxisCount: isCarScreen(context) ? 6 : 3,
+            GridView.extent(
+              maxCrossAxisExtent: isCarScreen(context) ? 176 : 118,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               mainAxisSpacing: isCarScreen(context) ? 12 : 10,
               crossAxisSpacing: isCarScreen(context) ? 10 : 10,
-              childAspectRatio: isCarScreen(context) ? 0.80 : 0.72,
+              childAspectRatio: isCarScreen(context) ? 0.86 : 0.72,
               children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
             ),
             // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
@@ -358,90 +404,52 @@ class _HomePageState extends State<HomePage> {
                       color: Colors.white),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: FutureBuilder<List<Song>>(
-                future: _localRec,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return _miniCard(
-                      title: '本地推荐',
-                      subtitle: '加载失败·重试',
-                      icon: Icons.queue_music_rounded,
-                      colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                      onTap: () => setState(_load),
-                    );
-                  }
-                  if (!snap.hasData || snap.data!.isEmpty) {
-                    return _miniCard(
-                      title: '本地推荐',
-                      subtitle: '加载中...',
-                      icon: Icons.queue_music_rounded,
-                      colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                      onTap: null,
-                    );
-                  }
-                  final songs = snap.data!;
-                  return _miniCard(
-                    title: '本地推荐',
-                    subtitle: '${songs.length > 30 ? 30 : songs.length}首 · 随机推荐',
-                    icon: Icons.queue_music_rounded,
-                    colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                    onTap: () => _openLocalRec(songs),
-                  );
-                },
-              ),
-            ),
-          ],
+                      ],
           ),
       ),
     );
   }
 
-  Widget _dailyCard(List<Song> songs) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Material(
-        borderRadius: BorderRadius.circular(16),
-        elevation: 2,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _openPlaylist('每日30首', '', songs: songs),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                colors: [theme.colorScheme.primary, theme.colorScheme.primary.withOpacity(0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+  /// 每日30首小卡（在线/本地两栏）：渐变底 + 图标 + 标题副标题，点击进对应歌单。
+  Widget _daily30Card({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<Color> colors,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      borderRadius: BorderRadius.circular(14),
+      elevation: 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(8)),
+                    child: Icon(icon, color: Colors.white, size: 22),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.play_arrow_rounded, color: Colors.white70),
+                ],
               ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 60, height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 36),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('每日30首', style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text('${songs.length}首 · 飙升/新歌/原创推荐', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 48),
-              ],
-            ),
+              const SizedBox(height: 10),
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
           ),
         ),
       ),
