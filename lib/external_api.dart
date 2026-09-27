@@ -380,18 +380,18 @@ class ExternalApi {
   }
 
   /// QQ 排行榜列表（老接口匿名可用，无需 cookie）。返回 {id, name, coverImgUrl}。
-  /// topid: 4=热歌榜 27=新歌榜 62=飙升榜 26=流行指数 5=内地 6=香港 3=欧美 16=韩国 17=日本 201=抖音热歌。
+  /// topid: 4=流行指数榜 26=QQ热歌榜 27=新歌榜 62=飙升榜 5=内地 6=香港 3=欧美 16=韩国 17=日本 60=抖音热歌。
   static const List<Map<String, String>> _qqCharts = [
-    {'id': '4', 'name': 'QQ热歌榜', 'cover': ''},
+    {'id': '4', 'name': '流行指数榜', 'cover': ''},
     {'id': '27', 'name': '新歌榜', 'cover': ''},
     {'id': '62', 'name': '飙升榜', 'cover': ''},
-    {'id': '26', 'name': '流行指数榜', 'cover': ''},
+    {'id': '26', 'name': 'QQ热歌榜', 'cover': ''},
     {'id': '5', 'name': '内地榜', 'cover': ''},
     {'id': '6', 'name': '香港榜', 'cover': ''},
     {'id': '3', 'name': '欧美榜', 'cover': ''},
     {'id': '16', 'name': '韩国榜', 'cover': ''},
     {'id': '17', 'name': '日本榜', 'cover': ''},
-    {'id': '201', 'name': '抖音热歌榜', 'cover': ''},
+    {'id': '60', 'name': '抖音热歌榜', 'cover': ''},
   ];
 
   Future<List<Map<String, dynamic>>> qqToplists({String cookie = ''}) async {

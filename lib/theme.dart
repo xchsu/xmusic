@@ -21,14 +21,17 @@ class AppTheme {
   static const Color _darkPrimary = Color(0xFF93A0FF); // 亮靛蓝
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
-  // 背景通透度：浅色稍实（暖白底保证可读），深色保持玻璃但更沉稳（避免发灰发脏）。
-  static const double _lightBgAlpha = 0.92;
-  static const double _darkBgAlpha = 0.42;
+  // 背景通透度：[xmusic] 2026-09-27 提高不透明度下限保证可读性——
+  // 浅色 bg→0.98 接近纯白（修"浅色还是灰"：之前 0.92 透出深色壁纸显灰）；
+  // 深色 bg→0.80（修"二级菜单白字看不清"：之前 0.42 在白色壁纸下被带成浅灰底+浅色字）。
+  // 仍保留玻璃质感（面板带透明+细边），但文字所在背景不再被壁纸带跑。
+  static const double _lightBgAlpha = 0.98;
+  static const double _darkBgAlpha = 0.80;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
-  static const double _lightPanelAlpha = 0.95;
-  static const double _lightSheetAlpha = 0.97;
-  static const double _darkPanelAlpha = 0.88;
-  static const double _darkSheetAlpha = 0.94;
+  static const double _lightPanelAlpha = 0.97;
+  static const double _lightSheetAlpha = 0.99;
+  static const double _darkPanelAlpha = 0.93;
+  static const double _darkSheetAlpha = 0.97;
 
   static Color withAlpha255(Color c, double alpha) =>
       c.withValues(alpha: alpha.clamp(0.0, 1.0));
