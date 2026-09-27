@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../external_api.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
@@ -43,7 +46,7 @@ class _HomePageState extends State<HomePage> {
     // QQ 精选歌单（硬编码 dissid，本地列表零网络请求；点进去才拉歌曲）
     _qqPlaylists = ext.qqPlaylists();
     // 本地推荐
-    _localRec = _client.randomSongs(size: 20);
+    _localRec = _dailyLocalRec();
   }
 
   /// 排行榜：网易云榜单 + QQ 热榜/新歌榜/飙升榜/流行指数榜混排（网易云前8 + QQ前4）。
@@ -75,6 +78,21 @@ class _HomePageState extends State<HomePage> {
       if (qq.isNotEmpty) return qq;
     }
     return ext.daily30FromKugou();
+  }
+
+  /// 本地推荐：类似"每日30首"——按日期播种 + 当天缓存，每天变化（同日内稳定）。
+  DateTime _localRecDay = DateTime(2000);
+  List<Song> _localRecCached = const [];
+  Future<List<Song>> _dailyLocalRec() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (_localRecDay == today && _localRecCached.isNotEmpty) return _localRecCached;
+    final pool = await _client.randomSongs(size: 60).catchError((_) => <Song>[]);
+    pool.shuffle(Random(today.year * 10000 + today.month * 100 + today.day));
+    final picked = pool.take(12).toList();
+    _localRecDay = today;
+    _localRecCached = picked;
+    return picked;
   }
 
   Future<void> _reload() async {
@@ -299,7 +317,7 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   mainAxisSpacing: isCarScreen(context) ? 12 : 10,
                   crossAxisSpacing: isCarScreen(context) ? 10 : 10,
-                  childAspectRatio: isCarScreen(context) ? 1.0 : 1.05,
+                  childAspectRatio: isCarScreen(context) ? 0.80 : 0.72,
                   children: list.map((p) => _qqPlaylistCard(
                     p['name'] as String,
                     p['dissid'] as String,
@@ -307,6 +325,29 @@ class _HomePageState extends State<HomePage> {
                   )).toList(),
                 );
               },
+            ),
+            // LX 精选（网易云榜单/精选歌单，meting 先行版）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('LX精选',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
+            GridView.count(
+              crossAxisCount: isCarScreen(context) ? 6 : 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              mainAxisSpacing: isCarScreen(context) ? 12 : 10,
+              crossAxisSpacing: isCarScreen(context) ? 10 : 10,
+              childAspectRatio: isCarScreen(context) ? 0.80 : 0.72,
+              children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!)).toList(),
             ),
             // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
             Padding(
@@ -558,57 +599,106 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  /// QQ 精选歌单卡（网易云车机版风格：方形圆角封面 + 下方标题，无封面图用深灰渐变+图标）。
+  /// QQ 精选歌单卡：方形圆角封面 + 下方标题（文字放图下完整显示，不叠在图上截断；横竖屏同排布）。
   Widget _qqPlaylistCard(String name, String dissid, String? coverUrl) {
     final theme = Theme.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       onTap: () => _openQqPlaylist(name, dissid),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            (coverUrl != null && coverUrl.isNotEmpty)
-                ? CachedNetworkImage(
-                    imageUrl: coverUrl,
-                    fit: BoxFit.cover,
-                    httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
-                    placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
-                    errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
-                  )
-                : Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Icon(Icons.queue_music_rounded, color: theme.colorScheme.onSurfaceVariant),
-                  ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0x99000000)],
-                  stops: [0.55, 1.0],
-                ),
-              ),
-              child: SizedBox.expand(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: (coverUrl != null && coverUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: coverUrl,
+                      fit: BoxFit.cover,
+                      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
+                      placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                      errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                    )
+                  : Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: Icon(Icons.queue_music_rounded, color: theme.colorScheme.onSurfaceVariant),
+                    ),
             ),
-            Positioned(
-              left: 10, right: 34, bottom: 10,
-              child: Text(name,
-                  maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600, height: 1.2)),
-            ),
-            Positioned(
-              right: 8, bottom: 8,
-              child: Container(
-                width: 28, height: 28,
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: const Icon(Icons.play_arrow_rounded, size: 18, color: Colors.black87),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Text(name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500, height: 1.25)),
+        ],
       ),
     );
+  }
+
+  /// LX 精选卡（网易云榜单/精选歌单，meting 先行版）：渐变封面 + 下方标题。
+  Widget _lxCard(String name, String id) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _openLxPlaylist(name, id),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+                  ),
+                ),
+                child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500, height: 1.25)),
+        ],
+      ),
+    );
+  }
+
+  /// LX 精选歌单/榜单详情：meting 拉歌曲（已带直链），进列表页直接播放。
+  Future<void> _openLxPlaylist(String name, String id) async {
+    final ext = widget.controller.external;
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    List<Song> songs;
+    String? error;
+    try {
+      songs = await ext.lxMetingPlaylistSongs(id).timeout(const Duration(seconds: 20));
+    } catch (e) {
+      songs = const [];
+      error = '加载失败（$e）';
+    }
+    if (songs.isEmpty && error == null) error = '没有歌曲数据';
+    if (!mounted) return;
+    Navigator.pop(context);
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _PlaylistDetail(
+        title: name,
+        songs: songs,
+        client: _client,
+        settings: widget.settings,
+        controller: widget.controller,
+        error: error,
+        onRetry: () => _openLxPlaylist(name, id),
+        onPlay: (i) => _playSongs(songs, i),
+      ),
+    ));
   }
 
 }

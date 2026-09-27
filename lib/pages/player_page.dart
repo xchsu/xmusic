@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../toast.dart';
 import 'home_shell.dart';
 import 'dart:math' as math;
@@ -100,33 +101,63 @@ class _PlayerPageState extends State<PlayerPage> {
             ? Color(widget.settings.bgColor)
             : Theme.of(context).scaffoldBackgroundColor;
 
+        final cs = Theme.of(context).colorScheme;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        // [xmusic] 2026-09-27 玻璃背景：模糊当前封面透出（透出封面的玻璃感，非灰）。
+        // 无封面时回退纯色 bg。真正的设备壁纸透出需 Android FLAG_SHOW_WALLPAPER（原生层）。
+        final coverBg = song == null
+            ? null
+            : (song.coverUrl != null && song.coverUrl!.isNotEmpty
+                ? song.coverUrl!
+                : (song.coverArt != null
+                    ? widget.controller.client.coverUrl(song.coverArt!, size: 500)
+                    : null));
         return Scaffold(
           backgroundColor: bg,
-          body: Container(
-            // 高级质感：主题色轻微渐变叠加在透明玻璃之上（模拟迪友卡片的环境光晕）
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.13),
-                  Colors.transparent,
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.09),
-                ],
-                stops: const [0.0, 0.55, 1.0],
+          body: Stack(
+            children: [
+              if (coverBg != null)
+                Positioned.fill(
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Opacity(
+                      opacity: 0.40,
+                      child: CachedNetworkImage(
+                        imageUrl: coverBg,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                      ),
+                    ),
+                  ),
+                ),
+              // 玻璃洗色：透出封面又保内容可读（浅色更透、深色沉稳）
+              Container(
+                decoration: BoxDecoration(
+                  color: cs.surface.withValues(alpha: isDark ? 0.50 : 0.36),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      cs.primary.withValues(alpha: 0.10),
+                      Colors.transparent,
+                      cs.primary.withValues(alpha: 0.07),
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                ),
               ),
-            ),
-            child: SafeArea(
-              child: Stack(
-                children: [
-                  song == null
-                      ? const Center(child: Text('没有正在播放的歌曲'))
-                      : landscape
-                          ? _landscapeView(context, song)
-                          : _portraitView(context, song),
-                ],
+              SafeArea(
+                child: Stack(
+                  children: [
+                    song == null
+                        ? const Center(child: Text('没有正在播放的歌曲'))
+                        : landscape
+                            ? _landscapeView(context, song)
+                            : _portraitView(context, song),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
@@ -156,7 +187,7 @@ class _PlayerPageState extends State<PlayerPage> {
                         return _CdDisc(
                           size: s,
                           spinning: snap.data ?? false,
-                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.76, requestSize: 800),
+                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.64, requestSize: 600),
                         );
                       },
                     ),
@@ -304,7 +335,7 @@ class _PlayerPageState extends State<PlayerPage> {
                         return _CdDisc(
                           size: s,
                           spinning: snap.data ?? false,
-                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.76, requestSize: 800),
+                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.64, requestSize: 600),
                         );
                       },
                     ),
@@ -769,14 +800,14 @@ class _LyricsViewState extends State<LyricsView> {
                         color: active
                             ? (widget.settings.lyricActive != 0
                                 ? Color(widget.settings.lyricActive)
-                                : cs.onSurface)
+                                : Color(AppSettings.lyricActiveDefault))
                             : (i < _current
                                 ? (widget.settings.lyricPast != 0
                                     ? Color(widget.settings.lyricPast)
-                                    : cs.onSurface.withOpacity(0.45))
+                                    : Color(AppSettings.lyricPastDefault))
                                 : (widget.settings.lyricFuture != 0
                                     ? Color(widget.settings.lyricFuture)
-                                    : cs.onSurface.withOpacity(0.45))),
+                                    : Color(AppSettings.lyricFutureDefault))),
                       ),
                         child: Text(line.text.isEmpty ? '♪' : line.text,
                           textAlign: widget.alignRight ? TextAlign.right : TextAlign.left),
@@ -858,7 +889,7 @@ class _SpinRotatorState extends State<_SpinRotator> with SingleTickerProviderSta
   @override
   Widget build(BuildContext context) => RotationTransition(turns: _c, child: widget.child);
 }
-/// [xmusic] 2026-09-27 CD 唱片：金属盘面 + 专辑封面(留金属边) + 反光扫过 + 中心孔，
+/// [xmusic] 2026-09-27 黑胶唱片：黑色盘面 + 凹槽纹 + 专辑封面(留边) + 反光 + 中心孔，
 /// 播放时整体旋转；叠加识别卡针（播放落下搭在唱片上，暂停抬起）。
 class _CdDisc extends StatelessWidget {
   const _CdDisc({super.key, required this.cover, required this.size, required this.spinning});
@@ -898,21 +929,25 @@ class _CdDisc extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // 金属盘面（CD 本体）
+                // 黑胶盘面（黑胶唱片本体）
                 Container(
                   width: size, height: size,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const SweepGradient(colors: [
-                      Color(0xFF8C92A2), Color(0xFFD5D9E2), Color(0xFF697082),
-                      Color(0xFFB9BFCC), Color(0xFF8C92A2),
-                    ]),
-                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 24, offset: const Offset(0, 10))],
+                    gradient: const RadialGradient(
+                      colors: [Color(0xFF23262B), Color(0xFF0D0F12), Color(0xFF16181C), Color(0xFF0A0B0D)],
+                      stops: [0.0, 0.4, 0.72, 1.0],
+                    ),
+                    boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 26, offset: const Offset(0, 12))],
                   ),
+                ),
+                // 黑胶凹槽纹
+                Positioned.fill(
+                  child: IgnorePointer(child: CustomPaint(painter: _VinylGroovesPainter(size: size))),
                 ),
                 // 专辑封面：居中并留出金属边 = CD 盘面
                 Padding(
-                  padding: EdgeInsets.all(size * 0.12),
+                  padding: EdgeInsets.all(size * 0.18),
                   child: ClipOval(child: cover),
                 ),
                 // 反光扫过（随唱片旋转）
@@ -953,7 +988,25 @@ class _CdDisc extends StatelessWidget {
     );
   }
 }
-/// CD 识别卡针：播放时落下搭在唱片上，暂停时抬起。
+/// 黑胶唱片纹：同心凹槽细环。
+class _VinylGroovesPainter extends CustomPainter {
+  _VinylGroovesPainter({required this.size});
+  final double size;
+  @override
+  void paint(Canvas canvas, Size s) {
+    final c = size / 2;
+    final paint = Paint()
+      ..color = const Color(0xFF3A3D45).withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+    for (double r = size * 0.18; r < size * 0.48; r += size * 0.022) {
+      canvas.drawCircle(Offset(c, c), r, paint);
+    }
+  }
+  @override
+  bool shouldRepaint(_VinylGroovesPainter old) => old.size != size;
+}
+/// 黑胶识别卡针：播放时落下搭在唱片上，暂停时抬起。
 class _Tonearm extends StatefulWidget {
   const _Tonearm({super.key, required this.spinning, required this.discSize});
   final bool spinning;
