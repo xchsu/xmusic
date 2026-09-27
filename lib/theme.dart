@@ -21,17 +21,16 @@ class AppTheme {
   static const Color _darkPrimary = Color(0xFF93A0FF); // 亮靛蓝
   static const Color _darkOnSurface = Color(0xFFE8EBF2);
 
-  // 背景通透度：[xmusic] 2026-09-27 提高不透明度下限保证可读性——
-  // 浅色 bg→0.98 接近纯白（修"浅色还是灰"：之前 0.92 透出深色壁纸显灰）；
-  // 深色 bg→0.80（修"二级菜单白字看不清"：之前 0.42 在白色壁纸下被带成浅灰底+浅色字）。
-  // 仍保留玻璃质感（面板带透明+细边），但文字所在背景不再被壁纸带跑。
-  static const double _lightBgAlpha = 0.98;
-  static const double _darkBgAlpha = 0.80;
+  // 背景通透度（玻璃拟态）：主背景保持透明让车机壁纸透出。
+  // 文字可读性不靠把背景改实（用户要的是透明+玻璃），而是靠 onSurface 文字的描边阴影兜底
+  //（见 _build 里的 tShadows：白字配黑影、黑字配白影，任意壁纸下都可读）。
+  static const double _lightBgAlpha = 0.92;
+  static const double _darkBgAlpha = 0.55;
   // 面板/卡片/弹层的不透明度下限（雾面玻璃，透明时文字仍可读）。
-  static const double _lightPanelAlpha = 0.97;
-  static const double _lightSheetAlpha = 0.99;
-  static const double _darkPanelAlpha = 0.93;
-  static const double _darkSheetAlpha = 0.97;
+  static const double _lightPanelAlpha = 0.95;
+  static const double _lightSheetAlpha = 0.97;
+  static const double _darkPanelAlpha = 0.90;
+  static const double _darkSheetAlpha = 0.95;
 
   static Color withAlpha255(Color c, double alpha) =>
       c.withValues(alpha: alpha.clamp(0.0, 1.0));
@@ -155,6 +154,15 @@ class AppTheme {
     final card = withAlpha255(surface, (panelAlpha - 0.06).clamp(0.4, 0.92));
     final border = scheme.outlineVariant.withValues(alpha: 0.65);
 
+    // [xmusic] 2026-09-27 白字可读性：透明背景+浅色字时，靠文字描边阴影兜底（车机玻璃标准做法）。
+    // 阴影颜色随 onSurface 亮度自动取反——白字配黑影、黑字配白影，任意壁纸亮度下都可读。
+    final lightText = onSurface.computeLuminance() > 0.5;
+    final shColor = lightText ? Colors.black : Colors.white;
+    final tShadows = <Shadow>[
+      Shadow(color: shColor.withValues(alpha: 0.45), blurRadius: 8, offset: const Offset(0, 2)),
+      Shadow(color: shColor.withValues(alpha: 0.30), blurRadius: 16, offset: Offset.zero),
+    ];
+
     final base = ThemeData(
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffoldBg,
@@ -175,7 +183,8 @@ class AppTheme {
     return base.copyWith(
       // ---- AppBar：玻璃透明条（顶部高光边，模拟毛玻璃边缘反光） ----
       appBarTheme: AppBarTheme(
-        backgroundColor: panelLow.withValues(alpha: 0.32),
+        // 0.32→0.62：导航栏/标题白字可读（之前 32% 太透，浅壁纸下白字看不清）
+        backgroundColor: panelLow.withValues(alpha: 0.62),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -186,15 +195,13 @@ class AppTheme {
           color: onSurface,
           fontSize: 20,
           fontWeight: FontWeight.w800,
-          shadows: scheme.brightness == Brightness.dark
-              ? [Shadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 8)]
-              : null,
+          shadows: tShadows,
         ),
       ),
       // ---- 导航栏：雾面玻璃 ----
       navigationBarTheme: NavigationBarThemeData(
-        // 参照车机桌面导航栏：高透明浮在壁纸上，靠图标阴影保证可读
-        backgroundColor: panelLow.withValues(alpha: 0.32),
+        // 0.32→0.62：导航标签白字可读
+        backgroundColor: panelLow.withValues(alpha: 0.62),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         height: 62,
@@ -204,9 +211,7 @@ class AppTheme {
             fontSize: 12,
             color: onSurface,
             fontWeight: FontWeight.w600,
-            shadows: scheme.brightness == Brightness.dark
-                ? [Shadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 6)]
-                : null,
+            shadows: tShadows,
           ),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -235,6 +240,7 @@ class AppTheme {
           color: onSurface,
           fontSize: 20,
           fontWeight: FontWeight.w700,
+          shadows: tShadows,
         ),
       ),
       // ---- 列表/条目 ----
@@ -242,10 +248,11 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         iconColor: onSurface,
         textColor: onSurface,
-        titleTextStyle: TextStyle(color: onSurface, fontSize: 15),
+        titleTextStyle: TextStyle(color: onSurface, fontSize: 15, shadows: tShadows),
         subtitleTextStyle: TextStyle(
           color: onSurface.withValues(alpha: 0.7),
           fontSize: 12.5,
+          shadows: tShadows,
         ),
       ),
       // ---- 按钮：大、圆润、车机友好 ----
@@ -358,11 +365,38 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      // ---- 全局文字 ----
-      textTheme: const TextTheme().apply(
-        bodyColor: onSurface,
-        displayColor: onSurface,
-      ),
+      // ---- 全局文字（全部加描边阴影：白字在透明玻璃/任意壁纸下都可读） ----
+      textTheme: _shadowedTextTheme(onSurface, tShadows),
+    );
+  }
+
+  /// 给全部文字样式加描边阴影（尺寸/字重沿用 Material 默认，仅叠加 color+shadows）。
+  static TextTheme _shadowedTextTheme(Color onSurface, List<Shadow> shadows) {
+    TextStyle st(double size, FontWeight w) => TextStyle(
+          color: onSurface,
+          fontSize: size,
+          fontWeight: w,
+          shadows: shadows,
+        );
+    return const TextTheme().apply(
+      bodyColor: onSurface,
+      displayColor: onSurface,
+    ).copyWith(
+      displayLarge: st(57, FontWeight.w300),
+      displayMedium: st(45, FontWeight.w400),
+      displaySmall: st(36, FontWeight.w400),
+      headlineLarge: st(32, FontWeight.w700),
+      headlineMedium: st(28, FontWeight.w700),
+      headlineSmall: st(24, FontWeight.w600),
+      titleLarge: st(22, FontWeight.w600),
+      titleMedium: st(16, FontWeight.w600),
+      titleSmall: st(14, FontWeight.w600),
+      bodyLarge: st(16, FontWeight.w400),
+      bodyMedium: st(14, FontWeight.w400),
+      bodySmall: st(12, FontWeight.w400),
+      labelLarge: st(14, FontWeight.w600),
+      labelMedium: st(12, FontWeight.w500),
+      labelSmall: st(11, FontWeight.w500),
     );
   }
 }

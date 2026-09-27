@@ -572,10 +572,12 @@ class ExternalApi {
         if (!seen.add(id)) continue;
         maps.add({'dissid': id, 'name': name});
       }
-      maps.shuffle();
-      final pick = maps.take(8).toList();
-      // 并行拉封面
-      await Future.wait(pick.map((pl) async {
+            maps.shuffle();
+      // [xmusic] 2026-09-27 修复"首页歌单没数据"：qzone 对部分歌单返回空 cdlist（如 9551957075 空）。
+      // 预检歌曲非空才保留，过滤无数据歌单，确保首页 QQ 歌单卡片/点进都有数据。
+      final valid = <Map<String, dynamic>>[];
+      final checks = maps.take(40).toList();
+      await Future.wait(checks.map((pl) async {
         try {
           final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
               .replace(queryParameters: {
@@ -588,10 +590,15 @@ class ExternalApi {
             'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
           final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
           final cd = (j['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
-          if (cd != null && cd['logo'] != null) pl['coverImgUrl'] = cd['logo'].toString();
+          if (cd == null) return;
+          final songlist = (cd['songlist'] as List?) ?? const [];
+          if (songlist.isEmpty) return; // 无歌曲 → 丢弃
+          if (cd['logo'] != null) pl['coverImgUrl'] = cd['logo'].toString();
+          valid.add(pl);
         } catch (_) {}
       }));
-      return pick;
+      valid.shuffle();
+      return valid.take(8).toList();
     } catch (_) {
       return const [];
     }
