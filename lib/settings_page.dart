@@ -241,9 +241,12 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.color_lens_outlined),
             title: const Text('自定义背景色'),
-            trailing: settings.bgColor != 0
+            subtitle: Text(settings.coverColorBg
+                ? '封面颜色：跟随系统/深浅主题，透出当前封面主色'
+                : (settings.bgColor != 0 ? '手动背景色（玻璃透出壁纸）' : '默认玻璃背景')),
+            trailing: (!settings.coverColorBg && settings.bgColor != 0)
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
-                : const Text('默认'),
+                : const Icon(Icons.chevron_right),
             onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: true),
           ),
           SwitchListTile(

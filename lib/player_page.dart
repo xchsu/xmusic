@@ -154,12 +154,15 @@ class _PlayerPageState extends State<PlayerPage> {
             (widget.settings.coverColorBg && _coverTint != null)
                 ? _coverTint!
                 : cs.primary;
+        // 手动自定义背景色：玻璃透出（半透明让壁纸透出，而非实心纯色），深浅主题用不同通透度
+        final customBg = widget.settings.bgColor != 0
+            ? Color(widget.settings.bgColor)
+                .withValues(alpha: isDark ? 0.55 : 0.78)
+            : null;
         return Scaffold(
           backgroundColor: widget.settings.coverColorBg
               ? cs.surface
-              : (widget.settings.bgColor != 0
-                  ? Color(widget.settings.bgColor)
-                  : cs.surface),
+              : (customBg ?? cs.surface),
           body: Stack(
             children: [
               // 玻璃洗色：主题色轻渐变打底，做出玻璃通透感（浅色更透、深色沉稳）；
