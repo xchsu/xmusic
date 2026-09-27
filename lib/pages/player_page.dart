@@ -268,32 +268,32 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-24 车机图标适配：右侧歌词大小/收藏/下载图标放大
+    // [xmusic] 2026-09-27 右侧按钮再缩小：图标 car 48 / phone 36、栏宽 58/48（NAS 不再偏大）
     final car = isCarScreen(context);
     return Container(
-      width: car ? 70 : 56,
+      width: car ? 58 : 48,
       margin: const EdgeInsets.only(right: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 旋转按钮已按用户要求移除（保留 _toggleRotation/_orient 供系统旋转/恢复逻辑使用）
           IconTheme(
-            data: IconThemeData(size: car ? 64 : 40),
+            data: IconThemeData(size: car ? 48 : 36),
             child: LyricSizeControls(settings: widget.settings),
           ),
           const SizedBox(height: 2),
           IconTheme(
-            data: IconThemeData(size: car ? 64 : 40),
+            data: IconThemeData(size: car ? 48 : 36),
             child: _FavoriteButton(controller: widget.controller),
           ),
           IconButton(
             tooltip: '下载',
-            icon: Icon(Icons.download_rounded, size: car ? 64 : 40),
+            icon: Icon(Icons.download_rounded, size: car ? 48 : 36),
             onPressed: () => _downloadMenu(context),
           ),
           IconButton(
             tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined, size: car ? 64 : 40),
+            icon: Icon(Icons.cloud_upload_outlined, size: car ? 48 : 36),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
