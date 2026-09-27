@@ -467,6 +467,88 @@ class ExternalApi {
     }
   }
 
+  // ===== LX 音乐源（通用网易云/QQ 兼容 API）=====
+  // 默认源可在设置页配置；榜单/歌单/搜索都走这里。
+  static String lxBase = 'https://music-api.gdstudio.xyz';
+  static const List<String> lxBases = [
+    'https://music-api.gdstudio.xyz',
+    'https://api.injahow.cn/meting',
+    'https://lxmusic-api.deno.dev',
+  ];
+
+  Map<String, String> get _hlx => {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://music.163.com/',
+      };
+
+  /// LX 搜索
+  Future<List<Song>> lxSearch(String kw, {int limit = 30}) async {
+    for (final base in lxBases) {
+      try {
+        final uri = Uri.parse('$base/api/search').replace(queryParameters: {
+          'keywords': kw, 'limit': '$limit',
+        });
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 10));
+        final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final list = ((j['result'] as Map?)?['songs'] as List?) ?? [];
+        return list.cast<Map>().map((s) {
+          final al = (s['al'] as Map?) ?? {};
+          return Song(
+            id: 'lx_${s['id']}',
+            title: (s['name'] ?? '').toString(),
+            artist: ((s['ar'] as List?) ?? []).map((a) => a['name']).join(' / '),
+            album: (al['name'] ?? '').toString(),
+            coverUrl: (al['picUrl'] ?? '').toString(),
+            durationSec: ((s['dt'] as num?)! / 1000).round(),
+            fromExternal: true, externalSource: 'lx',
+          );
+        }).toList();
+      } catch (_) { continue; }
+    }
+    return const [];
+  }
+
+  /// LX 歌单详情
+  Future<List<Song>> lxPlaylistSongs(String id) async {
+    for (final base in lxBases) {
+      try {
+        final uri = Uri.parse('$base/api/playlist/detail').replace(queryParameters: {'id': id});
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 10));
+        final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final list = ((j['playlist'] as Map?)?['tracks'] as List?) ?? [];
+        return list.cast<Map>().map((s) {
+          final al = (s['al'] as Map?) ?? {};
+          return Song(
+            id: 'lx_${s['id']}',
+            title: (s['name'] ?? '').toString(),
+            artist: ((s['ar'] as List?) ?? []).map((a) => a['name']).join(' / '),
+            album: (al['name'] ?? '').toString(),
+            coverUrl: (al['picUrl'] ?? '').toString(),
+            durationSec: ((s['dt'] as num? ?? 0) / 1000).round(),
+            fromExternal: true, externalSource: 'lx',
+          );
+        }).toList();
+      } catch (_) { continue; }
+    }
+    return const [];
+  }
+
+  /// LX 播放地址
+  Future<String?> lxUrl(String songId) async {
+    final sid = songId.replaceFirst('lx_', '');
+    for (final base in lxBases) {
+      try {
+        final uri = Uri.parse('$base/api/song/url').replace(queryParameters: {
+          'id': sid, 'br': '320000',
+        });
+        final r = await http.get(uri, headers: _hlx).timeout(const Duration(seconds: 10));
+        final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final data = (j['data'] as List?)?.cast<Map>() ?? [];
+        if (data.isNotEmpty && data[0]['url'] != null) return data[0]['url'].toString();
+      } catch (_) { continue; }
+    }
+    return null;
+  }
   /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
   Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
     final songs = await qqToplistCp('4', limit: count);
