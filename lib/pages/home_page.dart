@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../cover_glass.dart';
 import '../external_api.dart';
 import '../player_controller.dart';
 import '../settings.dart';
