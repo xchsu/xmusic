@@ -13,15 +13,15 @@ bool carSimMode = false;
 bool isCarScreen(BuildContext context) {
   if (carSimMode) return true;
   final s = MediaQuery.of(context).size;
-  return s.width > s.height && s.shortestSide >= 480;
+  // 大屏（横竖）都按车机处理：比亚迪车机横屏/竖屏均为大屏，竖屏也走车机 UI
+  return s.shortestSide >= 480;
 }
 
 /// 大屏字体放大系数：车机横屏大屏 1.35x；竖屏大屏(最短边>=480dp，如车机竖屏/平板) 1.25x；手机 1.0x。
 double bigScreenTextScale(BuildContext context) {
   if (carSimMode) return 1.35;
   final s = MediaQuery.sizeOf(context);
-  if (s.width > s.height && s.shortestSide >= 480) return 1.35;
-  if (s.shortestSide >= 480) return 1.25;
+  if (s.shortestSide >= 480) return 1.35;
   return 1.0;
 }
 
