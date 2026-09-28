@@ -1,5 +1,7 @@
 package __PKG__
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,13 +14,27 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextUtils
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 
 class LyricOverlayService : Service() {
@@ -27,14 +43,26 @@ class LyricOverlayService : Service() {
         const val ACTION_STOP = "cn.yinsu.x_music.OVERLAY_STOP"
         const val ACTION_UPDATE = "cn.yinsu.x_music.OVERLAY_UPDATE"
         const val EXTRA_LYRIC = "lyric"
+        const val EXTRA_TITLE = "title"
+        const val EXTRA_ARTIST = "artist"
+        const val EXTRA_COVER = "cover"
+        const val EXTRA_LINE = "line"
         @Volatile var accessibilityForeground: String? = null
         private const val CHANNEL_ID = "xmusic_lyric_overlay"
     }
 
     private var wm: WindowManager? = null
-    private var view: TextView? = null
+    private var root: View? = null
+    private var vinylView: View? = null
+    private var titleView: TextView? = null
+    private var artistView: TextView? = null
+    private var lyricView: TextView? = null
     private var added = false
     private var _lyric: String = ""
+    private var title: String = ""
+    private var artist: String = ""
+    private var cover: String = ""
+    private var line = 0
     private val handler = Handler(Looper.getMainLooper())
     private var loopTask: Runnable? = null
 
@@ -52,7 +80,14 @@ class LyricOverlayService : Service() {
                 val text = intent.getStringExtra(EXTRA_LYRIC) ?: ""
                 if (text.isNotEmpty()) {
                     _lyric = text
-                    view?.text = text
+                    title = intent.getStringExtra(EXTRA_TITLE) ?: ""
+                    artist = intent.getStringExtra(EXTRA_ARTIST) ?: ""
+                    cover = intent.getStringExtra(EXTRA_COVER) ?: ""
+                    line = intent.getIntExtra(EXTRA_LINE, 0)
+                    titleView?.text = title
+                    artistView?.text = artist
+                    lyricView?.text = highlightLyric(_lyric, line)
+                    vinylView?.let { (it as VinylView).startSpin() }
                 }
             }
             ACTION_STOP -> {
@@ -137,13 +172,13 @@ class LyricOverlayService : Service() {
     private fun updateVisibility() {
         val launcher = launcherPackage()
         val top = topPackage()
-        // 手机：前台包=迪友桌面才浮；车机(大屏且拿不到前台权限 UsageStats/无障碍)：播放中一律显示
-        // 注：车机无法区分桌面与其它全屏应用/小窗（系统不提供无权限的前台/窗口类型查询），悬浮窗不可触摸不抢焦点，可放心常显。
+        // 手机：前台包=迪友桌面才浮；车机(大屏且拿不到前台权限)：播放中一律显示
         val show = _lyric.isNotEmpty() && (isCarScreen() || (launcher != null && top == launcher))
         if (show && !added) addView()
         else if (!show && added) removeView()
     }
 
+    /** 竖屏播放界面样式：旋转黑胶 + 歌名/歌手 + 歌词高亮（不含播放控制栏）。 */
     private fun addView() {
         if (added) return
         val lp = WindowManager.LayoutParams(
@@ -159,28 +194,139 @@ class LyricOverlayService : Service() {
         )
         lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         lp.y = (resources.displayMetrics.density * 40).toInt()
-        val tv = TextView(this)
-        tv.text = _lyric
-        tv.setTextColor(0xFFFFFFFF.toInt())
-        tv.setTextSize(16f)
         val d = resources.displayMetrics.density
-        tv.setPadding((18 * d).toInt(), (8 * d).toInt(), (18 * d).toInt(), (8 * d).toInt())
-        tv.setBackgroundColor(0x99000000.toInt())
-        tv.setGravity(Gravity.CENTER)
-        view = tv
+
+        // 根容器：圆角半透明玻璃
+        val rootV = FrameLayout(this)
+        val bg = GradientDrawable()
+        bg.cornerRadius = (20 * d)
+        bg.setColor(0xB0121212.toInt())
+        rootV.background = bg
+
+        val col = LinearLayout(this)
+        col.orientation = LinearLayout.VERTICAL
+        col.gravity = Gravity.CENTER_HORIZONTAL
+        col.setPadding((18 * d).toInt(), (14 * d).toInt(), (18 * d).toInt(), (14 * d).toInt())
+        col.layoutParams = FrameLayout.LayoutParams((300 * d).toInt(), FrameLayout.LayoutParams.WRAP_CONTENT)
+
+        // 旋转黑胶
+        val vinyl = VinylView(this)
+        vinyl.layoutParams = LinearLayout.LayoutParams((140 * d).toInt(), (140 * d).toInt())
+        vinyl.startSpin()
+
+        // 歌名
+        val tvTitle = TextView(this)
+        tvTitle.text = title
+        tvTitle.setTextColor(0xFFFFFFFF.toInt())
+        tvTitle.setTextSize(18f)
+        tvTitle.typeface = Typeface.DEFAULT_BOLD
+        tvTitle.gravity = Gravity.CENTER
+        tvTitle.setSingleLine(true)
+        tvTitle.ellipsize = TextUtils.TruncateAt.END
+
+        // 歌手
+        val tvArtist = TextView(this)
+        tvArtist.text = artist
+        tvArtist.setTextColor(0xB3FFFFFF.toInt())
+        tvArtist.setTextSize(13f)
+        tvArtist.gravity = Gravity.CENTER
+
+        // 歌词：多行，当前行高亮
+        val tvLyric = TextView(this)
+        tvLyric.setTextSize(15f)
+        tvLyric.gravity = Gravity.CENTER
+        tvLyric.setLineSpacing(0f, 1.25f)
+        tvLyric.text = highlightLyric(_lyric, line)
+
+        col.addView(vinyl)
+        col.addView(tvTitle)
+        col.addView(tvArtist)
+        col.addView(tvLyric)
+        rootV.addView(col)
+
+        vinylView = vinyl
+        titleView = tvTitle
+        artistView = tvArtist
+        lyricView = tvLyric
+        root = rootV
         try {
-            wm?.addView(tv, lp)
+            wm?.addView(rootV, lp)
             added = true
         } catch (_: Exception) {
             added = false
         }
     }
 
+    /** 歌词高亮：当前行白色加粗放大，其他行半透明白。 */
+    private fun highlightLyric(full: String, curLine: Int): CharSequence {
+        if (full.isEmpty()) return ""
+        val lines = full.split("\n")
+        val sp = SpannableString(full)
+        var start = 0
+        for (i in lines.indices) {
+            val end = start + lines[i].length
+            if (i == curLine) {
+                sp.setSpan(StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sp.setSpan(ForegroundColorSpan(0xFFFFFFFF.toInt()), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sp.setSpan(RelativeSizeSpan(1.15f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else {
+                sp.setSpan(ForegroundColorSpan(0x8CFFFFFF.toInt()), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            start = end + 1
+        }
+        return sp
+    }
+
+    /** 黑胶唱片视图：同心圆纹路 + 中心标签 + 中心孔，持续旋转。 */
+    private inner class VinylView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val spin = ObjectAnimator.ofFloat(this, "rotation", 0f, 360f).apply {
+            duration = 8000
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+        }
+
+        fun startSpin() { if (!spin.isStarted) spin.start() }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f
+            val cy = height / 2f
+            val r = kotlin.math.min(width, height) / 2f
+            // 唱片主体
+            paint.color = 0xFF0D0D0D.toInt()
+            paint.style = Paint.Style.FILL
+            canvas.drawCircle(cx, cy, r, paint)
+            // 同心圆纹路
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 1.2f
+            var i = 1
+            while (i <= 6) {
+                paint.color = 0x1F000000.toInt()
+                canvas.drawCircle(cx, cy, r * i / 6f, paint)
+                i++
+            }
+            paint.style = Paint.Style.FILL
+            // 中心标签
+            paint.color = 0xFF0B3D0B.toInt()
+            canvas.drawCircle(cx, cy, r * 0.30f, paint)
+            paint.color = 0xFF2E7D32.toInt()
+            canvas.drawCircle(cx, cy, r * 0.24f, paint)
+            // 中心孔
+            paint.color = 0xFF000000.toInt()
+            canvas.drawCircle(cx, cy, r * 0.06f, paint)
+        }
+    }
+
     private fun removeView() {
-        view?.let { v ->
+        root?.let { v ->
             try { wm?.removeView(v) } catch (_: Exception) {}
         }
-        view = null
+        root = null
+        vinylView = null
+        titleView = null
+        artistView = null
+        lyricView = null
         added = false
     }
 
