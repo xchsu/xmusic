@@ -297,7 +297,6 @@ class _SearchPageState extends State<SearchPage> {
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        flexibleSpace: CoverGlassBackground(controller: widget.controller, settings: widget.settings),
         title: TextField(
           controller: _query,
           autofocus: true,
