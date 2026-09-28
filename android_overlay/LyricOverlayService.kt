@@ -125,25 +125,21 @@ class LyricOverlayService : Service() {
         return null
     }
 
-    /** 车机/无前台权限时的兜底：用当前窗口类型判断是否全屏(桌面/普通应用)；悬浮小窗/遮罩不浮 */
-    private fun currentIsFullscreen(): Boolean {
+    /** 车机/大屏判定：最短边 >=480dp 视为车机大屏（车机拿不到前台权限，主界面即桌面）。 */
+    private fun isCarScreen(): Boolean {
         return try {
-            val t = (getSystemService(Context.WINDOW_SERVICE) as WindowManager).currentWindowType
-            t == WindowManager.LayoutParams.TYPE_BASE_APPLICATION ||
-                t == WindowManager.LayoutParams.TYPE_APPLICATION_START ||
-                t == WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG ||
-                t == WindowManager.LayoutParams.TYPE_APPLICATION_PANEL
+            val dm = resources.displayMetrics
+            val s = kotlin.math.min(dm.widthPixels, dm.heightPixels) / dm.density
+            s >= 480
         } catch (_: Exception) { false }
     }
 
     private fun updateVisibility() {
         val launcher = launcherPackage()
         val top = topPackage()
-        // 手机：前台包=迪友桌面才浮；车机/拿不到前台权限(UsageStats/无障碍)：仅当当前为全屏(桌面)时浮，小窗/遮罩不浮
-        val show = _lyric.isNotEmpty() && (
-            (launcher != null && top == launcher) ||
-            (top == null && currentIsFullscreen())
-        )
+        // 手机：前台包=迪友桌面才浮；车机(大屏且拿不到前台权限 UsageStats/无障碍)：播放中一律显示
+        // 注：车机无法区分桌面与其它全屏应用/小窗（系统不提供无权限的前台/窗口类型查询），悬浮窗不可触摸不抢焦点，可放心常显。
+        val show = _lyric.isNotEmpty() && (isCarScreen() || (launcher != null && top == launcher))
         if (show && !added) addView()
         else if (!show && added) removeView()
     }
