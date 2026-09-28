@@ -44,12 +44,18 @@ class CoverGlassBackground extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (useCover)
-              // 开启「当前歌曲封面」：纯玻璃质感，把当前封面模糊后铺满全界面，
-              // 不再叠加任何背景颜色（去除颜色残留），随切歌自动更新。
+              // 开启「当前歌曲封面」：主体仍为系统浅色/深色或自定义背景色，
+              // 上方只叠加一层很淡（15% 透明）的模糊封面，透一点即可，随切歌自动更新。
               Positioned.fill(
-                child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                  child: _coverImage(coverUrl!, cs),
+                child: ColoredBox(
+                  color: customBg ?? cs.surface,
+                  child: Opacity(
+                    opacity: 0.15,
+                    child: ImageFiltered(
+                      imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                      child: _coverImage(coverUrl!, cs),
+                    ),
+                  ),
                 ),
               )
             else
