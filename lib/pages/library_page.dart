@@ -63,7 +63,8 @@ class _LibraryPageState extends State<LibraryPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BigScreenText(
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('音乐库'),
@@ -97,7 +98,7 @@ class _LibraryPageState extends State<LibraryPage>
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

@@ -112,8 +112,8 @@ class SettingsPage extends StatelessWidget {
                   if (isTheme) ...[
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('用当前歌曲封面主色透出背景'),
-                      subtitle: const Text('跟随系统/深浅主题，背景透出当前封面颜色'),
+                      title: const Text('用当前歌曲封面透出背景'),
+                      subtitle: const Text('跟随系统/深浅主题，全App背景透出当前封面图片（玻璃质感）'),
                       value: settings.coverColorBg,
                       onChanged: (v) {
                         setD(() {});
@@ -219,14 +219,17 @@ class SettingsPage extends StatelessWidget {
     final theme = Theme.of(context);
     final _mq = MediaQuery.of(context);
     final _car = isCarScreen(context);
+    final _scale = bigScreenTextScale(context);
     return MediaQuery(
-      data: _car ? _mq.copyWith(textScaler: const TextScaler.linear(1.35)) : _mq,
+      data: _scale > 1.0 ? _mq.copyWith(textScaler: TextScaler.linear(_scale)) : _mq,
       child: Builder(
         builder: (ctx) {
           return IconTheme(
         // [xmusic] 2026-09-24 车机图标适配：设置页列表图标整体放大
         data: IconThemeData(size: _car ? 28 : 24),
         child: Scaffold(
+          // [xmusic] 2026-09-28 设置页透明：透出全局封面玻璃背景（之前是初始底色）
+          backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
@@ -242,7 +245,7 @@ class SettingsPage extends StatelessWidget {
             leading: const Icon(Icons.color_lens_outlined),
             title: const Text('自定义背景色'),
             subtitle: Text(settings.coverColorBg
-                ? '封面颜色：跟随系统/深浅主题，透出当前封面主色'
+                ? '封面图片：跟随系统/深浅主题，全App透出当前封面图片'
                 : (settings.bgColor != 0 ? '手动背景色（玻璃透出壁纸）' : '默认玻璃背景')),
             trailing: (!settings.coverColorBg && settings.bgColor != 0)
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
@@ -298,7 +301,7 @@ class SettingsPage extends StatelessWidget {
           SwitchListTile(
             secondary: const Icon(Icons.language_rounded),
             title: const Text('歌词悬浮窗'),
-            subtitle: const Text('播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；车机仅需「悬浮窗权限」\n（使用情况/无障碍仅手机前台识别用，车机自动兜底）'),
+            subtitle: const Text('播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；仅需「悬浮窗权限」\n车机大屏拿不到前台权限，播放中自动常显'),
             value: settings.lyricOverlay,
             onChanged: (v) async {
               await settings.setLyricOverlay(v);
@@ -314,8 +317,6 @@ class SettingsPage extends StatelessWidget {
             builder: (context, snap) {
               final p = snap.data ?? const <dynamic, dynamic>{};
               final overlay = (p['overlay'] ?? false) == true;
-              final usage = (p['usageStats'] ?? false) == true;
-              final acc = (p['accessibility'] ?? false) == true;
               return Column(
                 children: [
                   ListTile(
@@ -325,24 +326,6 @@ class SettingsPage extends StatelessWidget {
                     trailing: TextButton(
                       onPressed: () => LyricOverlay.requestOverlay(),
                       child: Text(overlay ? '已开启' : '去开启'),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.insert_chart_outlined_rounded),
-                    title: const Text('使用情况访问权限'),
-                    subtitle: Text(usage ? '已授予' : '未授予（车机无需，仅手机前台识别用）'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestUsageStats(),
-                      child: Text(usage ? '已开启' : '去开启'),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.accessible_rounded),
-                    title: const Text('无障碍服务'),
-                    subtitle: Text(acc ? '已开启' : '未开启（车机无需，仅手机前台识别用）'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestAccessibility(),
-                      child: Text(acc ? '已开启' : '去开启'),
                     ),
                   ),
                 ],

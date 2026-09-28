@@ -66,8 +66,8 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     // 车机识别（横屏大屏）：导航栏 label/图标放大一档，方便驾驶中远距离看清
     final mq = MediaQuery.of(context);
-    final isCarScreen =
-        mq.size.width > mq.size.height && mq.size.shortestSide >= 480;
+    // [xmusic] 2026-09-28 大屏判定扩展到车机竖屏（最短边>=480dp），导航图标/字号一并放大
+    final isCarScreen = mq.size.shortestSide >= 480;
     final pages = <Widget>[
       HomePage(settings: widget.settings, controller: widget.controller),
       LibraryPage(settings: widget.settings, controller: widget.controller),
@@ -91,7 +91,16 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          MiniPlayer(settings: widget.settings, controller: widget.controller),
+          MediaQuery(
+            data: mq.copyWith(
+              textScaler: TextScaler.linear(
+                mq.size.shortestSide >= 480
+                    ? (mq.size.width > mq.size.height ? 1.35 : 1.25)
+                    : 1.0,
+              ),
+            ),
+            child: MiniPlayer(settings: widget.settings, controller: widget.controller),
+          ),
           DecoratedBox(
             decoration: BoxDecoration(
               // 柔和上投光 + 细边：导航栏浮在壁纸上的玻璃质感（不遮挡壁纸）

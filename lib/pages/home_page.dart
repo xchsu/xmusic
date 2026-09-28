@@ -225,7 +225,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BigScreenText(
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('音素'),
@@ -400,7 +401,7 @@ class _HomePageState extends State<HomePage> {
                       ],
           ),
       ),
-    );
+    ));
   }
 
   /// 每日30首小卡（在线/本地两栏）：渐变底 + 图标 + 标题副标题，点击进对应歌单。
@@ -524,18 +525,18 @@ class _HomePageState extends State<HomePage> {
                         imageUrl: coverUrl,
                         fit: BoxFit.cover,
                         httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
-                        placeholder: (_, __) => Container(color: const Color(0xFF262626)),
-                        errorWidget: (_, __, ___) => Container(color: const Color(0xFF262626)),
+                        placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                        errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
                       )
                     : Container(
-                        color: const Color(0xFF262626),
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         alignment: Alignment.center,
                         padding: const EdgeInsets.all(8),
                         child: Text(name,
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
                       ),
               ),
             ),
@@ -544,7 +545,7 @@ class _HomePageState extends State<HomePage> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
           ],
         ),
       );
@@ -802,7 +803,8 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final coverUrl = widget.coverUrl;
     final error = widget.error;
     final onRetry = widget.onRetry;
-    return Scaffold(
+    return BigScreenText(
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(title)),
       body: Column(
@@ -913,7 +915,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         MiniPlayer(settings: settings, controller: controller),
       ],
       ),
-    );
+    ));
   }
 }
 

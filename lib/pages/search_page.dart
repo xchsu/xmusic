@@ -138,6 +138,41 @@ class _SearchPageState extends State<SearchPage> {
       _external = merged;
       _externalLoading = false;
     });
+    // [xmusic] 2026-09-28 在线搜索结果：无封面的条目按「歌名 歌手」异步补封面（不阻塞列表）
+    _backfillCovers(merged);
+  }
+
+  /// 在线搜索结果缺封面的条目，用酷我封面接口按「歌名 歌手」补图（最多补 40 条）。
+  Future<void> _backfillCovers(List<Song> merged) async {
+    final missing =
+        merged.where((s) => (s.coverUrl ?? '').isEmpty).take(40).toList();
+    if (missing.isEmpty) return;
+    final api = _externalApi;
+    for (final s in missing) {
+      try {
+        final url = await api.kugouSearchCover('${s.title} ${s.artist}');
+        if (url == null || url.isEmpty || !mounted) continue;
+        final list = _external;
+        if (list == null) continue;
+        final i = list.indexWhere((x) => x.id == s.id);
+        if (i < 0) continue;
+        setState(() {
+          list[i] = Song(
+            id: s.id,
+            title: s.title,
+            artist: s.artist,
+            album: s.album,
+            coverArt: null,
+            coverUrl: url,
+            durationSec: s.durationSec,
+            fromExternal: s.fromExternal,
+            externalSource: s.externalSource,
+            streamUrl: s.streamUrl,
+            lrcUrl: s.lrcUrl,
+          );
+        });
+      } catch (_) {}
+    }
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
@@ -262,7 +297,8 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final r = _results;
-    return Scaffold(
+    return BigScreenText(
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: TextField(
@@ -322,7 +358,7 @@ class _SearchPageState extends State<SearchPage> {
         ),
       ),
       body: _mode <= 1 ? _localBody(context, r) : _externalBody(),
-    );
+    ));
   }
 
   Widget _localBody(BuildContext context, SearchResults? r) {
@@ -440,13 +476,15 @@ class _SearchPageState extends State<SearchPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  // [xmusic] 2026-09-28 不同源不同颜色标注：LX绿/QQ蓝/酷我橙/网易云红/聚合紫
+                  color: _srcColor(s.externalSource),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(_srcLabel(s.externalSource),
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 11,
-                        color: Theme.of(context).colorScheme.onSecondaryContainer)),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -482,5 +520,15 @@ class _SearchPageState extends State<SearchPage> {
         'kuwo' => '酷我(KW)',
         'netease' => '网易云',
         _ => '聚合',
+      };
+
+  /// 不同源的颜色标注：LX绿 / QQ蓝 / 酷我橙 / 网易云红 / 其它聚合紫。
+  Color _srcColor(String? src) => switch (src) {
+        'lx' => const Color(0xFF00A884),
+        'qq' => const Color(0xFF3A6DF0),
+        'kuwo' => const Color(0xFFE68A2E),
+        'netease' => const Color(0xFFD94B4B),
+        'bilibili' => const Color(0xFFFB7299),
+        _ => const Color(0xFF7A6BC4),
       };
 }

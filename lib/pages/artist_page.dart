@@ -71,9 +71,11 @@ class _ArtistPageState extends State<ArtistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BigScreenText(
+      child: Scaffold(
       // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(widget.artist.name)),
       body: Column(
         children: [
@@ -182,6 +184,6 @@ class _ArtistPageState extends State<ArtistPage> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

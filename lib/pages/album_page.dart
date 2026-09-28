@@ -43,8 +43,10 @@ class _AlbumPageState extends State<AlbumPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final album = widget.album;
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+    return BigScreenText(
+      child: Scaffold(
+      // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(album.name)),
       body: Column(
         children: [
@@ -172,6 +174,6 @@ class _AlbumPageState extends State<AlbumPage> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

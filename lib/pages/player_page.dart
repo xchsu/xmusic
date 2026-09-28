@@ -1,13 +1,12 @@
 import 'dart:async';
+import '../cover_glass.dart';
 import '../toast.dart';
 import 'home_shell.dart';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -38,10 +37,6 @@ enum _OrientMode { auto, landscape, portrait }
 
 class _PlayerPageState extends State<PlayerPage> {
   _OrientMode _orient = _OrientMode.auto;
-  Color? _coverTint; // 当前封面主色（封面颜色透出背景用）
-  String _coverKey = '';
-  int _coverAttempts = 0; // 封面主色提取失败重试计数
-
   @override
   void initState() {
     super.initState();
@@ -64,67 +59,6 @@ class _PlayerPageState extends State<PlayerPage> {
       DeviceOrientation.landscapeRight,
     ]);
     super.dispose();
-  }
-
-  /// 封面颜色：歌曲/封面变化时调度异步取主色（仅在设置开启时）。
-  void _scheduleCoverExtract(Song? song) {
-    if (!widget.settings.coverColorBg) return;
-    final key = song == null
-        ? ''
-        : (song.coverUrl?.isNotEmpty == true
-            ? song.coverUrl!
-            : 'art:${song.coverArt}');
-    if (key.isEmpty || key == _coverKey) return;
-    _coverKey = key;
-    _coverAttempts = 0;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _extractCoverColor(song, key);
-    });
-  }
-
-  Future<void> _extractCoverColor(Song? song, String key) async {
-    if (song == null) return;
-    try {
-      final url = song.coverUrl?.isNotEmpty == true
-          ? song.coverUrl!
-          : widget.controller.client.coverUrl(song.coverArt, size: 600).toString();
-      final resp = await http
-          .get(Uri.parse(url), headers: const {
-            'User-Agent': 'Mozilla/5.0',
-            'Referer': 'https://music.163.com/',
-          })
-          .timeout(const Duration(seconds: 8));
-      if (resp.statusCode != 200) return;
-      final codec = await ui.instantiateImageCodec(resp.bodyBytes);
-      final frame = await codec.getNextFrame();
-      final img = frame.image;
-      final bd = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
-      if (bd == null) return;
-      final bytes = bd.buffer.asUint8List();
-      int r = 0, g = 0, b = 0, n = 0;
-      final w = img.width, h = img.height;
-      final step = math.max(1, (w * h) ~/ 4000);
-      for (int y = 0; y < h; y += step) {
-        for (int x = 0; x < w; x += step) {
-          final i = (y * w + x) * 4;
-          if (i + 2 >= bytes.length) continue;
-          r += bytes[i]; g += bytes[i + 1]; b += bytes[i + 2]; n++;
-        }
-      }
-      if (n == 0) return;
-      final tint = Color.fromARGB(255, r ~/ n, g ~/ n, b ~/ n);
-      if (mounted && _coverKey == key) setState(() => _coverTint = tint);
-    } catch (_) {
-      if (!mounted || _coverKey != key) return;
-      if (_coverAttempts < 3) {
-        _coverAttempts++;
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) _extractCoverColor(song, key);
-        });
-      } else {
-        _coverKey = '';
-      }
-    }
   }
 
   /// 三态循环：自动（跟随系统旋转）→ 强制横屏 → 强制竖屏 → 自动。
@@ -159,39 +93,17 @@ class _PlayerPageState extends State<PlayerPage> {
         listenable: Listenable.merge([widget.controller, widget.settings]),
       builder: (context, _) {
         final song = widget.controller.current;
-        _scheduleCoverExtract(song);
         final landscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
-        final cs = Theme.of(context).colorScheme;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        // [xmusic] 玻璃背景：跟随主题的磨砂玻璃（浅色浅、深色深），不铺封面、不透壁纸。
-        // 壁纸透出需原生 FLAG_SHOW_WALLPAPER，但车机上会显示成黑底，故弃用；确保浅色不黑。
-        final isCover = widget.settings.coverColorBg;
-        final coverTint = (isCover && _coverTint != null) ? _coverTint! : cs.primary;
-        // 手动自定义背景色：玻璃透出（半透明让壁纸透出，而非实心纯色），深浅主题用不同通透度
-        final customBg = widget.settings.bgColor != 0
-            ? Color(widget.settings.bgColor)
-                .withValues(alpha: isDark ? 0.55 : 0.78)
-            : null;
         return Scaffold(
-          backgroundColor: isCover ? coverTint : (customBg ?? cs.surface),
+          backgroundColor: Colors.transparent,
           body: Stack(
             children: [
-              // 玻璃洗色：主题色轻渐变打底，做出玻璃通透感（浅色更透、深色沉稳）；
-              // 开启「封面颜色」时用当前封面主色透出（跟随系统/深浅主题 + 透出当前封面）。
-              Container(
-                decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: isDark ? (isCover ? 0.45 : 0.50) : (isCover ? 0.30 : 0.36)),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      coverTint.withValues(alpha: 0.14),
-                      Colors.transparent,
-                      coverTint.withValues(alpha: 0.09),
-                    ],
-                    stops: const [0.0, 0.55, 1.0],
-                  ),
+              // [xmusic] 2026-09-28 全 App 封面玻璃：背景透出当前播放歌曲封面图片（随切歌更新）
+              Positioned.fill(
+                child: CoverGlassBackground(
+                  controller: widget.controller,
+                  settings: widget.settings,
                 ),
               ),
               SafeArea(
@@ -323,32 +235,33 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-27 右侧按钮：歌词/收藏/下载 car 48；NAS 单独缩到 car 36（用户嫌 NAS 大）、栏宽 58/48
+    // [xmusic] 2026-09-28 右侧按钮：车机 64；手机统一 30（含上传NAS，用户嫌手机竖屏 NAS 太大）、栏宽 72/44
     final car = _carUI(context);
+    final side = car ? 64 : 30;
     return Container(
-      width: car ? 72 : 48,
+      width: car ? 72 : 44,
       margin: const EdgeInsets.only(right: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 旋转按钮已按用户要求移除（保留 _toggleRotation/_orient 供系统旋转/恢复逻辑使用）
           IconTheme(
-            data: IconThemeData(size: car ? 64 : 36),
+            data: IconThemeData(size: side),
             child: LyricSizeControls(settings: widget.settings),
           ),
           const SizedBox(height: 2),
           IconTheme(
-            data: IconThemeData(size: car ? 64 : 36),
+            data: IconThemeData(size: side),
             child: _FavoriteButton(controller: widget.controller),
           ),
           IconButton(
             tooltip: '下载',
-            icon: Icon(Icons.download_rounded, size: car ? 64 : 36),
+            icon: Icon(Icons.download_rounded, size: side),
             onPressed: () => _downloadMenu(context),
           ),
           IconButton(
             tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined, size: car ? 64 : 36),
+            icon: Icon(Icons.cloud_upload_outlined, size: side),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
@@ -1159,8 +1072,9 @@ class _MiniCornerButton extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              width: _carUI(context) ? 64 : 40, height: _carUI(context) ? 64 : 40,
-              child: Icon(icon, size: _carUI(context) ? 48 : 20, color: theme.colorScheme.onSurface),
+              // [xmusic] 2026-09-28 手机主页/返回也加大：56 容器 / 40 图标（对齐控制栏图标），车机 64/48
+              width: _carUI(context) ? 64 : 56, height: _carUI(context) ? 64 : 56,
+              child: Icon(icon, size: _carUI(context) ? 48 : 40, color: theme.colorScheme.onSurface),
             ),
           ),
         ),
