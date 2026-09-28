@@ -13,31 +13,8 @@ class LyricOverlay {
     try { await _ch.invokeMethod('disable'); } catch (_) {}
   }
 
-  /// 推送整段歌词 + 当前行 + 进度（行切换时调用）。
-  static Future<void> updateLyric({
-    required List<String> lines,
-    required int current,
-    required int progressMs,
-    required int durationMs,
-  }) async {
-    try {
-      await _ch.invokeMethod('updateLyric', {
-        'lines': lines,
-        'current': current,
-        'progressMs': progressMs,
-        'durationMs': durationMs,
-      });
-    } catch (_) {}
-  }
-
-  /// 轻量推送播放进度（高频节流调用，只更新浮窗进度条/时间）。
-  static Future<void> updateProgress(int progressMs, int durationMs) async {
-    try {
-      await _ch.invokeMethod('updateProgress', {
-        'progressMs': progressMs,
-        'durationMs': durationMs,
-      });
-    } catch (_) {}
+  static Future<void> updateLyric(String text) async {
+    try { await _ch.invokeMethod('updateLyric', {'text': text}); } catch (_) {}
   }
 
   /// 返回 { overlay, usageStats, accessibility } 三个 bool 的权限状态。

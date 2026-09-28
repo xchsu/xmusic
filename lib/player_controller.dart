@@ -69,7 +69,6 @@ class PlayerController extends ChangeNotifier {
   int _loadToken = 0;
   /// 已推送到悬浮窗的歌词行号（避免重复推送）。
   int _overlayLine = -1;
-  DateTime _lastOverlayProgressPush = DateTime.now();
   /// 播放加载令牌：快速连点切歌/自动播放时，只允许最新一次加载真正生效，
   /// 旧加载在关键节点放弃，避免两次 setUrl 相互覆盖造成竞态。
   int _playToken = 0;
@@ -401,31 +400,17 @@ class PlayerController extends ChangeNotifier {
     unawaited(saveLastState());
   }
 
-  /// 开启歌词悬浮窗时，把整段歌词+当前行+进度推给原生浮窗（行变化时推全量，
-  /// 行不变时按约 1 秒节流推轻量进度，浮窗据此刷新进度条/时间）。
+  /// 开启歌词悬浮窗时，把当前歌词行推给原生浮窗（只在行号变化时推一次）。
   void _maybePushOverlayLyric(Duration pos) {
     if (!settings.lyricOverlay) return;
     final ly = lyrics;
     if (ly == null || !ly.synced || ly.lines.isEmpty) return;
     final idx = ly.indexAt(pos);
-    final dur = player.duration?.inMilliseconds ?? 0;
-    if (idx != _overlayLine) {
-      _overlayLine = idx;
-      final cur = idx.clamp(0, ly.lines.length - 1);
-      LyricOverlay.updateLyric(
-        lines: ly.lines.map((l) => l.text).toList(),
-        current: cur,
-        progressMs: pos.inMilliseconds,
-        durationMs: dur,
-      );
-      _lastOverlayProgressPush = DateTime.now();
-      return;
+    if (idx == _overlayLine) return;
+    _overlayLine = idx;
+    if (idx >= 0 && idx < ly.lines.length) {
+      LyricOverlay.updateLyric(ly.lines[idx].text);
     }
-    // 行不变：节流推进度（浮窗进度条/时间实时刷新）
-    final now = DateTime.now();
-    if (now.difference(_lastOverlayProgressPush).inMilliseconds < 1000) return;
-    _lastOverlayProgressPush = now;
-    LyricOverlay.updateProgress(pos.inMilliseconds, dur);
   }
 
   void _checkStuck() {
