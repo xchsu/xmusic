@@ -40,6 +40,7 @@ class _PlayerPageState extends State<PlayerPage> {
   _OrientMode _orient = _OrientMode.auto;
   Color? _coverTint; // 当前封面主色（封面颜色透出背景用）
   String _coverKey = '';
+  int _coverAttempts = 0; // 封面主色提取失败重试计数
 
   @override
   void initState() {
@@ -75,6 +76,7 @@ class _PlayerPageState extends State<PlayerPage> {
             : 'art:${song.coverArt}');
     if (key.isEmpty || key == _coverKey) return;
     _coverKey = key;
+    _coverAttempts = 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _extractCoverColor(song, key);
     });
@@ -87,7 +89,10 @@ class _PlayerPageState extends State<PlayerPage> {
           ? song.coverUrl!
           : widget.controller.client.coverUrl(song.coverArt, size: 600).toString();
       final resp = await http
-          .get(Uri.parse(url), headers: const {'User-Agent': 'Mozilla/5.0'})
+          .get(Uri.parse(url), headers: const {
+            'User-Agent': 'Mozilla/5.0',
+            'Referer': 'https://music.163.com/',
+          })
           .timeout(const Duration(seconds: 8));
       if (resp.statusCode != 200) return;
       final codec = await ui.instantiateImageCodec(resp.bodyBytes);
@@ -109,7 +114,17 @@ class _PlayerPageState extends State<PlayerPage> {
       if (n == 0) return;
       final tint = Color.fromARGB(255, r ~/ n, g ~/ n, b ~/ n);
       if (mounted && _coverKey == key) setState(() => _coverTint = tint);
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted || _coverKey != key) return;
+      if (_coverAttempts < 3) {
+        _coverAttempts++;
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) _extractCoverColor(song, key);
+        });
+      } else {
+        _coverKey = '';
+      }
+    }
   }
 
   /// 三态循环：自动（跟随系统旋转）→ 强制横屏 → 强制竖屏 → 自动。
@@ -151,26 +166,22 @@ class _PlayerPageState extends State<PlayerPage> {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         // [xmusic] 玻璃背景：跟随主题的磨砂玻璃（浅色浅、深色深），不铺封面、不透壁纸。
         // 壁纸透出需原生 FLAG_SHOW_WALLPAPER，但车机上会显示成黑底，故弃用；确保浅色不黑。
-        final coverTint =
-            (widget.settings.coverColorBg && _coverTint != null)
-                ? _coverTint!
-                : cs.primary;
+        final isCover = widget.settings.coverColorBg;
+        final coverTint = (isCover && _coverTint != null) ? _coverTint! : cs.primary;
         // 手动自定义背景色：玻璃透出（半透明让壁纸透出，而非实心纯色），深浅主题用不同通透度
         final customBg = widget.settings.bgColor != 0
             ? Color(widget.settings.bgColor)
                 .withValues(alpha: isDark ? 0.55 : 0.78)
             : null;
         return Scaffold(
-          backgroundColor: widget.settings.coverColorBg
-              ? cs.surface
-              : (customBg ?? cs.surface),
+          backgroundColor: isCover ? coverTint : (customBg ?? cs.surface),
           body: Stack(
             children: [
               // 玻璃洗色：主题色轻渐变打底，做出玻璃通透感（浅色更透、深色沉稳）；
               // 开启「封面颜色」时用当前封面主色透出（跟随系统/深浅主题 + 透出当前封面）。
               Container(
                 decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: isDark ? 0.50 : 0.36),
+                  color: cs.surface.withValues(alpha: isDark ? (isCover ? 0.45 : 0.50) : (isCover ? 0.30 : 0.36)),
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
@@ -313,31 +324,31 @@ class _PlayerPageState extends State<PlayerPage> {
   // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
     // [xmusic] 2026-09-27 右侧按钮：歌词/收藏/下载 car 48；NAS 单独缩到 car 36（用户嫌 NAS 大）、栏宽 58/48
-    final car = isCarScreen(context);
+    final car = _carUI(context);
     return Container(
-      width: car ? 64 : 48,
+      width: car ? 72 : 48,
       margin: const EdgeInsets.only(right: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 旋转按钮已按用户要求移除（保留 _toggleRotation/_orient 供系统旋转/恢复逻辑使用）
           IconTheme(
-            data: IconThemeData(size: car ? 56 : 36),
+            data: IconThemeData(size: car ? 64 : 36),
             child: LyricSizeControls(settings: widget.settings),
           ),
           const SizedBox(height: 2),
           IconTheme(
-            data: IconThemeData(size: car ? 56 : 36),
+            data: IconThemeData(size: car ? 64 : 36),
             child: _FavoriteButton(controller: widget.controller),
           ),
           IconButton(
             tooltip: '下载',
-            icon: Icon(Icons.download_rounded, size: car ? 56 : 36),
+            icon: Icon(Icons.download_rounded, size: car ? 64 : 36),
             onPressed: () => _downloadMenu(context),
           ),
           IconButton(
             tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined, size: car ? 44 : 30),
+            icon: Icon(Icons.cloud_upload_outlined, size: car ? 48 : 30),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
@@ -1127,6 +1138,10 @@ class _TonearmPainter extends CustomPainter {
   @override
   bool shouldRepaint(_TonearmPainter old) => old.lift != lift;
 }
+/// 车机/大屏判定：横屏或最短边 >=480dp 均视为大屏（含竖屏车机），用于放大按钮/图标
+bool _carUI(BuildContext context) =>
+    isCarScreen(context) || MediaQuery.sizeOf(context).shortestSide >= 480;
+
 /// 小玻璃圆钮（歌名行两侧：首页/返回）
 class _MiniCornerButton extends StatelessWidget {
   const _MiniCornerButton({required this.icon, required this.onTap});
@@ -1144,8 +1159,8 @@ class _MiniCornerButton extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              width: isCarScreen(context) ? 96 : 40, height: isCarScreen(context) ? 96 : 40,
-              child: Icon(icon, size: isCarScreen(context) ? 56 : 20, color: theme.colorScheme.onSurface),
+              width: _carUI(context) ? 128 : 40, height: _carUI(context) ? 128 : 40,
+              child: Icon(icon, size: _carUI(context) ? 76 : 20, color: theme.colorScheme.onSurface),
             ),
           ),
         ),

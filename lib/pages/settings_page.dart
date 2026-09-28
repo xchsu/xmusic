@@ -109,6 +109,19 @@ class SettingsPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (isTheme) ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('用当前歌曲封面主色透出背景'),
+                      subtitle: const Text('跟随系统/深浅主题，背景透出当前封面颜色'),
+                      value: settings.coverColorBg,
+                      onChanged: (v) {
+                        setD(() {});
+                        settings.setCoverColorBg(v);
+                      },
+                    ),
+                    const Divider(height: 8),
+                  ],
                   // 十六进制
                   Row(children: [
                     Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
@@ -228,9 +241,12 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.color_lens_outlined),
             title: const Text('自定义背景色'),
-            trailing: settings.bgColor != 0
+            subtitle: Text(settings.coverColorBg
+                ? '封面颜色：跟随系统/深浅主题，透出当前封面主色'
+                : (settings.bgColor != 0 ? '手动背景色（玻璃透出壁纸）' : '默认玻璃背景')),
+            trailing: (!settings.coverColorBg && settings.bgColor != 0)
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
-                : const Text('默认'),
+                : const Icon(Icons.chevron_right),
             onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: true),
           ),
           SwitchListTile(
@@ -282,7 +298,7 @@ class SettingsPage extends StatelessWidget {
           SwitchListTile(
             secondary: const Icon(Icons.language_rounded),
             title: const Text('歌词悬浮窗'),
-            subtitle: const Text('开启后，播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；需先授予下方三项权限'),
+            subtitle: const Text('播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；车机仅需「悬浮窗权限」\n（使用情况/无障碍仅手机前台识别用，车机自动兜底）'),
             value: settings.lyricOverlay,
             onChanged: (v) async {
               await settings.setLyricOverlay(v);
@@ -314,7 +330,7 @@ class SettingsPage extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.insert_chart_outlined_rounded),
                     title: const Text('使用情况访问权限'),
-                    subtitle: Text(usage ? '已授予' : '未授予'),
+                    subtitle: Text(usage ? '已授予' : '未授予（车机无需，仅手机前台识别用）'),
                     trailing: TextButton(
                       onPressed: () => LyricOverlay.requestUsageStats(),
                       child: Text(usage ? '已开启' : '去开启'),
@@ -323,7 +339,7 @@ class SettingsPage extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.accessible_rounded),
                     title: const Text('无障碍服务'),
-                    subtitle: Text(acc ? '已开启' : '未开启'),
+                    subtitle: Text(acc ? '已开启' : '未开启（车机无需，仅手机前台识别用）'),
                     trailing: TextButton(
                       onPressed: () => LyricOverlay.requestAccessibility(),
                       child: Text(acc ? '已开启' : '去开启'),
