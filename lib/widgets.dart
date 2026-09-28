@@ -12,6 +12,27 @@ bool isCarScreen(BuildContext context) {
   return s.width > s.height && s.shortestSide >= 480;
 }
 
+/// 大屏字体放大系数：车机横屏大屏 1.35x；竖屏大屏(最短边>=480dp，如车机竖屏/平板) 1.25x；手机 1.0x。
+double bigScreenTextScale(BuildContext context) {
+  final s = MediaQuery.sizeOf(context);
+  if (s.width > s.height && s.shortestSide >= 480) return 1.35;
+  if (s.shortestSide >= 480) return 1.25;
+  return 1.0;
+}
+
+/// 大屏字体放大包装：车机横屏1.35x / 竖屏大屏1.25x，手机原样。
+class BigScreenText extends StatelessWidget {
+  const BigScreenText({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final scale = bigScreenTextScale(context);
+    if (scale <= 1.0) return child;
+    return MediaQuery(data: mq.copyWith(textScaler: TextScaler.linear(scale)), child: child);
+  }
+}
+
 /// Cover art loaded from the server (or a direct URL), with a neutral
 /// placeholder. Colors come from the current theme only — nothing is
 /// extracted from the art.

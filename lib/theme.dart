@@ -183,11 +183,21 @@ class AppTheme {
     return base.copyWith(
       // ---- AppBar：玻璃透明条（顶部高光边，模拟毛玻璃边缘反光） ----
       appBarTheme: AppBarTheme(
-        // 0.32→0.62：导航栏/标题白字可读（之前 32% 太透，浅壁纸下白字看不清）
-        backgroundColor: panelLow.withValues(alpha: 0.62),
+        // [xmusic] 2026-09-28 全 App 封面玻璃：AppBar/状态栏区域透明，让封面图片背景透上来；
+        // 文字可读靠全局描边阴影（tShadows）兜底，不再用半透明底色遮封面。
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: scheme.brightness == Brightness.dark
+              ? Brightness.light
+              : Brightness.dark,
+          statusBarBrightness: scheme.brightness == Brightness.dark
+              ? Brightness.dark
+              : Brightness.light,
+        ),
         centerTitle: false,
         foregroundColor: onSurface,
         iconTheme: IconThemeData(color: onSurface),
