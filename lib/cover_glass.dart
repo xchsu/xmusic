@@ -78,6 +78,31 @@ class CoverGlassBackground extends StatelessWidget {
   }
 
 
+  Widget _coverImage(String url, ColorScheme cs) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return ColoredBox(color: cs.surface);
+    if (uri.scheme == 'file') {
+      return Image.file(
+        File(uri.toFilePath()),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => ColoredBox(color: cs.surface),
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.cover,
+      httpHeaders: const {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://music.163.com/',
+      },
+      fadeInDuration: const Duration(milliseconds: 300),
+      fadeOutDuration: const Duration(milliseconds: 200),
+      placeholder: (_, __) => ColoredBox(color: cs.surfaceContainerHighest),
+      errorWidget: (_, __, ___) => ColoredBox(color: cs.surface),
+    );
+  }
+}
+
 
 /// 页面级背景封装：给 push 出来的独立路由（搜索/歌单/专辑/歌手等）铺上
 /// 封面玻璃背景，避免透明 Scaffold 透出黑色路由底层。
@@ -101,31 +126,6 @@ class PageBackground extends StatelessWidget {
         ),
         Positioned.fill(child: child),
       ],
-    );
-  }
-}
-
-  Widget _coverImage(String url, ColorScheme cs) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return ColoredBox(color: cs.surface);
-    if (uri.scheme == 'file') {
-      return Image.file(
-        File(uri.toFilePath()),
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => ColoredBox(color: cs.surface),
-      );
-    }
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: BoxFit.cover,
-      httpHeaders: const {
-        'User-Agent': 'Mozilla/5.0',
-        'Referer': 'https://music.163.com/',
-      },
-      fadeInDuration: const Duration(milliseconds: 300),
-      fadeOutDuration: const Duration(milliseconds: 200),
-      placeholder: (_, __) => ColoredBox(color: cs.surfaceContainerHighest),
-      errorWidget: (_, __, ___) => ColoredBox(color: cs.surface),
     );
   }
 }
