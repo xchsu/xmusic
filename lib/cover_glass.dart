@@ -48,7 +48,7 @@ class CoverGlassBackground extends StatelessWidget {
               // 不再叠加任何背景颜色（去除颜色残留），随切歌自动更新。
               Positioned.fill(
                 child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
                   child: _coverImage(coverUrl!, cs),
                 ),
               )
