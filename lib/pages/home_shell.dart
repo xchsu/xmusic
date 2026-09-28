@@ -119,8 +119,9 @@ class _HomeShellState extends State<HomeShell> {
             // [xmusic] 2026-09-24 车机图标适配：底部导航图标放大
             // NavigationBar 无 iconSize 参数，图标尺寸由 NavigationBarThemeData.iconTheme 控制
             data: NavigationBarThemeData(
+              height: isCarScreen ? 84 : 64,
               iconTheme: WidgetStateProperty.resolveWith((states) =>
-                  IconThemeData(size: isCarScreen ? 30 : 24)),
+                  IconThemeData(size: isCarScreen ? 34 : 24)),
             ),
             child: NavigationBar(
             selectedIndex: _tab,

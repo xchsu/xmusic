@@ -240,18 +240,57 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
+  // 右侧竖排按钮：歌词缩放、收藏、下载、上传NAS。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-28 右侧按钮：车机 64；手机统一 30（含上传NAS，用户嫌手机竖屏 NAS 太大）、栏宽 72/44
+    // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
     final car = _carUI(context);
-    final double side = car ? 64 : 30;
+    final double side = 30;
+    if (car) {
+      // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸同样式
+      return Container(
+        width: 72,
+        margin: const EdgeInsets.only(right: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyric ? widget.settings.decreaseLyric : null),
+            const SizedBox(height: 6),
+            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyric ? widget.settings.increaseLyric : null),
+            const SizedBox(height: 6),
+            ListenableBuilder(
+              listenable: widget.controller,
+              builder: (context, _) {
+                final starred = widget.controller.currentStarred;
+                return _MiniCornerButton(
+                  icon: starred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: starred ? Theme.of(context).colorScheme.primary : null,
+                  onTap: widget.controller.toggleStar,
+                );
+              },
+            ),
+            const SizedBox(height: 6),
+            _MiniCornerButton(icon: Icons.download_rounded, onTap: () => _downloadMenu(context)),
+            const SizedBox(height: 6),
+            _MiniCornerButton(
+              icon: Icons.cloud_upload_outlined,
+              onTap: () async {
+                showTopToast(context, '正在上传到NAS…');
+                final msg = await widget.controller.uploadCurrentToNas();
+                if (!context.mounted) return;
+                showTopToast(context, msg, duration: const Duration(seconds: 2));
+              },
+            ),
+          ],
+        ),
+      );
+    }
+    // 手机：保持小图标 IconTheme 30
     return Container(
-      width: car ? 72 : 44,
+      width: 44,
       margin: const EdgeInsets.only(right: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 旋转按钮已按用户要求移除（保留 _toggleRotation/_orient 供系统旋转/恢复逻辑使用）
           IconTheme(
             data: IconThemeData(size: side),
             child: LyricSizeControls(settings: widget.settings),
@@ -277,11 +316,11 @@ class _PlayerPageState extends State<PlayerPage> {
               tooltip: '上传到NAS',
               icon: Icon(Icons.cloud_upload_outlined),
               onPressed: () async {
-              showTopToast(context, '正在上传到NAS…');
-              final msg = await widget.controller.uploadCurrentToNas();
-              if (!context.mounted) return;
-              showTopToast(context, msg, duration: const Duration(seconds: 2));
-            },
+                showTopToast(context, '正在上传到NAS…');
+                final msg = await widget.controller.uploadCurrentToNas();
+                if (!context.mounted) return;
+                showTopToast(context, msg, duration: const Duration(seconds: 2));
+              },
             ),
           ),
         ],
@@ -1072,9 +1111,10 @@ bool _carUI(BuildContext context) =>
 
 /// 小玻璃圆钮（歌名行两侧：首页/返回）
 class _MiniCornerButton extends StatelessWidget {
-  const _MiniCornerButton({required this.icon, required this.onTap});
+  const _MiniCornerButton({required this.icon, this.onTap, this.color});
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final Color? color;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1089,7 +1129,7 @@ class _MiniCornerButton extends StatelessWidget {
             child: SizedBox(
               // [xmusic] 2026-09-28 手机主页/返回也加大：56 容器 / 40 图标（对齐控制栏图标），车机 64/48
               width: _carUI(context) ? 64 : 56, height: _carUI(context) ? 64 : 56,
-              child: Icon(icon, size: _carUI(context) ? 48 : 40, color: theme.colorScheme.onSurface),
+              child: Icon(icon, size: _carUI(context) ? 48 : 40, color: color ?? theme.colorScheme.onSurface),
             ),
           ),
         ),
@@ -1227,9 +1267,9 @@ class _Controls extends StatelessWidget {
     final gap = compact ? 20.0 : 20.0;
     // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
     final car = isCarScreen(context);
-    final playSize = car ? 48.0 : 40.0;
-    final navSize = car ? 48.0 : 40.0;
-    final sideIcon = car ? 48.0 : 40.0;
+    final playSize = car ? 56.0 : 40.0;
+    final navSize = car ? 56.0 : 40.0;
+    final sideIcon = car ? 56.0 : 40.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
