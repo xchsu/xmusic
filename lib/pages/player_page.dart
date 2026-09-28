@@ -237,7 +237,7 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _actionSidebar(BuildContext context) {
     // [xmusic] 2026-09-28 右侧按钮：车机 64；手机统一 30（含上传NAS，用户嫌手机竖屏 NAS 太大）、栏宽 72/44
     final car = _carUI(context);
-    final side = car ? 64 : 30;
+    final double side = car ? 64 : 30;
     return Container(
       width: car ? 72 : 44,
       margin: const EdgeInsets.only(right: 8),
