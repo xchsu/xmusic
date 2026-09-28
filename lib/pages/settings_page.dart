@@ -320,6 +320,8 @@ class SettingsPage extends StatelessWidget {
             builder: (context, snap) {
               final p = snap.data ?? const <dynamic, dynamic>{};
               final overlay = (p['overlay'] ?? false) == true;
+              final usage = (p['usageStats'] ?? false) == true;
+              final acc = (p['accessibility'] ?? false) == true;
               return Column(
                 children: [
                   ListTile(
@@ -329,6 +331,24 @@ class SettingsPage extends StatelessWidget {
                     trailing: TextButton(
                       onPressed: () => LyricOverlay.requestOverlay(),
                       child: Text(overlay ? '已开启' : '去开启'),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.manage_search_rounded),
+                    title: const Text('使用情况访问（识别迪友桌面）'),
+                    subtitle: Text(usage ? '已授予' : '未授予（用于识别当前是否迪友桌面）'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestUsageStats(),
+                      child: Text(usage ? '已开启' : '去开启'),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.accessibility_new_rounded),
+                    title: const Text('无障碍服务（识别迪友桌面）'),
+                    subtitle: Text(acc ? '已授予' : '未授予（用于识别当前是否迪友桌面）'),
+                    trailing: TextButton(
+                      onPressed: () => LyricOverlay.requestAccessibility(),
+                      child: Text(acc ? '已开启' : '去开启'),
                     ),
                   ),
                 ],
