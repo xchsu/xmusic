@@ -26,6 +26,11 @@ import '../widgets.dart';
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key, required this.settings, required this.controller});
 
+  /// 路由名：用于播放页单例去重（popUntil 定位）。
+  static const String routeName = 'playerPage';
+  /// 当前栈中播放页实例数（>=1 说明已有一层，点歌不再重复 push）。
+  static int _stackCount = 0;
+
   final AppSettings settings;
   final PlayerController controller;
 
@@ -40,6 +45,7 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void initState() {
     super.initState();
+    PlayerPage._stackCount++;
     // 显式允许所有四个方向（空列表在某些版本不生效/反而锁方向），跟随系统自动旋转
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -51,6 +57,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   @override
   void dispose() {
+    PlayerPage._stackCount--;
     // 离开播放页时还原系统方向（允许所有方向），避免把其他页面锁住
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
