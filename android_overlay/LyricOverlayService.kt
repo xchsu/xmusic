@@ -177,7 +177,7 @@ class LyricOverlayService : Service() {
         root.setPadding((16 * d).toInt(), (10 * d).toInt(), (16 * d).toInt(), (10 * d).toInt())
 
         val bg = GradientDrawable()
-        bg.cornerRadius = (14 * d).toInt()
+        bg.cornerRadius = (14 * d).toFloat()
         bg.setColor(0xB8000000.toInt()) // 深色玻璃半透明底
         root.background = bg
 
