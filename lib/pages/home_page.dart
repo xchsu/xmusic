@@ -313,15 +313,15 @@ class _HomePageState extends State<HomePage> {
                 // [xmusic] 2026-09-24 车机横屏参考网易云车机版：一行6个、方形封面+下方标题，
                 // 卡片更小不占满整屏；手机仍 3 列。
                 final car = isCarScreen(context);
-                // [xmusic] 2026-09-28 横屏减小卡片：GridView.extent 自动多列、每图限宽~176
-                return GridView.extent(
-                  maxCrossAxisExtent: car ? 176 : 118,
+                final carP = car && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
+                // 车机竖屏固定 3 列；横屏/手机仍 extent 自动多列
+                return GridView(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  mainAxisSpacing: car ? 12 : 10,
-                  crossAxisSpacing: car ? 10 : 10,
-                  childAspectRatio: car ? 0.98 : 1.1,
+                  gridDelegate: carP
+                      ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.98)
+                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.98 : 1.1),
                   children: lists.map((t) => _toplistCard(
                     t['name'] as String,
                     t['id'] as String,
@@ -355,14 +355,14 @@ class _HomePageState extends State<HomePage> {
               future: _qqPlaylists,
               builder: (context, snap) {
                 final list = snap.data ?? const [];
-                return GridView.extent(
-                  maxCrossAxisExtent: isCarScreen(context) ? 176 : 118,
+                final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
+                return GridView(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  mainAxisSpacing: isCarScreen(context) ? 12 : 10,
-                  crossAxisSpacing: isCarScreen(context) ? 10 : 10,
-                  childAspectRatio: isCarScreen(context) ? 0.86 : 0.72,
+                  gridDelegate: _carP
+                      ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
+                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.86 : 0.72),
                   children: list.map((p) => _qqPlaylistCard(
                     p['name'] as String,
                     p['dissid'] as String,
@@ -384,16 +384,15 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            GridView.extent(
-              maxCrossAxisExtent: isCarScreen(context) ? 176 : 118,
+            LayoutBuilder(builder: (context, c) => GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              mainAxisSpacing: isCarScreen(context) ? 12 : 10,
-              crossAxisSpacing: isCarScreen(context) ? 10 : 10,
-              childAspectRatio: isCarScreen(context) ? 0.86 : 0.72,
+              gridDelegate: (isCarScreen(context) && c.maxWidth < c.maxHeight)
+                  ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
+                  : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.86 : 0.72),
               children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
-            ),
+            )),
                       ],
           ),
       ),

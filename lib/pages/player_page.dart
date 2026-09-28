@@ -1267,9 +1267,9 @@ class _Controls extends StatelessWidget {
     final gap = compact ? 20.0 : 20.0;
     // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
     final car = isCarScreen(context);
-    final playSize = car ? 56.0 : 40.0;
-    final navSize = car ? 56.0 : 40.0;
-    final sideIcon = car ? 56.0 : 40.0;
+    final playSize = car ? 62.0 : 40.0;
+    final navSize = car ? 62.0 : 40.0;
+    final sideIcon = car ? 62.0 : 40.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
