@@ -8,7 +8,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../app_version.dart';
 import '../permissions.dart';
 import '../player_controller.dart';
-import '../lyric_overlay.dart';
 import '../settings.dart';
 import '../widgets.dart';
 
@@ -295,64 +294,6 @@ class SettingsPage extends StatelessWidget {
             subtitle: const Text('强制走车机 UI（大图标/横屏布局/字体放大）\n不上车也能用手机预览车机效果'),
             value: settings.carSim,
             onChanged: (v) => settings.setCarSim(v),
-          ),
-          const Divider(),
-
-          // ===== 歌词悬浮窗（车机桌面） =====
-          _sectionTitle(theme, '歌词悬浮窗'),
-          SwitchListTile(
-            secondary: const Icon(Icons.language_rounded),
-            title: const Text('歌词悬浮窗'),
-            subtitle: const Text('播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；仅需「悬浮窗权限」\n车机大屏拿不到前台权限，播放中自动常显'),
-            value: settings.lyricOverlay,
-            onChanged: (v) async {
-              await settings.setLyricOverlay(v);
-              if (v) {
-                await LyricOverlay.enable();
-              } else {
-                await LyricOverlay.disable();
-              }
-            },
-          ),
-          FutureBuilder<Map<dynamic, dynamic>?>(
-            future: LyricOverlay.checkPermissions(),
-            builder: (context, snap) {
-              final p = snap.data ?? const <dynamic, dynamic>{};
-              final overlay = (p['overlay'] ?? false) == true;
-              final usage = (p['usageStats'] ?? false) == true;
-              final acc = (p['accessibility'] ?? false) == true;
-              return Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.ondemand_video_rounded),
-                    title: const Text('悬浮窗权限'),
-                    subtitle: Text(overlay ? '已授予' : '未授予'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestOverlay(),
-                      child: Text(overlay ? '已开启' : '去开启'),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.manage_search_rounded),
-                    title: const Text('使用情况访问（识别迪友桌面）'),
-                    subtitle: Text(usage ? '已授予' : '未授予（用于识别当前是否迪友桌面）'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestUsageStats(),
-                      child: Text(usage ? '已开启' : '去开启'),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.accessibility_new_rounded),
-                    title: const Text('无障碍服务（识别迪友桌面）'),
-                    subtitle: Text(acc ? '已授予' : '未授予（用于识别当前是否迪友桌面）'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestAccessibility(),
-                      child: Text(acc ? '已开启' : '去开启'),
-                    ),
-                  ),
-                ],
-              );
-            },
           ),
           const Divider(),
 

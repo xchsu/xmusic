@@ -195,11 +195,11 @@ class _PlayerPageState extends State<PlayerPage> {
                   children: [
               Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800, fontSize: 26, height: 1.2)),
+                  fontWeight: FontWeight.w800, fontSize: 22, height: 1.2)),
               const SizedBox(height: 4),
               Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
+                  color: theme.colorScheme.onSurfaceVariant, fontSize: 14)),
               // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
               if (widget.controller.loadingUrl) ...[
                 const SizedBox(height: 6),
@@ -1128,8 +1128,8 @@ class _MiniCornerButton extends StatelessWidget {
             onTap: onTap,
             child: SizedBox(
               // [xmusic] 2026-09-28 手机主页/返回也加大：56 容器 / 40 图标（对齐控制栏图标），车机 64/48
-              width: _carUI(context) ? 64 : 56, height: _carUI(context) ? 64 : 56,
-              child: Icon(icon, size: _carUI(context) ? 48 : 40, color: color ?? theme.colorScheme.onSurface),
+              width: _carUI(context) ? 64 : 44, height: _carUI(context) ? 64 : 44,
+              child: Icon(icon, size: _carUI(context) ? 48 : 30, color: color ?? theme.colorScheme.onSurface),
             ),
           ),
         ),
