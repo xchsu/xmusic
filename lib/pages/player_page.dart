@@ -348,7 +348,7 @@ class _PlayerPageState extends State<PlayerPage> {
           ),
           IconButton(
             tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined, size: car ? 48 : 30),
+            icon: Icon(Icons.cloud_upload_outlined, size: car ? 64 : 36),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
@@ -1159,8 +1159,8 @@ class _MiniCornerButton extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              width: _carUI(context) ? 128 : 40, height: _carUI(context) ? 128 : 40,
-              child: Icon(icon, size: _carUI(context) ? 76 : 20, color: theme.colorScheme.onSurface),
+              width: _carUI(context) ? 64 : 40, height: _carUI(context) ? 64 : 40,
+              child: Icon(icon, size: _carUI(context) ? 48 : 20, color: theme.colorScheme.onSurface),
             ),
           ),
         ),

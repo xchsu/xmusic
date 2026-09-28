@@ -226,6 +226,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('音素'),
         actions: [
@@ -395,15 +396,6 @@ class _HomePageState extends State<HomePage> {
               crossAxisSpacing: isCarScreen(context) ? 10 : 10,
               childAspectRatio: isCarScreen(context) ? 0.86 : 0.72,
               children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
-            ),
-            // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-              child: Text('歌单推荐',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white),
-              ),
             ),
                       ],
           ),
@@ -811,8 +803,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final error = widget.error;
     final onRetry = widget.onRetry;
     return Scaffold(
-      // 不透明背景：避免半透明主题透出下层页面导致列表区域视觉混乱（0.2.x 修复回归）
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(title)),
       body: Column(
         children: [

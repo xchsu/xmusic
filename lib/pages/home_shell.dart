@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../cover_glass.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 import 'home_page.dart';
@@ -75,7 +76,18 @@ class _HomeShellState extends State<HomeShell> {
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _tab, children: pages),
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: CoverGlassBackground(
+              controller: widget.controller,
+              settings: widget.settings,
+            ),
+          ),
+          IndexedStack(index: _tab, children: pages),
+        ],
+      ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

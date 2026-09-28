@@ -263,6 +263,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final r = _results;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: TextField(
           controller: _query,
