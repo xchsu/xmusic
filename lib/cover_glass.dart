@@ -50,7 +50,7 @@ class CoverGlassBackground extends StatelessWidget {
                 child: ColoredBox(
                   color: customBg ?? cs.surface,
                   child: Opacity(
-                    opacity: 0.25,
+                    opacity: 0.32,
                     child: ImageFiltered(
                       imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
                       child: _coverImage(coverUrl!, cs),
