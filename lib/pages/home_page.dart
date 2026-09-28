@@ -802,6 +802,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     return BigScreenText(
       child: Scaffold(
       backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(title: Text(title)),
       body: PageBackground(
         controller: widget.controller,
