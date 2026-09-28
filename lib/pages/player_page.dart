@@ -242,12 +242,11 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-28 车机整套图标统一 48（与左上角主页/返回、底部控制栏一致）；
-    // 手机右侧 30（用户嫌手机竖屏 NAS 图标太大），栏宽 60/44
+    // [xmusic] 2026-09-28 右侧按钮：车机 64；手机统一 30（含上传NAS，用户嫌手机竖屏 NAS 太大）、栏宽 72/44
     final car = _carUI(context);
-    final double side = car ? 48 : 30;
+    final double side = car ? 64 : 30;
     return Container(
-      width: car ? 60 : 44,
+      width: car ? 72 : 44,
       margin: const EdgeInsets.only(right: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -257,16 +256,18 @@ class _PlayerPageState extends State<PlayerPage> {
             data: IconThemeData(size: side),
             child: LyricSizeControls(settings: widget.settings),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 6),
           IconTheme(
             data: IconThemeData(size: side),
             child: _FavoriteButton(controller: widget.controller),
           ),
+          const SizedBox(height: 6),
           IconButton(
             tooltip: '下载',
             icon: Icon(Icons.download_rounded, size: side),
             onPressed: () => _downloadMenu(context),
           ),
+          const SizedBox(height: 6),
           IconButton(
             tooltip: '上传到NAS',
             icon: Icon(Icons.cloud_upload_outlined, size: side),
