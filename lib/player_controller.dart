@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
@@ -54,6 +55,7 @@ class PlayerController extends ChangeNotifier {
   int index = -1;
   Lyrics? lyrics;
   bool lyricsLoading = false;
+  ui.Color? coverTint; // 当前播放封面主色（全局封面玻璃背景，随切歌更新）
   // 默认随机播放（用户要求：播放界面控制栏默认随机）
   PlayMode _repeat = PlayMode.shuffle;
   final Random _rnd = Random();
@@ -333,6 +335,7 @@ class PlayerController extends ChangeNotifier {
     if (token != _playToken) return;
     index = i;
     notifyListeners();
+    unawaited(refreshCoverTint());
     _applyLoopMode();
     _loadLyrics();
     // 开始播放时若歌曲无封面，自动按歌名+歌手搜索封面（网易云），成功后刷新播放页/通知栏
@@ -382,6 +385,7 @@ class PlayerController extends ChangeNotifier {
               await player.setUrl(u2);
               index = i;
               notifyListeners();
+              unawaited(refreshCoverTint());
               _applyLoopMode();
               _loadLyrics();
               if (autoplay) await player.play();
@@ -424,6 +428,7 @@ class PlayerController extends ChangeNotifier {
     queue = List.of(songs);
     index = startIndex;
     notifyListeners();
+    unawaited(refreshCoverTint());
     try {
       await _loadAndPlay(startIndex, autoplay: true);
     } catch (e) {
@@ -443,6 +448,45 @@ class PlayerController extends ChangeNotifier {
     try {
       await _loadAndPlay(i);
     } catch (e) { lastError = e.toString(); notifyListeners(); }
+  }
+
+  /// 提取当前播放封面主色到 coverTint（全局封面玻璃背景），失败静默（保持原值）。
+  Future<void> refreshCoverTint() async {
+    final s = current;
+    if (s == null) return;
+    String? url;
+    try {
+      url = s.coverUrl?.isNotEmpty == true
+          ? s.coverUrl!
+          : client.coverUrl(s.coverArt, size: 600)?.toString();
+    } catch (_) { url = null; }
+    if (url == null || url.isEmpty) return;
+    try {
+      final resp = await http.get(Uri.parse(url), headers: const {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://music.163.com/',
+      }).timeout(const Duration(seconds: 8));
+      if (resp.statusCode != 200) return;
+      final codec = await ui.instantiateImageCodec(resp.bodyBytes);
+      final frame = await codec.getNextFrame();
+      final img = frame.image;
+      final bd = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (bd == null) return;
+      final bytes = bd.buffer.asUint8List();
+      int r = 0, g = 0, b = 0, n = 0;
+      final w = img.width, h = img.height;
+      final step = math.max(1, (w * h) ~/ 4000);
+      for (int y = 0; y < h; y += step) {
+        for (int x = 0; x < w; x += step) {
+          final i = (y * w + x) * 4;
+          if (i + 2 >= bytes.length) continue;
+          r += bytes[i]; g += bytes[i + 1]; b += bytes[i + 2]; n++;
+        }
+      }
+      if (n == 0) return;
+      final tint = ui.Color.fromARGB(255, r ~/ n, g ~/ n, b ~/ n);
+      if (coverTint != tint) { coverTint = tint; notifyListeners(); }
+    } catch (_) {}
   }
 
   void _onCompleted() {
