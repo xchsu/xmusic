@@ -11,6 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Delete old artifacts (keep latest 3)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repo="${{ github.repository }}"
+          total=$(gh api "repos/$repo/actions/artifacts" --paginate -q '.artifacts[].id' | wc -l)
+          echo "artifact count: $total"
+          # API returns newest first; keep the latest 3, delete the rest
+          gh api "repos/$repo/actions/artifacts" --paginate -q '.artifacts[].id' | tail -n +4 | while read id; do
+            gh api -X DELETE "repos/$repo/actions/artifacts/$id" >/dev/null 2>&1 && echo "deleted $id"
+          done
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
