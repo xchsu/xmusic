@@ -30,6 +30,7 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
@@ -65,6 +66,15 @@ class LyricOverlayService : Service() {
     private var line = 0
     private val handler = Handler(Looper.getMainLooper())
     private var loopTask: Runnable? = null
+    private var wmParams: WindowManager.LayoutParams? = null
+    private var sizeSp = 15f
+    private var minusBtn: TextView? = null
+    private var plusBtn: TextView? = null
+    private var startRawX = 0f
+    private var startRawY = 0f
+    private var dragDx = 0f
+    private var dragDy = 0f
+    private var moved = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -86,7 +96,7 @@ class LyricOverlayService : Service() {
                     line = intent.getIntExtra(EXTRA_LINE, 0)
                     titleView?.text = title
                     artistView?.text = artist
-                    lyricView?.text = highlightLyric(_lyric, line)
+                    applyLyricSize()
                     vinylView?.let { (it as VinylView).startSpin() }
                 }
             }
@@ -178,23 +188,26 @@ class LyricOverlayService : Service() {
         else if (!show && added) removeView()
     }
 
-    /** 竖屏播放界面样式：旋转黑胶 + 歌名/歌手 + 歌词高亮（不含播放控制栏）。 */
+    /** 竖屏播放界面样式：旋转黑胶 + 歌名/歌手 + 歌词4行（可拖动、字号可调）。 */
     private fun addView() {
         if (added) return
+        val d = resources.displayMetrics.density
+        val w = (300 * d).toInt()
         val lp = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            w,
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         )
-        lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        lp.y = (resources.displayMetrics.density * 40).toInt()
-        val d = resources.displayMetrics.density
+        lp.gravity = Gravity.TOP or Gravity.START
+        val sw = resources.displayMetrics.widthPixels
+        lp.x = ((sw - w) / 2)
+        lp.y = (d * 60).toInt()
+        wmParams = lp
 
         // 根容器：圆角半透明玻璃
         val rootV = FrameLayout(this)
@@ -207,7 +220,7 @@ class LyricOverlayService : Service() {
         col.orientation = LinearLayout.VERTICAL
         col.gravity = Gravity.CENTER_HORIZONTAL
         col.setPadding((18 * d).toInt(), (14 * d).toInt(), (18 * d).toInt(), (14 * d).toInt())
-        col.layoutParams = FrameLayout.LayoutParams((300 * d).toInt(), FrameLayout.LayoutParams.WRAP_CONTENT)
+        col.layoutParams = FrameLayout.LayoutParams(w, FrameLayout.LayoutParams.WRAP_CONTENT)
 
         // 旋转黑胶
         val vinyl = VinylView(this)
@@ -231,17 +244,29 @@ class LyricOverlayService : Service() {
         tvArtist.setTextSize(13f)
         tvArtist.gravity = Gravity.CENTER
 
-        // 歌词：多行，当前行高亮
+        // 歌词 4 行（当前行居中高亮）
         val tvLyric = TextView(this)
-        tvLyric.setTextSize(15f)
+        tvLyric.setTextSize(sizeSp)
         tvLyric.gravity = Gravity.CENTER
         tvLyric.setLineSpacing(0f, 1.25f)
-        tvLyric.text = highlightLyric(_lyric, line)
+        tvLyric.text = buildLyricWindow(_lyric, line, sizeSp)
+
+        // 字号调节按钮（− / +）
+        val sizeRow = LinearLayout(this)
+        sizeRow.orientation = LinearLayout.HORIZONTAL
+        sizeRow.gravity = Gravity.CENTER_HORIZONTAL
+        val minus = smallTextBtn("−", d)
+        val plus = smallTextBtn("+", d)
+        sizeRow.addView(minus)
+        sizeRow.addView(plus)
+        minusBtn = minus
+        plusBtn = plus
 
         col.addView(vinyl)
         col.addView(tvTitle)
         col.addView(tvArtist)
         col.addView(tvLyric)
+        col.addView(sizeRow)
         rootV.addView(col)
 
         vinylView = vinyl
@@ -252,29 +277,97 @@ class LyricOverlayService : Service() {
         try {
             wm?.addView(rootV, lp)
             added = true
+            rootV.setOnTouchListener(overlayTouchListener)
         } catch (_: Exception) {
             added = false
         }
     }
 
-    /** 歌词高亮：当前行白色加粗放大，其他行半透明白。 */
-    private fun highlightLyric(full: String, curLine: Int): CharSequence {
+    /** 构建歌词窗口：取当前行居中的 4 行，当前行白色加粗放大，其他行半透明白。 */
+    private fun buildLyricWindow(full: String, curLine: Int, sizeSp: Float): CharSequence {
         if (full.isEmpty()) return ""
-        val lines = full.split("\n")
-        val sp = SpannableString(full)
-        var start = 0
-        for (i in lines.indices) {
-            val end = start + lines[i].length
-            if (i == curLine) {
-                sp.setSpan(StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                sp.setSpan(ForegroundColorSpan(0xFFFFFFFF.toInt()), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                sp.setSpan(RelativeSizeSpan(1.15f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        val all = full.split("\n")
+        val total = all.size
+        val start = (curLine - 1).coerceIn(0, (total - 4).coerceAtLeast(0))
+        val end = (start + 4).coerceAtMost(total)
+        val slice = all.subList(start, end)
+        val relCur = (curLine - start).coerceIn(0, 3)
+        val sb = StringBuilder()
+        for (i in slice.indices) { if (i > 0) sb.append('\n'); sb.append(slice[i]) }
+        val sp = SpannableString(sb.toString())
+        var pos = 0
+        for (i in slice.indices) {
+            val len = slice[i].length
+            if (i == relCur) {
+                sp.setSpan(StyleSpan(Typeface.BOLD), pos, pos + len, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sp.setSpan(ForegroundColorSpan(0xFFFFFFFF.toInt()), pos, pos + len, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sp.setSpan(RelativeSizeSpan(1.15f), pos, pos + len, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             } else {
-                sp.setSpan(ForegroundColorSpan(0x8CFFFFFF.toInt()), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sp.setSpan(ForegroundColorSpan(0x8CFFFFFF.toInt()), pos, pos + len, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
-            start = end + 1
+            pos += len + 1
         }
         return sp
+    }
+
+    /** 应用字号并刷新歌词 4 行。 */
+    private fun applyLyricSize() {
+        lyricView?.let { it.setTextSize(sizeSp); it.text = buildLyricWindow(_lyric, line, sizeSp) }
+    }
+
+    /** 字号调节小按钮。 */
+    private fun smallTextBtn(text: String, d: Float): TextView {
+        val tv = TextView(this)
+        tv.text = text
+        tv.setTextSize(18f)
+        tv.setTextColor(0xFFFFFFFF.toInt())
+        tv.gravity = Gravity.CENTER
+        tv.setPadding((14 * d).toInt(), 0, (14 * d).toInt(), 0)
+        tv.setBackgroundColor(0x22FFFFFF.toInt())
+        return tv
+    }
+
+    /** 点击检测：未拖动时，点到字号按钮则调节。 */
+    private fun checkButtonTap(rawX: Float, rawY: Float) {
+        minusBtn?.let { b ->
+            val loc = IntArray(2); b.getLocationOnScreen(loc)
+            if (rawX >= loc[0] && rawX <= loc[0] + b.width && rawY >= loc[1] && rawY <= loc[1] + b.height) {
+                sizeSp = (sizeSp - 1f).coerceAtLeast(11f); applyLyricSize(); return
+            }
+        }
+        plusBtn?.let { b ->
+            val loc = IntArray(2); b.getLocationOnScreen(loc)
+            if (rawX >= loc[0] && rawX <= loc[0] + b.width && rawY >= loc[1] && rawY <= loc[1] + b.height) {
+                sizeSp = (sizeSp + 1f).coerceAtMost(28f); applyLyricSize(); return
+            }
+        }
+    }
+
+    /** 窗口拖动 + 点击判断。 */
+    private val overlayTouchListener = View.OnTouchListener { v, e ->
+        when (e.action) {
+            MotionEvent.ACTION_DOWN -> {
+                startRawX = e.rawX; startRawY = e.rawY
+                val lp = wmParams ?: return@OnTouchListener false
+                dragDx = startRawX - lp.x; dragDy = startRawY - lp.y
+                moved = false
+                true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val th = (resources.displayMetrics.density * 6).toInt().toFloat()
+                if (kotlin.math.abs(e.rawX - startRawX) > th || kotlin.math.abs(e.rawY - startRawY) > th) {
+                    val lp = wmParams ?: return@OnTouchListener true
+                    lp.x = (e.rawX - dragDx).toInt(); lp.y = (e.rawY - dragDy).toInt()
+                    wm?.updateViewLayout(v, lp); moved = true
+                }
+                true
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!moved) checkButtonTap(e.rawX, e.rawY)
+                true
+            }
+            else -> false
+        }
     }
 
     /** 黑胶唱片视图：同心圆纹路 + 中心标签 + 中心孔，持续旋转。 */
