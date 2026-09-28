@@ -125,10 +125,25 @@ class LyricOverlayService : Service() {
         return null
     }
 
+    /** 车机/无前台权限时的兜底：用当前窗口类型判断是否全屏(桌面/普通应用)；悬浮小窗/遮罩不浮 */
+    private fun currentIsFullscreen(): Boolean {
+        return try {
+            val t = (getSystemService(Context.WINDOW_SERVICE) as WindowManager).currentWindowType
+            t == WindowManager.LayoutParams.TYPE_BASE_APPLICATION ||
+                t == WindowManager.LayoutParams.TYPE_APPLICATION_START ||
+                t == WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG ||
+                t == WindowManager.LayoutParams.TYPE_APPLICATION_PANEL
+        } catch (_: Exception) { false }
+    }
+
     private fun updateVisibility() {
         val launcher = launcherPackage()
         val top = topPackage()
-        val show = launcher != null && top == launcher && _lyric.isNotEmpty()
+        // 手机：前台包=迪友桌面才浮；车机/拿不到前台权限(UsageStats/无障碍)：仅当当前为全屏(桌面)时浮，小窗/遮罩不浮
+        val show = _lyric.isNotEmpty() && (
+            (launcher != null && top == launcher) ||
+            (top == null && currentIsFullscreen())
+        )
         if (show && !added) addView()
         else if (!show && added) removeView()
     }
