@@ -1273,3 +1273,23 @@ class _Controls extends StatelessWidget {
     );
   }
 }
+
+
+/// 播放页单例入口：栈中已存在播放页则归一到最上层（不重复 push），
+/// 否则 push 一层。避免从不同列表反复点歌把播放页堆叠多层（“返回要两次”）。
+Future<void> openPlayerPage(
+  BuildContext context, {
+  required AppSettings settings,
+  required PlayerController controller,
+}) async {
+  final nav = Navigator.of(context);
+  if (PlayerPage._stackCount > 0) {
+    nav.popUntil(
+        (r) => r.isFirst || r.settings.name == PlayerPage.routeName);
+    return;
+  }
+  await nav.push(MaterialPageRoute(
+    settings: const RouteSettings(name: PlayerPage.routeName),
+    builder: (_) => PlayerPage(settings: settings, controller: controller),
+  ));
+}

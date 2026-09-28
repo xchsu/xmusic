@@ -5,6 +5,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'mini_player.dart';
 import 'player_page.dart';
 
@@ -71,12 +72,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
     await widget.controller.playQueue(songs, index);
     if (mounted) setState(() {});
     if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PlayerPage(
-          settings: widget.settings,
-          controller: widget.controller,
-        ),
-      ));
+      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     }
   }
 
@@ -87,7 +83,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
       // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(widget.playlist.name)),
-      body: Column(
+      body: PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        child: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Song>>(
@@ -184,7 +183,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
           ),
           MiniPlayer(settings: widget.settings, controller: widget.controller),
         ],
-      ),
+      )),
     ));
   }
 }

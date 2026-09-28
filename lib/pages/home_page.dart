@@ -104,12 +104,7 @@ class _HomePageState extends State<HomePage> {
     await widget.controller.playQueue(songs, index);
     if (mounted) setState(() {});
     if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PlayerPage(
-          settings: widget.settings,
-          controller: widget.controller,
-        ),
-      ));
+      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     }
   }
 
@@ -807,7 +802,10 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(title)),
-      body: Column(
+      body: PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        child: Column(
         children: [
           Expanded(
             child: Column(
@@ -914,7 +912,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         // 避免个别设备上 bottomNavigationBar 槽位把迷你条撑满全屏、挤没列表（0.2.x 修复回归）
         MiniPlayer(settings: settings, controller: controller),
       ],
-      ),
+      )),
     ));
   }
 }

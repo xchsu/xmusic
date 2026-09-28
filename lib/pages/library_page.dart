@@ -127,12 +127,7 @@ class _FavoriteTabState extends State<_FavoriteTab> {
     await widget.controller.playQueue(songs, i);
     if (mounted) setState(() {});
     if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PlayerPage(
-          settings: widget.settings,
-          controller: widget.controller,
-        ),
-      ));
+      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     }
   }
 
@@ -683,12 +678,7 @@ class _LocalTabState extends State<_LocalTab> {
     await widget.controller.playQueue(_songs, i);
     if (mounted) setState(() {});
     if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PlayerPage(
-          settings: widget.settings,
-          controller: widget.controller,
-        ),
-      ));
+      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     }
   }
 

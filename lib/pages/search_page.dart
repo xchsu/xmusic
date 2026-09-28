@@ -8,6 +8,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
 import 'player_page.dart';
@@ -181,12 +182,7 @@ class _SearchPageState extends State<SearchPage> {
       _showSnack('播放失败: ${widget.controller.lastError}');
     }
     if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PlayerPage(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
-    ));
+    await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     if (mounted) setState(() {});
   }
 
@@ -357,7 +353,11 @@ class _SearchPageState extends State<SearchPage> {
           ),
         ),
       ),
-      body: _mode <= 1 ? _localBody(context, r) : _externalBody(),
+      body: PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        child: _mode <= 1 ? _localBody(context, r) : _externalBody(),
+      ),
     ));
   }
 

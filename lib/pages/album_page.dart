@@ -4,6 +4,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'mini_player.dart';
 
 class AlbumPage extends StatefulWidget {
@@ -48,7 +49,10 @@ class _AlbumPageState extends State<AlbumPage> {
       // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(album.name)),
-      body: Column(
+      body: PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        child: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Song>>(
@@ -173,7 +177,7 @@ class _AlbumPageState extends State<AlbumPage> {
             controller: widget.controller,
           ),
         ],
-      ),
+      )),
     ));
   }
 }

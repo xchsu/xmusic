@@ -41,11 +41,8 @@ class _HomeShellState extends State<HomeShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _autoOpened) return;
       _autoOpened = true;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) =>
-              PlayerPage(settings: widget.settings, controller: widget.controller),
-        ),
+      openPlayerPage(
+        context, settings: widget.settings, controller: widget.controller,
       );
     });
   }

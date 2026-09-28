@@ -39,10 +39,9 @@ class MiniPlayer extends StatelessWidget {
             ),
           ),
           child: InkWell(
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) =>
-                  PlayerPage(settings: settings, controller: controller),
-            )),
+            onTap: () => openPlayerPage(
+              context, settings: settings, controller: controller,
+            ),
             child: Padding(
               // 底部避让系统手势条：用 clamp 限制最大高度。
               // 某些设备/透明窗口下 MediaQuery.padding.bottom 会被撑到近全屏，
