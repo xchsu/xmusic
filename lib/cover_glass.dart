@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui' show ImageFilter;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -43,21 +42,21 @@ class CoverGlassBackground extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
-            // 1) 主体：跟随系统主题表面色（浅色近白 / 深色近黑），默认不加额外颜色
-            ColoredBox(color: cs.surface),
-            // 2) 当前封面：模糊后透明铺底（随切歌自动更新），玻璃质感透出封面图片。
-            //    透明度保证封面明显可见（用户反馈 0.20 太淡看起来像纯色）。
             if (useCover)
+              // 开启「当前歌曲封面」：全界面无额外颜色添加，
+              // 仅把当前封面以 40% 透明铺底（玻璃质感，随切歌更新）。
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.38,
-                  child: ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                    child: _coverImage(coverUrl!, cs),
-                  ),
+                  opacity: 0.40,
+                  child: _coverImage(coverUrl!, cs),
                 ),
+              )
+            else
+              // 未开启封面：保持原有自定义色或系统主题表面底
+              ColoredBox(
+                color: customBg ?? cs.surface,
               ),
-            // 3) 自定义背景色：勾选时以半透明叠在封面之上混合，不默认加色
+            // 可选叠加自定义颜色（用户主动勾选时，半透明叠在封面之上混合）
             if (customBg != null)
               Positioned.fill(child: ColoredBox(color: customBg)),
           ],
