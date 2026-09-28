@@ -42,22 +42,28 @@ class CoverGlassBackground extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
-            // 1) 封面图片铺底（透出封面，切歌自动换图）；关闭时用自定义背景色/主题表面
+            // 1) 主体：跟随系统的主题表面色（浅色近白 / 深色近黑），保留玻璃壁纸透出
+            ColoredBox(
+              color: customBg ??
+                  cs.surface.withValues(alpha: isDark ? 0.55 : 0.92),
+            ),
+            // 2) 封面影子：开启封面透出时，只把当前封面淡淡透出（像影子/氛围），
+            //    主体仍主要跟随系统深浅主题，不盖住主题底色。
             if (useCover)
-              _coverImage(coverUrl!, cs)
-            else
-              ColoredBox(color: customBg ?? cs.surface),
-            // 2) 玻璃洗色层：主题色半透明 + 上下渐变（浅色更透、深色沉稳），
-            //    做出“玻璃透出封面”的质感，同时保证文字可读。
+              Positioned.fill(
+                child: Opacity(
+                  opacity: isDark ? 0.20 : 0.24,
+                  child: _coverImage(coverUrl!, cs),
+                ),
+              ),
+            // 3) 玻璃渐变高光（很淡，仅顶部一抹主题色）
             DecoratedBox(
               decoration: BoxDecoration(
-                color: cs.surface.withValues(
-                    alpha: isDark ? (useCover ? 0.35 : 0.50) : (useCover ? 0.16 : 0.36)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    cs.primary.withValues(alpha: useCover ? 0.10 : 0.14),
+                    cs.primary.withValues(alpha: 0.06),
                     Colors.transparent,
                     Colors.transparent,
                   ],
