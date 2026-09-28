@@ -109,19 +109,6 @@ class SettingsPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isTheme) ...[
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('用当前歌曲封面透出背景'),
-                      subtitle: const Text('跟随系统/深浅主题，全App背景透出当前封面图片（玻璃质感）'),
-                      value: settings.coverColorBg,
-                      onChanged: (v) {
-                        setD(() {});
-                        settings.setCoverColorBg(v);
-                      },
-                    ),
-                    const Divider(height: 8),
-                  ],
                   // 十六进制
                   Row(children: [
                     Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
@@ -241,16 +228,21 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(_themeName(settings.themeMode)),
             onTap: () => _showThemeModeDialog(context),
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.wallpaper_rounded),
+            title: const Text('用当前歌曲封面透出背景'),
+            subtitle: const Text('跟随系统/深浅主题，全App背景透出当前封面图片（玻璃质感）'),
+            value: settings.coverColorBg,
+            onChanged: (v) => settings.setCoverColorBg(v),
+          ),
           ListTile(
             leading: const Icon(Icons.color_lens_outlined),
             title: const Text('自定义背景色'),
-            subtitle: Text(settings.coverColorBg
-                ? '封面图片：跟随系统/深浅主题，全App透出当前封面图片'
-                : (settings.bgColor != 0 ? '手动背景色（玻璃透出壁纸）' : '默认玻璃背景')),
-            trailing: (!settings.coverColorBg && settings.bgColor != 0)
+            subtitle: Text(settings.bgColor != 0 ? '手动背景色（玻璃透出壁纸）' : '默认玻璃背景'),
+            trailing: settings.bgColor != 0
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
                 : const Icon(Icons.chevron_right),
-            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: true),
+            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: false),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.play_circle_outline_rounded),
