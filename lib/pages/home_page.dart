@@ -799,15 +799,14 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final coverUrl = widget.coverUrl;
     final error = widget.error;
     final onRetry = widget.onRetry;
-    return BigScreenText(
-      child: Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(title: Text(title)),
-      body: PageBackground(
+    return PageBackground(
         controller: widget.controller,
         settings: widget.settings,
-        child: Column(
+        child: BigScreenText(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: Text(title)),
+      body: Column(
         children: [
           Expanded(
             child: Column(

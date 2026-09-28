@@ -262,25 +262,27 @@ class _PlayerPageState extends State<PlayerPage> {
             child: _FavoriteButton(controller: widget.controller),
           ),
           const SizedBox(height: 6),
-          IconButton(
-            tooltip: '下载',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: Icon(Icons.download_rounded, size: side),
-            onPressed: () => _downloadMenu(context),
+          IconTheme(
+            data: IconThemeData(size: side),
+            child: IconButton(
+              tooltip: '下载',
+              icon: Icon(Icons.download_rounded),
+              onPressed: () => _downloadMenu(context),
+            ),
           ),
           const SizedBox(height: 6),
-          IconButton(
-            tooltip: '上传到NAS',
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: Icon(Icons.cloud_upload_outlined, size: side),
-            onPressed: () async {
+          IconTheme(
+            data: IconThemeData(size: side),
+            child: IconButton(
+              tooltip: '上传到NAS',
+              icon: Icon(Icons.cloud_upload_outlined),
+              onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
               if (!context.mounted) return;
               showTopToast(context, msg, duration: const Duration(seconds: 2));
             },
+            ),
           ),
         ],
       ),
