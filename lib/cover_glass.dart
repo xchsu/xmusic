@@ -77,6 +77,34 @@ class CoverGlassBackground extends StatelessWidget {
     );
   }
 
+
+
+/// 页面级背景封装：给 push 出来的独立路由（搜索/歌单/专辑/歌手等）铺上
+/// 封面玻璃背景，避免透明 Scaffold 透出黑色路由底层。
+class PageBackground extends StatelessWidget {
+  const PageBackground({
+    super.key,
+    required this.controller,
+    required this.settings,
+    required this.child,
+  });
+  final PlayerController controller;
+  final AppSettings settings;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: CoverGlassBackground(controller: controller, settings: settings),
+        ),
+        Positioned.fill(child: child),
+      ],
+    );
+  }
+}
+
   Widget _coverImage(String url, ColorScheme cs) {
     final uri = Uri.tryParse(url);
     if (uri == null) return ColoredBox(color: cs.surface);
