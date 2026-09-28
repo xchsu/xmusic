@@ -475,7 +475,7 @@ class PlayerController extends ChangeNotifier {
       final bytes = bd.buffer.asUint8List();
       int r = 0, g = 0, b = 0, n = 0;
       final w = img.width, h = img.height;
-      final step = math.max(1, (w * h) ~/ 4000);
+      final step = max(1, (w * h) ~/ 4000);
       for (int y = 0; y < h; y += step) {
         for (int x = 0; x < w; x += step) {
           final i = (y * w + x) * 4;
