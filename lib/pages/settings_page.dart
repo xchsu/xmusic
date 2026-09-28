@@ -296,6 +296,17 @@ class SettingsPage extends StatelessWidget {
           ),
           const Divider(),
 
+          // ===== 车机模拟模式 =====
+          _sectionTitle(theme, '车机模拟'),
+          SwitchListTile(
+            secondary: const Icon(Icons.directions_car_filled_rounded),
+            title: const Text('车机模拟模式'),
+            subtitle: const Text('强制走车机 UI（大图标/横屏布局/字体放大）\n不上车也能用手机预览车机效果'),
+            value: settings.carSim,
+            onChanged: (v) => settings.setCarSim(v),
+          ),
+          const Divider(),
+
           // ===== 歌词悬浮窗（车机桌面） =====
           _sectionTitle(theme, '歌词悬浮窗'),
           SwitchListTile(
