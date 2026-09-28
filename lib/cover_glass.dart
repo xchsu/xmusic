@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -42,35 +43,23 @@ class CoverGlassBackground extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
-            // 1) 主体：跟随系统的主题表面色（浅色近白 / 深色近黑），保留玻璃壁纸透出
-            ColoredBox(
-              color: customBg ??
-                  cs.surface.withValues(alpha: isDark ? 0.55 : 0.92),
-            ),
-            // 2) 封面影子：开启封面透出时，只把当前封面淡淡透出（像影子/氛围），
-            //    主体仍主要跟随系统深浅主题，不盖住主题底色。
+            // 1) 主体：跟随系统主题表面色（浅色近白 / 深色近黑），默认不加额外颜色
+            ColoredBox(color: cs.surface),
+            // 2) 当前封面：模糊后 20% 透明铺底（0=全透），随切歌自动更新，
+            //    不默认叠任何颜色，玻璃质感透出封面。
             if (useCover)
               Positioned.fill(
                 child: Opacity(
-                  opacity: isDark ? 0.20 : 0.24,
-                  child: _coverImage(coverUrl!, cs),
+                  opacity: 0.20,
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: _coverImage(coverUrl!, cs),
+                  ),
                 ),
               ),
-            // 3) 玻璃渐变高光（很淡，仅顶部一抹主题色）
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    cs.primary.withValues(alpha: 0.06),
-                    Colors.transparent,
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.45, 1.0],
-                ),
-              ),
-            ),
+            // 3) 自定义背景色：勾选时以半透明叠在封面之上混合，不默认加色
+            if (customBg != null)
+              Positioned.fill(child: ColoredBox(color: customBg)),
           ],
         );
       },
