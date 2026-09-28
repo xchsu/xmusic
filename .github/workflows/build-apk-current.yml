@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -192,3 +192,12 @@ jobs:
         with:
           name: my-player-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v0.4.${{ github.run_number }}"
+          gh release create "$tag" build/app/outputs/flutter-apk/app-release.apk \
+            --title "音素音乐 0.4.${{ github.run_number }}" --notes "自动构建" 2>/dev/null || \
+          gh release upload "$tag" build/app/outputs/flutter-apk/app-release.apk --clobber
