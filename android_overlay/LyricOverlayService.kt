@@ -182,9 +182,9 @@ class LyricOverlayService : Service() {
     private fun updateVisibility() {
         val launcher = launcherPackage()
         val top = topPackage()
-        // 只在设备默认桌面（迪友 launcher）前台时才显示；设置页/迪友小窗/其它 app 一律不浮。
+        // 只在迪友桌面（com.dy.launcher，比亚迪车机桌面）前台时才显示；设置页/小窗/其它 app 一律不浮。
         // 前台识别依赖无障碍/UsageStats 授权；未授权无法判断前台则一律不显示。
-        val show = _lyric.isNotEmpty() && launcher != null && top == launcher
+        val show = _lyric.isNotEmpty() && top == "com.dy.launcher"
         if (show && !added) addView()
         else if (!show && added) removeView()
     }
