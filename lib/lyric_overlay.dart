@@ -13,8 +13,13 @@ class LyricOverlay {
     try { await _ch.invokeMethod('disable'); } catch (_) {}
   }
 
-  static Future<void> updateLyric(String text) async {
-    try { await _ch.invokeMethod('updateLyric', {'text': text}); } catch (_) {}
+  static Future<void> updateLyric(String text,
+      {String title = '', String artist = '', String cover = '', int line = 0}) async {
+    try {
+      await _ch.invokeMethod('updateLyric', {
+        'text': text, 'title': title, 'artist': artist, 'cover': cover, 'line': line,
+      });
+    } catch (_) {}
   }
 
   /// 返回 { overlay, usageStats, accessibility } 三个 bool 的权限状态。

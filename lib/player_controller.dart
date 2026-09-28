@@ -409,7 +409,14 @@ class PlayerController extends ChangeNotifier {
     if (idx == _overlayLine) return;
     _overlayLine = idx;
     if (idx >= 0 && idx < ly.lines.length) {
-      LyricOverlay.updateLyric(ly.lines[idx].text);
+      final cur = current;
+      LyricOverlay.updateLyric(
+        ly.lines[idx].text,
+        title: cur?.title ?? '',
+        artist: cur?.artist ?? '',
+        cover: cur?.coverUrl ?? '',
+        line: idx,
+      );
     }
   }
 
