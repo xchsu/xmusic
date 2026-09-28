@@ -12,13 +12,20 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 
 class LyricOverlayService : Service() {
@@ -26,17 +33,31 @@ class LyricOverlayService : Service() {
         const val ACTION_START = "cn.yinsu.x_music.OVERLAY_START"
         const val ACTION_STOP = "cn.yinsu.x_music.OVERLAY_STOP"
         const val ACTION_UPDATE = "cn.yinsu.x_music.OVERLAY_UPDATE"
-        const val EXTRA_LYRIC = "lyric"
+        const val ACTION_PROGRESS = "cn.yinsu.x_music.OVERLAY_PROGRESS"
+        const val EXTRA_LINES = "lines"
+        const val EXTRA_CURRENT = "current"
+        const val EXTRA_PROGRESS = "progress"
+        const val EXTRA_DURATION = "duration"
         @Volatile var accessibilityForeground: String? = null
         private const val CHANNEL_ID = "xmusic_lyric_overlay"
+        private const val VISIBLE_LINES = 5
     }
 
     private var wm: WindowManager? = null
-    private var view: TextView? = null
+    private var root: LinearLayout? = null
     private var added = false
-    private var _lyric: String = ""
+    private val lyricViews = ArrayList<TextView>()
+    private var progressBar: ProgressBar? = null
+    private var _hasLyric = false
+    private var _lines: List<String> = emptyList()
+    private var _current = -1
+    private var _progressMs = 0
+    private var _durationMs = 0
     private val handler = Handler(Looper.getMainLooper())
     private var loopTask: Runnable? = null
+    private var lp: WindowManager.LayoutParams? = null
+    private var lastX = 0f
+    private var lastY = 0f
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -49,11 +70,22 @@ class LyricOverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_UPDATE -> {
-                val text = intent.getStringExtra(EXTRA_LYRIC) ?: ""
-                if (text.isNotEmpty()) {
-                    _lyric = text
-                    view?.text = text
-                }
+                val lines = intent.getStringArrayListExtra(EXTRA_LINES) ?: emptyList()
+                val current = intent.getIntExtra(EXTRA_CURRENT, -1)
+                val progress = intent.getIntExtra(EXTRA_PROGRESS, 0)
+                val duration = intent.getIntExtra(EXTRA_DURATION, 0)
+                _hasLyric = lines.isNotEmpty() && current >= 0
+                _lines = lines
+                _current = current
+                _progressMs = progress
+                _durationMs = duration
+                renderLyrics()
+                updateProgressBar()
+            }
+            ACTION_PROGRESS -> {
+                _progressMs = intent.getIntExtra(EXTRA_PROGRESS, 0)
+                _durationMs = intent.getIntExtra(EXTRA_DURATION, 0)
+                updateProgressBar()
             }
             ACTION_STOP -> {
                 stopSelf()
@@ -125,51 +157,166 @@ class LyricOverlayService : Service() {
         return null
     }
 
-    /** 车机/大屏判定：最短边 >=480dp 视为车机大屏（车机拿不到前台权限，主界面即桌面）。 */
-    private fun isCarScreen(): Boolean {
-        return try {
-            val dm = resources.displayMetrics
-            val s = kotlin.math.min(dm.widthPixels, dm.heightPixels) / dm.density
-            s >= 480
-        } catch (_: Exception) { false }
-    }
-
+    /**
+     * 显示条件（用户明确要求）：只在「迪友桌面（设备默认启动器/桌面）」在前台时显示。
+     * - 迪友小窗、其它任意 app、其它全屏界面：一律不显示。
+     * - 不再用「车机大屏常显」兜底（此前导致全场景都浮，已被用户否决）。
+     */
     private fun updateVisibility() {
         val launcher = launcherPackage()
         val top = topPackage()
-        // 手机：前台包=迪友桌面才浮；车机(大屏且拿不到前台权限 UsageStats/无障碍)：播放中一律显示
-        // 注：车机无法区分桌面与其它全屏应用/小窗（系统不提供无权限的前台/窗口类型查询），悬浮窗不可触摸不抢焦点，可放心常显。
-        val show = _lyric.isNotEmpty() && (isCarScreen() || (launcher != null && top == launcher))
+        val show = _hasLyric && launcher != null && top != null && top == launcher
         if (show && !added) addView()
         else if (!show && added) removeView()
     }
 
+    private fun buildView(): LinearLayout {
+        val d = resources.displayMetrics.density
+        val root = LinearLayout(this)
+        root.orientation = LinearLayout.VERTICAL
+        root.setPadding((16 * d).toInt(), (10 * d).toInt(), (16 * d).toInt(), (10 * d).toInt())
+
+        val bg = GradientDrawable()
+        bg.cornerRadius = (14 * d).toInt()
+        bg.setColor(0xB8000000.toInt()) // 深色玻璃半透明底
+        root.background = bg
+
+        // 歌词容器：固定 5 行，中间行高亮
+        val box = LinearLayout(this)
+        box.orientation = LinearLayout.VERTICAL
+        box.gravity = Gravity.CENTER
+        lyricViews.clear()
+        for (i in 0 until VISIBLE_LINES) {
+            val tv = TextView(this)
+            tv.setTextColor(0x99FFFFFF.toInt())
+            tv.setTextSize(15f)
+            tv.gravity = Gravity.CENTER
+            tv.setSingleLine(true)
+            tv.ellipsize = android.text.TextUtils.TruncateAt.END
+            tv.setPadding(0, (3 * d).toInt(), 0, (3 * d).toInt())
+            box.addView(tv, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+            lyricViews.add(tv)
+        }
+        root.addView(box)
+
+        // 进度条
+        val pb = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal)
+        pb.max = 1000
+        pb.progress = 0
+        val pbp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            (4 * d).toInt()
+        )
+        pbp.topMargin = (8 * d).toInt()
+        root.addView(pb, pbp)
+        progressBar = pb
+
+        // 时间显示：当前 / 总时长
+        val time = TextView(this)
+        time.setTextColor(0xBBFFFFFF.toInt())
+        time.setTextSize(12f)
+        time.gravity = Gravity.END
+        root.addView(time, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
+        timeView = time
+        return root
+    }
+
+    private var timeView: TextView? = null
+
+    private fun renderLyrics() {
+        if (root == null) return
+        val center = _current
+        for (i in 0 until VISIBLE_LINES) {
+            val tv = lyricViews.getOrNull(i) ?: continue
+            val lineIdx = center - 2 + i
+            val text = if (lineIdx >= 0 && lineIdx < _lines.size) _lines[lineIdx] else ""
+            tv.text = text
+            val isCenter = (i == 2) && lineIdx >= 0 && lineIdx < _lines.size
+            if (isCenter) {
+                tv.setTextColor(0xFFFFFFFF.toInt())
+                tv.setTextSize(17f)
+                tv.setTypeface(null, Typeface.BOLD)
+            } else {
+                tv.setTextColor(0x88FFFFFF.toInt())
+                tv.setTextSize(14f)
+                tv.setTypeface(null, Typeface.NORMAL)
+            }
+        }
+        updateProgressBar()
+        updateTime()
+    }
+
+    private fun updateProgressBar() {
+        val pb = progressBar ?: return
+        if (_durationMs > 0) {
+            pb.progress = ((_progressMs.toFloat() / _durationMs) * 1000).toInt().coerceIn(0, 1000)
+        } else {
+            pb.progress = 0
+        }
+    }
+
+    private fun updateTime() {
+        val tv = timeView ?: return
+        val cur = formatMs(_progressMs)
+        val dur = formatMs(_durationMs)
+        tv.text = "$cur / $dur"
+    }
+
+    private fun formatMs(ms: Int): String {
+        val t = ms / 1000
+        val m = t / 60
+        val s = t % 60
+        return "%02d:%02d".format(m, s)
+    }
+
     private fun addView() {
         if (added) return
-        val lp = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+        val d = resources.displayMetrics.density
+        lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         )
-        lp.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        lp.y = (resources.displayMetrics.density * 40).toInt()
-        val tv = TextView(this)
-        tv.text = _lyric
-        tv.setTextColor(0xFFFFFFFF.toInt())
-        tv.setTextSize(16f)
-        val d = resources.displayMetrics.density
-        tv.setPadding((18 * d).toInt(), (8 * d).toInt(), (18 * d).toInt(), (8 * d).toInt())
-        tv.setBackgroundColor(0x99000000.toInt())
-        tv.setGravity(Gravity.CENTER)
-        view = tv
+        lp!!.gravity = Gravity.TOP or Gravity.LEFT
+        lp!!.x = 0
+        lp!!.y = (90 * d).toInt()
+        val v = buildView()
+        root = v
+        // 拖动
+        v.setOnTouchListener { _, ev ->
+            when (ev.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    lastX = ev.rawX
+                    lastY = ev.rawY
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = ev.rawX - lastX
+                    val dy = ev.rawY - lastY
+                    val params = lp ?: return@setOnTouchListener true
+                    params.x += dx.toInt()
+                    params.y += dy.toInt()
+                    try { wm?.updateViewLayout(v, params) } catch (_: Exception) {}
+                    lastX = ev.rawX
+                    lastY = ev.rawY
+                    true
+                }
+                else -> false
+            }
+        }
+        renderLyrics()
         try {
-            wm?.addView(tv, lp)
+            wm?.addView(v, lp!!)
             added = true
         } catch (_: Exception) {
             added = false
@@ -177,10 +324,13 @@ class LyricOverlayService : Service() {
     }
 
     private fun removeView() {
-        view?.let { v ->
+        root?.let { v ->
             try { wm?.removeView(v) } catch (_: Exception) {}
         }
-        view = null
+        root = null
+        lyricViews.clear()
+        progressBar = null
+        timeView = null
         added = false
     }
 

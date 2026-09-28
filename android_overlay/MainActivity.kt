@@ -27,10 +27,26 @@ class MainActivity : AudioServiceActivity() {
                     result.success(true)
                 }
                 "updateLyric" -> {
-                    val text = call.argument<String>("text") ?: ""
+                    val lines = call.argument<List<String>>("lines") ?: emptyList()
+                    val current = call.argument<Int>("current") ?: -1
+                    val progress = call.argument<Int>("progressMs") ?: 0
+                    val duration = call.argument<Int>("durationMs") ?: 0
                     val i = Intent(this, LyricOverlayService::class.java)
                     i.action = LyricOverlayService.ACTION_UPDATE
-                    i.putExtra(LyricOverlayService.EXTRA_LYRIC, text)
+                    i.putStringArrayListExtra(LyricOverlayService.EXTRA_LINES, ArrayList(lines))
+                    i.putExtra(LyricOverlayService.EXTRA_CURRENT, current)
+                    i.putExtra(LyricOverlayService.EXTRA_PROGRESS, progress)
+                    i.putExtra(LyricOverlayService.EXTRA_DURATION, duration)
+                    try { startService(i) } catch (_: Exception) {}
+                    result.success(true)
+                }
+                "updateProgress" -> {
+                    val progress = call.argument<Int>("progressMs") ?: 0
+                    val duration = call.argument<Int>("durationMs") ?: 0
+                    val i = Intent(this, LyricOverlayService::class.java)
+                    i.action = LyricOverlayService.ACTION_PROGRESS
+                    i.putExtra(LyricOverlayService.EXTRA_PROGRESS, progress)
+                    i.putExtra(LyricOverlayService.EXTRA_DURATION, duration)
                     try { startService(i) } catch (_: Exception) {}
                     result.success(true)
                 }
