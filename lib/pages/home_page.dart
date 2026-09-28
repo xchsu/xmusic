@@ -25,6 +25,8 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Song>> _daily30;
   late Future<List<Song>> _localRec;
+  /// 每日30首板块当前 tab：0=在线，1=本地。
+  int _dailyTab = 0;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
 
   SubsonicClient get _client => widget.controller.client;
@@ -224,14 +226,50 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            // 每日30首大卡片
+            // 每日30首（在线/本地合并为一个板块，SegmentedButton 切换）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('每日30首',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                  ),
+                  SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 0, label: Text('在线')),
+                      ButtonSegment(value: 1, label: Text('本地')),
+                    ],
+                    selected: {_dailyTab},
+                    onSelectionChanged: (s) => setState(() => _dailyTab = s.first),
+                    showSelectedIcon: false,
+                    style: ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: WidgetStateProperty.all(const TextStyle(fontSize: 13)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             FutureBuilder<List<Song>>(
-              future: _daily30,
+              future: _dailyTab == 0 ? _daily30 : _localRec,
               builder: (context, snap) {
-                if (!snap.hasData || snap.data!.isEmpty) return const SizedBox.shrink();
-                return _dailyCard(snap.data!);
+                if (snap.hasError) return const SizedBox.shrink();
+                if (!snap.hasData || snap.data!.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                        _dailyTab == 0 ? '在线每日30首加载中...' : '暂无本地歌曲',
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  );
+                }
+                return _songHScroll(snap.data!);
               },
             ),
+            const SizedBox(height: 12),
             // 排行榜网格
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -309,49 +347,6 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-            // 本地推荐歌单卡（点击进歌单列表页，不是单曲卡）
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-              child: Text('歌单推荐',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: FutureBuilder<List<Song>>(
-                future: _localRec,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return _miniCard(
-                      title: '本地推荐',
-                      subtitle: '加载失败·重试',
-                      icon: Icons.queue_music_rounded,
-                      colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                      onTap: () => setState(_load),
-                    );
-                  }
-                  if (!snap.hasData || snap.data!.isEmpty) {
-                    return _miniCard(
-                      title: '本地推荐',
-                      subtitle: '加载中...',
-                      icon: Icons.queue_music_rounded,
-                      colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                      onTap: null,
-                    );
-                  }
-                  final songs = snap.data!;
-                  return _miniCard(
-                    title: '本地推荐',
-                    subtitle: '${songs.length > 12 ? 12 : songs.length}首 · 随机推荐',
-                    icon: Icons.queue_music_rounded,
-                    colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                    onTap: () => _openLocalRec(songs),
-                  );
-                },
-              ),
-            ),
           ],
           ),
       ),
@@ -404,6 +399,78 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 每日30首歌曲横向滚动条（在线/本地共用），点击单曲进播放页。
+  /// 车机横屏缩小卡片宽度，避免占满整屏。
+  Widget _songHScroll(List<Song> songs) {
+    final car = isCarScreen(context);
+    final w = car ? 92.0 : 116.0;
+    final cover = car ? 92.0 : 116.0;
+    return SizedBox(
+      height: car ? 150 : 168,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: songs.length,
+        itemBuilder: (context, i) {
+          final s = songs[i];
+          return GestureDetector(
+            onTap: () => _playSongs(songs, i),
+            child: SizedBox(
+              width: w,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(width: cover, height: cover, child: _songCover(s)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(s.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(s.artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 歌曲封面（外链图/服务器图/无封面回退）。
+  Widget _songCover(Song s) {
+    final cs = Theme.of(context).colorScheme;
+    final url = (s.coverUrl ?? '').isNotEmpty
+        ? s.coverUrl!
+        : ((s.coverArt ?? '').isNotEmpty
+            ? _client.coverUrl(s.coverArt!, size: 400)?.toString()
+            : null);
+    if (url == null || url.isEmpty) {
+      return Container(
+        color: cs.surfaceContainerHighest,
+        alignment: Alignment.center,
+        child: const Icon(Icons.music_note_rounded, size: 36),
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.cover,
+      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+      placeholder: (_, __) => Container(color: cs.surfaceContainerHighest),
+      errorWidget: (_, __, ___) => Container(
+        color: cs.surfaceContainerHighest,
+        alignment: Alignment.center,
+        child: const Icon(Icons.music_note_rounded, size: 36),
       ),
     );
   }

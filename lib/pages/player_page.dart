@@ -242,11 +242,12 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-28 右侧按钮：车机 64；手机统一 30（含上传NAS，用户嫌手机竖屏 NAS 太大）、栏宽 72/44
+    // [xmusic] 2026-09-28 车机整套图标统一 48（与左上角主页/返回、底部控制栏一致）；
+    // 手机右侧 30（用户嫌手机竖屏 NAS 图标太大），栏宽 60/44
     final car = _carUI(context);
-    final double side = car ? 64 : 30;
+    final double side = car ? 48 : 30;
     return Container(
-      width: car ? 72 : 44,
+      width: car ? 60 : 44,
       margin: const EdgeInsets.only(right: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
