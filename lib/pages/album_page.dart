@@ -48,7 +48,10 @@ class _AlbumPageState extends State<AlbumPage> {
       child: Scaffold(
       // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text(album.name)),
+      appBar: AppBar(
+        title: Text(album.name),
+        flexibleSpace: CoverGlassBackground(controller: widget.controller, settings: widget.settings),
+      ),
       body: PageBackground(
         controller: widget.controller,
         settings: widget.settings,

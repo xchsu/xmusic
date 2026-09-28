@@ -72,7 +72,10 @@ class _ArtistPageState extends State<ArtistPage> {
       // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
       // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text(widget.artist.name)),
+      appBar: AppBar(
+        title: Text(widget.artist.name),
+        flexibleSpace: CoverGlassBackground(controller: widget.controller, settings: widget.settings),
+      ),
       body: PageBackground(
         controller: widget.controller,
         settings: widget.settings,
