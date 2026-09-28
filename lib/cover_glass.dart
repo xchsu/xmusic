@@ -45,12 +45,12 @@ class CoverGlassBackground extends StatelessWidget {
           children: [
             // 1) 主体：跟随系统主题表面色（浅色近白 / 深色近黑），默认不加额外颜色
             ColoredBox(color: cs.surface),
-            // 2) 当前封面：模糊后 20% 透明铺底（0=全透），随切歌自动更新，
-            //    不默认叠任何颜色，玻璃质感透出封面。
+            // 2) 当前封面：模糊后透明铺底（随切歌自动更新），玻璃质感透出封面图片。
+            //    透明度保证封面明显可见（用户反馈 0.20 太淡看起来像纯色）。
             if (useCover)
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.20,
+                  opacity: 0.38,
                   child: ImageFiltered(
                     imageFilter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                     child: _coverImage(coverUrl!, cs),
