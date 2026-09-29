@@ -33,8 +33,12 @@ class _HomePageState extends State<HomePage> {
   SubsonicClient get _client => widget.controller.client;
 
   @override
+  late int _lastBlRev;
+
   void initState() {
     super.initState();
+    _lastBlRev = widget.settings.blacklistRev;
+    widget.settings.addListener(_onSettingsChanged);
     _load();
   }
 
@@ -97,6 +101,19 @@ class _HomePageState extends State<HomePage> {
     _localRecDay = today;
     _localRecCached = picked;
     return picked;
+  }
+
+  void _onSettingsChanged() {
+    if (widget.settings.blacklistRev != _lastBlRev) {
+      _lastBlRev = widget.settings.blacklistRev;
+      _reload(); // 黑名单变化 → 重载每日30首/榜单/歌单
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.settings.removeListener(_onSettingsChanged);
+    super.dispose();
   }
 
   Future<void> _reload() async {
