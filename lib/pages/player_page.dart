@@ -1494,18 +1494,12 @@ class _MarqueeText extends StatefulWidget {
 
 class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
-  bool _scheduled = false;
-  void _ensureStart() {
-    if (_scheduled || _c.isAnimating) return;
-    _scheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_c.isAnimating) _c.repeat();
-    });
-  }
   @override
   void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(seconds: 6));
+    // 创建即开始滚动：不依赖后续 build / postFrame，保证动画一定在跑
+    _c.repeat();
   }
   @override
   void dispose() {
@@ -1529,9 +1523,13 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
               ? cons.maxWidth
               : (MediaQuery.sizeOf(ctx).width * 0.86));
       if (boxW <= 0) return const SizedBox.shrink();
-      // 一律用滚动容器：短歌名完整显示、长歌名滚出后半，绝不省略号截断。
-      // 滚动量按文本宽+间隙算，再取不小于视口宽，确保尾部一定能滚进来。
-      _ensureStart();
+      final overflow = tp.width > boxW + 1;
+      if (!overflow) {
+        // 文本不超宽：完整显示，不滚动
+        return Text(widget.text, style: widget.style, maxLines: 1,
+            softWrap: false, textAlign: widget.textAlign);
+      }
+      // 超宽才滚动；动画在 initState 已启动，尾部必然滚进来
       final scrollExtent = math.max(0.0, tp.width + 24);
       return ClipRect(
         child: SizedBox(
