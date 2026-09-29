@@ -334,34 +334,35 @@ class _PlayerPageState extends State<PlayerPage> {
           flex: 5,
           child: LayoutBuilder(
             builder: (context, box) {
-              final s = math.min(box.maxWidth * 0.62, box.maxHeight * 0.62);
+              final car = isCarScreen(context);
+              final s = math.min(box.maxWidth * (car ? 0.72 : 0.62), box.maxHeight * (car ? 0.78 : 0.62));
               return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 左：CD 唱片（带环境光晕 + 识别卡针）+ 歌曲信息
-                  Center(
-                    child: StreamBuilder<bool>(
-                      stream: widget.controller.player.playingStream,
-                      builder: (context, snap) {
-                        final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
-                        return Container(
-                          width: s, height: s,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(s * 0.055),
-                            boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(s * 0.055),
-                            child: cov,
-                          ),
-                        );
-                      },
+                  // 封面：自适应占满上方空间（车机横屏加大）
+                  Expanded(
+                    child: Center(
+                      child: StreamBuilder<bool>(
+                        stream: widget.controller.player.playingStream,
+                        builder: (context, snap) {
+                          final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
+                          return Container(
+                            width: s, height: s,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              child: cov,
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                  // [xmusic] 2026-09-24 车机横屏：歌名/歌手/专辑 下移并放大（黑胶与信息间距拉大、字号加大）
-                  SizedBox(height: isCarScreen(context) ? 40 : 20),
+                  // 歌名/歌手/专辑 + 首页/返回：下移到底部，与播放控制栏齐平
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -373,10 +374,10 @@ class _PlayerPageState extends State<PlayerPage> {
                           child: Column(
                             children: [
                               Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: isCarScreen(context) ? 34 : 24)),
-                              SizedBox(height: isCarScreen(context) ? 10 : 6),
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 34 : 24)),
+                              SizedBox(height: car ? 10 : 6),
                               Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: isCarScreen(context) ? 22 : 15)),
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 22 : 15)),
                             ],
                           ),
                         ),
@@ -724,7 +725,7 @@ class LyricsView extends StatefulWidget {
 
 class _LyricsViewState extends State<LyricsView> {
   static const double _baseFontSize = 22;
-  static const double _anchor = 0.38;
+  double _anchor = 0.38; // 当前行锚点，按已唱1行动态算
 
   final ItemScrollController _scroll = ItemScrollController();
   StreamSubscription<Duration>? _positionSub;
@@ -783,12 +784,16 @@ class _LyricsViewState extends State<LyricsView> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
+            // 已唱占1行、当前占1行、余下给未唱：当前行锚在顶部 padding+1行已唱 处
+            final _rowH = (_baseFontSize * 1.4 + 18) * scale;
+            _anchor = ((constraints.maxHeight * 0.03) + 1.5 * _rowH) / constraints.maxHeight;
+            _anchor = _anchor.clamp(0.04, 0.30);
             return ScrollablePositionedList.builder(
               itemScrollController: _scroll,
               itemCount: lines.length,
               padding: EdgeInsets.symmetric(
                 horizontal: 24,
-                vertical: constraints.maxHeight * 0.08,
+                vertical: constraints.maxHeight * 0.03,
               ),
               itemBuilder: (context, i) {
                 final line = lines[i];
