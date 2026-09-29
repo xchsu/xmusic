@@ -58,9 +58,9 @@ class PlayerController extends ChangeNotifier {
   // 默认随机播放（用户要求：播放界面控制栏默认随机）
   PlayMode _repeat = PlayMode.shuffle;
   final Random _rnd = Random();
-  /// 最近播放过的索引（避免随机重复）：随机切歌时避开这几首。
+  /// 最近播放过的歌曲 ID（避免随机重复，按歌曲身份排除，不受歌单切换影响）。
   static const int _recentLimit = 10;
-  final List<int> _recentIndexes = [];
+  final List<String> _recentIds = [];
 
   late final StreamSubscription<ProcessingState> _completedSub;
   late final StreamSubscription<bool> _playingSub;
@@ -336,6 +336,11 @@ class PlayerController extends ChangeNotifier {
     if (token != _playToken) return;
     index = i;
     notifyListeners();
+    // 记录最近播放（顺序/随机/点列表都算），随机切歌按歌曲 ID 避开最近播过的
+    final _rid = queue[i].id;
+    _recentIds.remove(_rid);
+    _recentIds.add(_rid);
+    if (_recentIds.length > _recentLimit) _recentIds.removeAt(0);
     unawaited(refreshCoverTint());
     _applyLoopMode();
     _loadLyrics();
@@ -485,19 +490,21 @@ class PlayerController extends ChangeNotifier {
   void _playRandom() {
     if (queue.length <= 1) return;
     final n = queue.length;
-    // 候选池排除最近播过的几首（含当前），显著减小连续重复；池太小则退化为只避开当前
-    final banned = {..._recentIndexes, index};
-    int ni = index;
-    if (n > banned.length) {
-      final cands = List<int>.generate(n, (i) => i)
-          .where((i) => !banned.contains(i))
-          .toList();
+    // 候选池排除最近播过的歌曲 ID（含当前），按歌曲身份避开；歌单太小全被 ban 时退化为只避开当前
+    final banned = {..._recentIds};
+    final cur = current?.id;
+    if (cur != null) banned.add(cur);
+    final cands = <int>[];
+    for (var i = 0; i < n; i++) {
+      if (!banned.contains(queue[i].id)) cands.add(i);
+    }
+    int ni;
+    if (cands.isNotEmpty) {
       ni = cands[_rnd.nextInt(cands.length)];
     } else {
+      ni = index;
       while (ni == index) { ni = _rnd.nextInt(n); }
     }
-    _recentIndexes.add(ni);
-    if (_recentIndexes.length > _recentLimit) _recentIndexes.removeAt(0);
     unawaited(_loadAndPlay(ni));
   }
 
