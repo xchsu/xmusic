@@ -138,7 +138,8 @@ class ExternalApi {
         durationSec: null,
         fromExternal: true,
         externalSource: source,
-        year: _yearOf(it['publishTime']),
+        year: _yearOf(it['publishTime'] ??
+            (it['album'] is Map ? (it['album'] as Map)['publishTime'] : null)),
       ));
     }
     return out;
@@ -209,6 +210,7 @@ class ExternalApi {
           durationSec: (t['duration'] as num?) != null ? ((t['duration'] as num) / 1000).round() : null,
           fromExternal: true,
           externalSource: 'netease',
+          year: _yearOf((t['album'] as Map?)?['publishTime']),
         );
       }).toList();
     } catch (_) {
@@ -246,6 +248,7 @@ class ExternalApi {
               : null,
           fromExternal: true,
           externalSource: 'netease',
+          year: _yearOf(t['publishTime'] ?? (t['album'] as Map?)?['publishTime']),
         );
       }).toList();
     } catch (_) {
@@ -287,6 +290,7 @@ class ExternalApi {
           durationSec: (t['interval'] as num?)?.toInt(),
           fromExternal: true,
           externalSource: 'qq',
+          year: _yearOf(t['time'] ?? t['pubtime']),
         );
       }).toList();
     } catch (_) {
