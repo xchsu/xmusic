@@ -200,7 +200,7 @@ class _PlayerPageState extends State<PlayerPage> {
               Expanded(
                 child: Column(
                   children: [
-              Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+              _MarqueeText(song.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800, fontSize: 22, height: 1.2)),
               const SizedBox(height: 4),
@@ -424,7 +424,7 @@ class _PlayerPageState extends State<PlayerPage> {
                         Expanded(
                           child: Column(
                             children: [
-                              Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                              _MarqueeText(song.title, textAlign: TextAlign.center,
                                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 34 : 24)),
                               SizedBox(height: car ? 10 : 6),
                               Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
@@ -1406,4 +1406,65 @@ Future<void> openPlayerPage(
     settings: const RouteSettings(name: PlayerPage.routeName),
     builder: (_) => PlayerPage(settings: settings, controller: controller),
   ));
+}
+
+
+/// 歌名滚动组件：文本超出可用宽度时循环左右滚动展示（不超出则普通省略号文本）。
+class _MarqueeText extends StatefulWidget {
+  const _MarqueeText(this.text, {super.key, this.style, this.textAlign = TextAlign.start});
+  final String text;
+  final TextStyle? style;
+  final TextAlign textAlign;
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(vsync: this, duration: const Duration(seconds: 9));
+  }
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (ctx, cons) {
+      final tp = TextPainter(
+        text: TextSpan(text: widget.text, style: widget.style),
+        maxLines: 1,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final boxW = cons.maxWidth;
+      final overflow = boxW > 0 && tp.width > boxW;
+      if (!overflow) {
+        return Text(widget.text, style: widget.style, maxLines: 1,
+            overflow: TextOverflow.ellipsis, textAlign: widget.textAlign);
+      }
+      if (!_c.isAnimating) _c.repeat();
+      final total = tp.width + 40;
+      return ClipRect(
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (ctx, __) {
+            final t = _c.value;
+            final dx = t < 0.5 ? 0 - total * (t * 2) : total - total * ((t - 0.5) * 2);
+            return OverflowBox(
+              maxWidth: double.infinity,
+              alignment: Alignment.center,
+              child: Transform.translate(
+                offset: Offset(dx, 0),
+                child: Text(widget.text, style: widget.style, maxLines: 1,
+                    textAlign: widget.textAlign),
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
 }
