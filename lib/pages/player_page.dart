@@ -152,18 +152,15 @@ class _PlayerPageState extends State<PlayerPage> {
                       stream: widget.controller.player.playingStream,
                       builder: (context, snap) {
                         final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
-                        return _SpinRotator(
-                          spinning: snap.data ?? false,
-                          child: Container(
-                            width: s, height: s,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(s * 0.055),
-                              boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(s * 0.055),
-                              child: cov,
-                            ),
+                        return Container(
+                          width: s, height: s,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(s * 0.055),
+                            boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(s * 0.055),
+                            child: cov,
                           ),
                         );
                       },
@@ -278,18 +275,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 );
               },
             ),
-            const SizedBox(height: 6),
-            _MiniCornerButton(icon: Icons.download_rounded, onTap: () => _downloadMenu(context)),
-            const SizedBox(height: 6),
-            _MiniCornerButton(
-              icon: Icons.cloud_upload_outlined,
-              onTap: () async {
-                showTopToast(context, '正在上传到NAS…');
-                final msg = await widget.controller.uploadCurrentToNas();
-                if (!context.mounted) return;
-                showTopToast(context, msg, duration: const Duration(seconds: 2));
-              },
-            ),
+
           ],
         ),
       );
@@ -358,18 +344,15 @@ class _PlayerPageState extends State<PlayerPage> {
                       stream: widget.controller.player.playingStream,
                       builder: (context, snap) {
                         final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
-                        return _SpinRotator(
-                          spinning: snap.data ?? false,
-                          child: Container(
-                            width: s, height: s,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(s * 0.055),
-                              boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(s * 0.055),
-                              child: cov,
-                            ),
+                        return Container(
+                          width: s, height: s,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(s * 0.055),
+                            boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(s * 0.055),
+                            child: cov,
                           ),
                         );
                       },
