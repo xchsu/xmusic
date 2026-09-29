@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 import 'subsonic.dart';
 import 'widgets.dart';
@@ -36,6 +39,7 @@ class AppSettings extends ChangeNotifier {
   static const _kFilterOld = 'filter_old';
   static const _kOldYear = 'old_year';
   static const _kBlacklist = 'blacklist';
+  static const _kSyncNas = 'sync_nas';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -64,6 +68,7 @@ class AppSettings extends ChangeNotifier {
   bool _autoPlay = true;
   bool _filterOld = true;
   Set<String> _blacklist = {};
+  bool _syncNas = false;
   int _oldYear = 1995;
   String downloadPath = '';
   String qqCookie = '';
@@ -85,6 +90,12 @@ class AppSettings extends ChangeNotifier {
   bool canIncreaseLyricFor(bool land) => (land ? _lyricScaleLandscape : _lyricScalePortrait) < maxScale - 1e-9;
   bool canDecreaseLyricFor(bool land) => (land ? _lyricScaleLandscape : _lyricScalePortrait) > minScale + 1e-9;
   bool get webdavConfigured => webdavUrl.trim().isNotEmpty;
+  bool get syncNas => _syncNas;
+  Future<void> setSyncNas(bool v) async {
+    _syncNas = v;
+    await _prefs.setBool(_kSyncNas, v);
+    notifyListeners();
+  }
 
   bool get hasLogin =>
       serverUrl.isNotEmpty && username.isNotEmpty &&
@@ -114,6 +125,8 @@ class AppSettings extends ChangeNotifier {
     _filterOld = _prefs.getBool(_kFilterOld) ?? true;
     _oldYear = _prefs.getInt(_kOldYear) ?? 1995;
     _blacklist = (_prefs.getStringList(_kBlacklist) ?? const []).toSet();
+    _syncNas = _prefs.getBool(_kSyncNas) ?? false;
+    unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
   }
@@ -244,11 +257,61 @@ class AppSettings extends ChangeNotifier {
     _blacklist.add(_songKey(s));
     notifyListeners();
     await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+    unawaited(syncBlacklistPush());
   }
   Future<void> removeBlacklist(Song s) async {
     _blacklist.remove(_songKey(s));
     notifyListeners();
     await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+    unawaited(syncBlacklistPush());
+  }
+
+  // ---- 黑名单 NAS(WebDAV) 同步：收藏在 Navidrome 服务器端自动互通，黑名单本机存储需云同步 ----
+  String _nasUrl(String file) {
+    final base = webdavUrl.replaceAll(RegExp(r'/+$'), '');
+    final sub = (webdavPath.trim().isEmpty ? 'Music/xmusic' : webdavPath.trim())
+        .replaceAll(RegExp(r'^/|/$'), '');
+    return '$base/$sub/$file';
+  }
+  Map<String, String> _davHeaders() {
+    final auth = base64Encode(utf8.encode('${webdavUser}:${webdavPass}'));
+    return {
+      'Authorization': 'Basic $auth',
+      'Content-Type': 'application/json',
+    };
+  }
+  /// 上传黑名单到 NAS（不抛错，失败静默）
+  Future<void> syncBlacklistPush() async {
+    if (!_syncNas || !webdavConfigured) return;
+    try {
+      final resp = await http.put(
+        Uri.parse(_nasUrl('xmusic_blacklist.json')),
+        headers: _davHeaders(),
+        body: jsonEncode(_blacklist.toList()),
+      );
+      if (resp.statusCode < 300) {}
+    } catch (_) {}
+  }
+  /// 从 NAS 拉取黑名单并合并（本机已有 + 远端，取并集）
+  Future<void> syncBlacklistPull() async {
+    if (!_syncNas || !webdavConfigured) return;
+    try {
+      final resp = await http.get(
+        Uri.parse(_nasUrl('xmusic_blacklist.json')),
+        headers: {'Authorization': _davHeaders()['Authorization']!},
+      );
+      if (resp.statusCode == 200) {
+        final remote = (jsonDecode(utf8.decode(resp.bodyBytes)) as List)
+            .cast<String>()
+            .toSet();
+        final merged = {..._blacklist, ...remote};
+        if (merged.length != _blacklist.length) {
+          _blacklist = merged;
+          await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> setThemeMode(AppThemeMode mode) async {
