@@ -119,12 +119,13 @@ class MyApp extends StatelessWidget {
           builder: (context, child) {
             final mq = MediaQuery.of(context);
             final size = mq.size;
-            // 大屏（横竖）整体放大：车机横屏 1.15-1.3，车机竖屏/平板 1.15-1.25，手机保持收敛区间
+            // 大屏（横竖）整体放大：车机横屏 1.5x / 竖屏大屏 1.3x，手机保持收敛区间
+            // 注意：车机放大必须用乘法(raw*系数)，否则 raw≈1.0 会被 clamp 只抬到下限 1.15，字号依旧偏小。
             final isBig = size.shortestSide >= 480;
             final isLand = size.width > size.height;
             final raw = mq.textScaler.scale(14);
             final scale = isBig
-                ? raw.clamp(1.15, isLand ? 1.4 : 1.25)
+                ? (raw * (isLand ? 1.5 : 1.3)).clamp(1.2, 2.2)
                 : raw.clamp(0.9, 1.2);
             return MediaQuery(
               data: mq.copyWith(textScaler: TextScaler.linear(scale)),
