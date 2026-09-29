@@ -151,6 +151,22 @@ class AlbumCard extends StatelessWidget {
   }
 }
 
+/// Song 不可变，收藏状态变化后用它重建一首歌。
+Song withStarred(Song s, bool v) => Song(
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      albumId: s.albumId,
+      durationSec: s.durationSec,
+      coverArt: s.coverArt,
+      starred: v,
+      coverUrl: s.coverUrl,
+      streamUrl: s.streamUrl,
+      fromExternal: s.fromExternal,
+      externalSource: s.externalSource,
+    );
+
 /// A tappable song row with cover, title, artist, duration and a play button.
 class SongTile extends StatefulWidget {
   const SongTile({
