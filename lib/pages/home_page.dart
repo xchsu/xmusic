@@ -252,7 +252,14 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BigScreenText(
+    return Builder(builder: (context) {
+      final mq = MediaQuery.of(context);
+      final car = isCarScreen(context);
+      final carP = car && mq.size.width < mq.size.height;
+      final scale = carP ? 1.2 : mq.textScaler.scale(14) / 14;
+      return MediaQuery(
+        data: mq.copyWith(textScaler: TextScaler.linear(scale)),
+        child: BigScreenText(
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -456,7 +463,9 @@ class _HomePageState extends State<HomePage> {
           ],
           ),
       ),
-    ));
+    )),
+      );
+    });
   }
 
   /// 每日30首小卡（在线/本地两栏）：渐变底 + 图标 + 标题副标题，点击进对应歌单。

@@ -207,7 +207,9 @@ class _PlayerPageState extends State<PlayerPage> {
                 child: _MarqueeText(song.title,
                   maxWidth: MediaQuery.sizeOf(context).width - 140,
                   style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800, fontSize: 22, height: 1.2)),
+                    fontWeight: FontWeight.w800,
+                    fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 18 : 22,
+                    height: 1.2)),
               ),
               const SizedBox(height: 4),
               // 歌手+专辑也滚动（完整显示后半段，避免省略号截断）
@@ -216,7 +218,8 @@ class _PlayerPageState extends State<PlayerPage> {
                 child: _MarqueeText('${song.artist} - ${song.album}',
                   maxWidth: MediaQuery.sizeOf(context).width - 140,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant, fontSize: 14)),
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14)),
               ),
               // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
               if (widget.controller.loadingUrl) ...[
@@ -1396,9 +1399,9 @@ class _Controls extends StatelessWidget {
     final gap = compact ? 20.0 : 20.0;
     // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
     final car = isCarScreen(context);
-    final playSize = car ? 62.0 : 40.0;
-    final navSize = car ? 62.0 : 40.0;
-    final sideIcon = car ? 62.0 : 40.0;
+    final playSize = car ? 72.0 : 40.0;
+    final navSize = car ? 72.0 : 40.0;
+    final sideIcon = car ? 72.0 : 40.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
