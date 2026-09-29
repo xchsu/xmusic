@@ -78,8 +78,19 @@ class _HomePageState extends State<HomePage> {
   /// 过滤老歌（开关开 + 年份可确认且早于阈值时剔除）。
   List<Song> _filterOld(List<Song> songs) =>
       songs.where((s) => !widget.settings.isOld(s)).toList();
+  /// 风格为 DJ 的曲目（歌名/歌手/专辑任一带 dj，大小写不敏感）全部过滤，用于榜单/歌单/每日30首。
+  bool _isDj(Song s) {
+    bool hit(String? v) {
+      if (v == null || v.isEmpty) return false;
+      final l = v.toLowerCase();
+      return l.contains('dj');
+    }
+    return hit(s.title) || hit(s.artist) || hit(s.album);
+  }
   List<Song> _filterBlacklist(List<Song> songs) =>
-      songs.where((s) => !widget.settings.isBlacklisted(s)).toList();
+      songs
+          .where((s) => !widget.settings.isBlacklisted(s) && !_isDj(s))
+          .toList();
 
   Future<List<Song>> _loadDaily30() async {
     // 每日30首：统一走 QQ（热歌榜，填了 cookie 时账号相关更贴合；接口异常内部兜底酷狗）
