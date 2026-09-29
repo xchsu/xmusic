@@ -282,47 +282,54 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
       );
     }
-    // 手机：保持小图标 IconTheme 30
+    // 手机：竖屏小图标 IconTheme 30；横屏用 FittedBox 把整列按钮自适应缩放到歌词区可用高度，避免溢出到进度条
+    final Widget bar = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: LyricSizeControls(settings: widget.settings),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: _FavoriteButton(controller: widget.controller),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: IconButton(
+            tooltip: '下载',
+            icon: Icon(Icons.download_rounded),
+            onPressed: () => _downloadMenu(context),
+          ),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: IconButton(
+            tooltip: '上传到NAS',
+            icon: Icon(Icons.cloud_upload_outlined),
+            onPressed: () async {
+              showTopToast(context, '正在上传到NAS…');
+              final msg = await widget.controller.uploadCurrentToNas();
+              if (!context.mounted) return;
+              showTopToast(context, msg, duration: const Duration(seconds: 2));
+            },
+          ),
+        ),
+      ],
+    );
     return Container(
-      width: 44,
+      width: _landP ? 40 : 44,
       margin: const EdgeInsets.only(right: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconTheme(
-            data: IconThemeData(size: side),
-            child: LyricSizeControls(settings: widget.settings),
-          ),
-          SizedBox(height: _gap),
-          IconTheme(
-            data: IconThemeData(size: side),
-            child: _FavoriteButton(controller: widget.controller),
-          ),
-          SizedBox(height: _gap),
-          IconTheme(
-            data: IconThemeData(size: side),
-            child: IconButton(
-              tooltip: '下载',
-              icon: Icon(Icons.download_rounded),
-              onPressed: () => _downloadMenu(context),
-            ),
-          ),
-          SizedBox(height: _gap),
-          IconTheme(
-            data: IconThemeData(size: side),
-            child: IconButton(
-              tooltip: '上传到NAS',
-              icon: Icon(Icons.cloud_upload_outlined),
-              onPressed: () async {
-                showTopToast(context, '正在上传到NAS…');
-                final msg = await widget.controller.uploadCurrentToNas();
-                if (!context.mounted) return;
-                showTopToast(context, msg, duration: const Duration(seconds: 2));
-              },
-            ),
-          ),
-        ],
-      ),
+      child: _landP
+          ? FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: bar,
+            )
+          : bar,
     );
   }
 
