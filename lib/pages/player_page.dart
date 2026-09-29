@@ -277,9 +277,9 @@ class _PlayerPageState extends State<PlayerPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-            _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyric ? widget.settings.decreaseLyric : null),
+            _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
             const SizedBox(height: 12),
-            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyric ? widget.settings.increaseLyric : null),
+            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
             const SizedBox(height: 12),
             ListenableBuilder(
               listenable: widget.controller,
@@ -316,7 +316,7 @@ class _PlayerPageState extends State<PlayerPage> {
       children: [
         IconTheme(
           data: IconThemeData(size: side),
-          child: LyricSizeControls(settings: widget.settings),
+          child: LyricSizeControls(settings: widget.settings, land: _landP),
         ),
         SizedBox(height: _gap),
         IconTheme(
@@ -528,7 +528,7 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _lyricsAreaFixed(BuildContext context, String songId, {int? visibleLines}) {
     final area = _lyricsArea(context, songId, visibleLines: visibleLines);
     if (visibleLines == null) return area;
-    final scale = widget.settings.lyricScale;
+    final scale = widget.settings.lyricScaleFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height);
     return SizedBox(
       height: visibleLines * (22 * 1.4 + 9 * 2) * scale + 10,
       child: area,
@@ -661,7 +661,7 @@ class _CurrentLyricLineState extends State<_CurrentLyricLine> {
     return ListenableBuilder(
       listenable: widget.settings,
       builder: (context, _) {
-        final scale = widget.settings.lyricScale;
+        final scale = widget.settings.lyricScaleFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height);
         return Text(
           text.isEmpty ? '♪' : text,
           textAlign: TextAlign.left,
@@ -733,9 +733,10 @@ class _RepeatButton extends StatelessWidget {
 
 /// − 100% + buttons that change the lyric font scale (persisted).
 class LyricSizeControls extends StatelessWidget {
-  const LyricSizeControls({super.key, required this.settings});
+  const LyricSizeControls({super.key, required this.settings, this.land = false});
 
   final AppSettings settings;
+  final bool land;
 
   @override
   Widget build(BuildContext context) {
@@ -749,13 +750,13 @@ class LyricSizeControls extends StatelessWidget {
               tooltip: '减小歌词字号',
               icon: const Icon(Icons.text_decrease),
               onPressed:
-                  settings.canDecreaseLyric ? settings.decreaseLyric : null,
+                  settings.canDecreaseLyricFor(land) ? () => settings.decreaseLyricFor(land) : null,
             ),
             IconButton(
               tooltip: '增大歌词字号',
               icon: const Icon(Icons.text_increase),
               onPressed:
-                  settings.canIncreaseLyric ? settings.increaseLyric : null,
+                  settings.canIncreaseLyricFor(land) ? () => settings.increaseLyricFor(land) : null,
             ),
           ],
         );
@@ -841,7 +842,7 @@ class _LyricsViewState extends State<LyricsView> {
     return ListenableBuilder(
       listenable: widget.settings,
       builder: (context, _) {
-        final scale = widget.settings.lyricScale;
+        final scale = widget.settings.lyricScaleFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height);
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -1460,7 +1461,8 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
             overflow: TextOverflow.ellipsis, textAlign: widget.textAlign);
       }
       _ensureStart();
-      final total = tp.width + 40;
+      // 只滚动"超出部分+间隙"，尾部能完整滚进视口；0→0.5 滚出、0.5→1 滚回，往返循环
+      final scrollExtent = math.max(0.0, tp.width - boxW + 24);
       return ClipRect(
         child: SizedBox(
           width: boxW,
@@ -1469,7 +1471,7 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
             animation: _c,
             builder: (ctx, __) {
               final t = _c.value;
-              final dx = t < 0.5 ? 0 - total * (t * 2) : 40 - total * ((t - 0.5) * 2);
+              final dx = t < 0.5 ? -scrollExtent * (t * 2) : -scrollExtent * (2 - t * 2);
               return Transform.translate(
                 offset: Offset(dx, 0),
                 child: Text(widget.text, style: widget.style, maxLines: 1,

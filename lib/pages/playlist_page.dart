@@ -79,18 +79,18 @@ class _PlaylistPageState extends State<PlaylistPage> {
   @override
   Widget build(BuildContext context) {
     return BigScreenText(
-      child: Scaffold(
-      // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(widget.playlist.name),
-      ),
-      body: PageBackground(
+      child: PageBackground(
         controller: widget.controller,
         settings: widget.settings,
-        child: Column(
+        child: Scaffold(
+        // [xmusic] 2026-09-29 整页透明：PageBackground 覆盖含 AppBar 的全屏，透出封面玻璃背景
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text(widget.playlist.name),
+        ),
+        body: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Song>>(
@@ -187,7 +187,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
           ),
           MiniPlayer(settings: widget.settings, controller: widget.controller),
         ],
-      )),
+        ),
+      ),
     ));
   }
 }
