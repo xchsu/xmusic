@@ -247,7 +247,19 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // 右侧竖排按钮：歌词缩放、收藏、下载、上传NAS。放在歌词板块右边，不占歌名行。
+  void _toggleBlacklist(Song? song) {
+    if (song == null) return;
+    final s = widget.settings;
+    if (s.isBlacklisted(song)) {
+      s.removeBlacklist(song);
+      showTopToast(context, '已移出黑名单');
+    } else {
+      s.addBlacklist(song);
+      showTopToast(context, '已加入黑名单，不再出现在榜单/歌单');
+    }
+  }
+
+  // 右侧竖排按钮：歌词缩放、收藏、下载、上传NAS、黑名单。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
     // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
     final car = _carUI(context);
@@ -274,6 +286,19 @@ class _PlayerPageState extends State<PlayerPage> {
                   icon: starred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   color: starred ? Theme.of(context).colorScheme.primary : null,
                   onTap: widget.controller.toggleStar,
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            ListenableBuilder(
+              listenable: widget.controller,
+              builder: (context, _) {
+                final sg = widget.controller.current;
+                final blocked = sg != null && widget.settings.isBlacklisted(sg);
+                return _MiniCornerButton(
+                  icon: Icons.heart_broken_rounded,
+                  color: blocked ? Theme.of(context).colorScheme.error : null,
+                  onTap: sg == null ? null : () => _toggleBlacklist(sg),
                 );
               },
             ),
@@ -315,6 +340,23 @@ class _PlayerPageState extends State<PlayerPage> {
               final msg = await widget.controller.uploadCurrentToNas();
               if (!context.mounted) return;
               showTopToast(context, msg, duration: const Duration(seconds: 2));
+            },
+          ),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: ListenableBuilder(
+            listenable: widget.controller,
+            builder: (context, _) {
+              final sg = widget.controller.current;
+              final blocked = sg != null && widget.settings.isBlacklisted(sg);
+              return IconButton(
+                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
+                icon: Icon(Icons.heart_broken_rounded,
+                    color: blocked ? Theme.of(context).colorScheme.error : null),
+                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
+              );
             },
           ),
         ),
@@ -440,8 +482,8 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _lyricsArea(BuildContext context, String songId, {int? visibleLines}) {
     return GestureDetector(
       onDoubleTap: () {
-        widget.controller.reloadLyrics();
-        showTopToast(context, '刷新歌词...', duration: const Duration(milliseconds: 800));
+        widget.controller.reloadLyrics(switchSource: true);
+        showTopToast(context, '歌词源：${widget.controller.lyricSourceName}', duration: const Duration(milliseconds: 900));
       },
       child: Builder(
         builder: (context) {

@@ -74,15 +74,17 @@ class _HomePageState extends State<HomePage> {
   /// 过滤老歌（开关开 + 年份可确认且早于阈值时剔除）。
   List<Song> _filterOld(List<Song> songs) =>
       songs.where((s) => !widget.settings.isOld(s)).toList();
+  List<Song> _filterBlacklist(List<Song> songs) =>
+      songs.where((s) => !widget.settings.isBlacklisted(s)).toList();
 
   Future<List<Song>> _loadDaily30() async {
     final ext = widget.controller.external;
     final cookie = widget.settings.qqCookie;
     if (cookie.trim().isNotEmpty) {
       final qq = await ext.daily30FromQq(cookie: cookie);
-      if (qq.isNotEmpty) return _filterOld(qq);
+      if (qq.isNotEmpty) return _filterBlacklist(_filterOld(qq));
     }
-    return _filterOld(await ext.daily30FromKugou());
+    return _filterBlacklist(_filterOld(await ext.daily30FromKugou()));
   }
 
   /// 本地推荐：类似"每日30首"——按日期播种 + 当天缓存，每天变化（同日内稳定）。
@@ -94,7 +96,7 @@ class _HomePageState extends State<HomePage> {
     if (_localRecDay == today && _localRecCached.isNotEmpty) return _localRecCached;
     final pool = await _client.randomSongs(size: 60).catchError((_) => <Song>[]);
     pool.shuffle(Random(today.year * 10000 + today.month * 100 + today.day));
-    final picked = _filterOld(pool.take(30).toList());
+    final picked = _filterBlacklist(_filterOld(pool.take(30).toList()));
     _localRecDay = today;
     _localRecCached = picked;
     return picked;
@@ -135,7 +137,7 @@ class _HomePageState extends State<HomePage> {
     List<Song> fetched;
     String? error;
     try {
-      fetched = _filterOld(await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20)));
+      fetched = _filterBlacklist(_filterOld(await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20))));
     } catch (e) {
       fetched = const [];
       error = '加载失败（$e）';
@@ -163,7 +165,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openQqToplist(String name, String id, String? coverUrl) async {
     final ext = widget.controller.external;
     final cookie = widget.settings.qqCookie;
-    final songs = _filterOld(await ext.qqToplistSongs(id, cookie: cookie, limit: 50));
+    final songs = _filterBlacklist(_filterOld(await ext.qqToplistSongs(id, cookie: cookie, limit: 50)));
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
@@ -185,7 +187,7 @@ class _HomePageState extends State<HomePage> {
     List<Song> songs;
     String? error;
     try {
-      songs = _filterOld(await ext.qqPlaylistSongs(dissid, limit: 100).timeout(const Duration(seconds: 20)));
+      songs = _filterBlacklist(_filterOld(await ext.qqPlaylistSongs(dissid, limit: 100).timeout(const Duration(seconds: 20))));
     } catch (e) {
       songs = const [];
       error = '加载失败（$e）';
