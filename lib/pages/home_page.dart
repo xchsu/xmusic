@@ -78,13 +78,10 @@ class _HomePageState extends State<HomePage> {
       songs.where((s) => !widget.settings.isBlacklisted(s)).toList();
 
   Future<List<Song>> _loadDaily30() async {
+    // 每日30首：统一走 QQ（热歌榜，填了 cookie 时账号相关更贴合；接口异常内部兜底酷狗）
     final ext = widget.controller.external;
-    final cookie = widget.settings.qqCookie;
-    if (cookie.trim().isNotEmpty) {
-      final qq = await ext.daily30FromQq(cookie: cookie);
-      if (qq.isNotEmpty) return _filterBlacklist(_filterOld(qq));
-    }
-    return _filterBlacklist(_filterOld(await ext.daily30FromKugou()));
+    final qq = await ext.daily30FromQq(cookie: widget.settings.qqCookie);
+    return _filterBlacklist(_filterOld(qq));
   }
 
   /// 本地推荐：类似"每日30首"——按日期播种 + 当天缓存，每天变化（同日内稳定）。

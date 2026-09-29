@@ -487,6 +487,10 @@ class _PlayerPageState extends State<PlayerPage> {
         showTopToast(context, '刷新歌词', duration: const Duration(milliseconds: 700));
       },
       onDoubleTap: () {
+        widget.controller.reloadLyrics();
+        showTopToast(context, '刷新歌词', duration: const Duration(milliseconds: 800));
+      },
+      onLongPress: () {
         widget.controller.reloadLyrics(switchSource: true);
         showTopToast(context, '歌词源：${widget.controller.lyricSourceName}', duration: const Duration(milliseconds: 900));
       },
@@ -1461,21 +1465,21 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
       _ensureStart();
       final total = tp.width + 40;
       return ClipRect(
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (ctx, __) {
-            final t = _c.value;
-            final dx = t < 0.5 ? 0 - total * (t * 2) : total - total * ((t - 0.5) * 2);
-            return OverflowBox(
-              maxWidth: double.infinity,
-              alignment: Alignment.center,
-              child: Transform.translate(
+        child: SizedBox(
+          width: boxW,
+          height: tp.height,
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (ctx, __) {
+              final t = _c.value;
+              final dx = t < 0.5 ? 0 - total * (t * 2) : 40 - total * ((t - 0.5) * 2);
+              return Transform.translate(
                 offset: Offset(dx, 0),
                 child: Text(widget.text, style: widget.style, maxLines: 1,
-                    textAlign: widget.textAlign),
-              ),
-            );
-          },
+                    softWrap: false, textAlign: widget.textAlign),
+              );
+            },
+          ),
         ),
       );
     });
