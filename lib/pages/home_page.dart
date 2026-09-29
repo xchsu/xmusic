@@ -339,17 +339,25 @@ class _HomePageState extends State<HomePage> {
                         ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.98)
                         : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.98 : 1.1),
                     children: List.generate(carP ? 9 : 12, (i) {
-                      final tc = Theme.of(context).colorScheme;
+                      const phs = [
+                        [Color(0xFF3A6DF0), Color(0xFF5B8CFA)],
+                        [Color(0xFF8E44AD), Color(0xFFB572E8)],
+                        [Color(0xFF00A884), Color(0xFF2FB8A0)],
+                        [Color(0xFFE67E22), Color(0xFFF0A45A)],
+                        [Color(0xFF16A085), Color(0xFF3BC8A8)],
+                        [Color(0xFF2980B9), Color(0xFF5FA8E0)],
+                      ];
+                      final g = phs[i % phs.length];
                       return Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           gradient: LinearGradient(
                             begin: Alignment.topLeft, end: Alignment.bottomRight,
-                            colors: [tc.surfaceContainerHighest, tc.surfaceContainerHighest.withOpacity(0.55)],
+                            colors: g,
                           ),
                         ),
                         alignment: Alignment.center,
-                        child: Icon(Icons.queue_music_rounded, color: tc.onSurfaceVariant.withOpacity(0.5), size: 26),
+                        child: const Icon(Icons.queue_music_rounded, color: Colors.white70, size: 26),
                       );
                     }),
                   );
