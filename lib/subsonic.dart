@@ -40,7 +40,6 @@ class Album {
         songCount: (j['songCount'] as num?)?.toInt(),
         year: (j['year'] as num?)?.toInt(),
         starred: j['starred'] != null,
-        year: (j['year'] as num?)?.toInt(),
       );
 }
 
@@ -135,6 +134,7 @@ class Song {
         durationSec: (j['duration'] as num?)?.toInt(),
         coverArt: j['coverArt']?.toString(),
         starred: j['starred'] != null,
+        year: (j['year'] as num?)?.toInt(),
       );
 }
 
