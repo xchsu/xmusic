@@ -271,9 +271,12 @@ class _PlayerPageState extends State<PlayerPage> {
       return Container(
         width: 72,
         margin: const EdgeInsets.only(right: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyric ? widget.settings.decreaseLyric : null),
             const SizedBox(height: 12),
             _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyric ? widget.settings.increaseLyric : null),
@@ -302,8 +305,8 @@ class _PlayerPageState extends State<PlayerPage> {
                 );
               },
             ),
-
           ],
+          ),
         ),
       );
     }
@@ -365,13 +368,11 @@ class _PlayerPageState extends State<PlayerPage> {
     return Container(
       width: _landP ? 40 : 44,
       margin: const EdgeInsets.only(right: 8),
-      child: _landP
-          ? FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: bar,
-            )
-          : bar,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: bar,
+      ),
     );
   }
 
@@ -481,6 +482,10 @@ class _PlayerPageState extends State<PlayerPage> {
 
   Widget _lyricsArea(BuildContext context, String songId, {int? visibleLines}) {
     return GestureDetector(
+      onTap: () {
+        widget.controller.reloadLyrics();
+        showTopToast(context, '刷新歌词', duration: const Duration(milliseconds: 700));
+      },
       onDoubleTap: () {
         widget.controller.reloadLyrics(switchSource: true);
         showTopToast(context, '歌词源：${widget.controller.lyricSourceName}', duration: const Duration(milliseconds: 900));
@@ -1421,6 +1426,14 @@ class _MarqueeText extends StatefulWidget {
 
 class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
+  bool _scheduled = false;
+  void _ensureStart() {
+    if (_scheduled || _c.isAnimating) return;
+    _scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_c.isAnimating) _c.repeat();
+    });
+  }
   @override
   void initState() {
     super.initState();
@@ -1445,7 +1458,7 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
         return Text(widget.text, style: widget.style, maxLines: 1,
             overflow: TextOverflow.ellipsis, textAlign: widget.textAlign);
       }
-      if (!_c.isAnimating) _c.repeat();
+      _ensureStart();
       final total = tp.width + 40;
       return ClipRect(
         child: AnimatedBuilder(
