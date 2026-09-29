@@ -152,7 +152,7 @@ class AlbumCard extends StatelessWidget {
 }
 
 /// A tappable song row with cover, title, artist, duration and a play button.
-class SongTile extends StatelessWidget {
+class SongTile extends StatefulWidget {
   const SongTile({
     super.key,
     required this.song,
@@ -161,6 +161,10 @@ class SongTile extends StatelessWidget {
     this.trailing,
     this.showAlbum = false,
     this.leading,
+    this.onFavorite,
+    this.onBlacklist,
+    this.blacklisted = false,
+    this.onDelete,
   });
 
   final Song song;
@@ -169,36 +173,56 @@ class SongTile extends StatelessWidget {
   final Widget? trailing;
   final bool showAlbum;
   final Widget? leading;
+  /// 收藏回调（提供则左滑露出收藏按钮）
+  final VoidCallback? onFavorite;
+  /// 黑名单回调（提供则左滑露出黑名单按钮）
+  final VoidCallback? onBlacklist;
+  /// 当前是否已加入黑名单（黑名单按钮高亮）
+  final bool blacklisted;
+  /// 删除回调（提供则左滑露出删除按钮）
+  final VoidCallback? onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  State<SongTile> createState() => _SongTileState();
+}
+
+class _SongTileState extends State<SongTile> {
+  double _dx = 0;
+  static const double _minDx = -144;
+
+  bool get _enabled =>
+      widget.onFavorite != null ||
+      widget.onBlacklist != null ||
+      widget.onDelete != null;
+
+  Widget _content(BuildContext context) {
     final theme = Theme.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      leading: leading ??
+      leading: widget.leading ??
           CoverImage(
-            client: client,
-            coverId: song.coverArt,
-            coverUrl: song.coverUrl,
+            client: widget.client,
+            coverId: widget.song.coverArt,
+            coverUrl: widget.song.coverUrl,
             size: 44,
             radius: 8,
             requestSize: 120,
           ),
-      // 空安全：任何字段为 null 都不抛异常（异常会让整页渲染空白）
-      title: Text(song.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(widget.song.title ?? '',
+          maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        showAlbum
-            ? '${song.artist ?? ''} · ${song.album ?? ''}'
-            : (song.artist ?? '未知'),
+        widget.showAlbum
+            ? '${widget.song.artist ?? ''} · ${widget.song.album ?? ''}'
+            : (widget.song.artist ?? '未知'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: trailing ??
+      trailing: widget.trailing ??
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (song.durationSec != null)
-                Text(formatDuration(Duration(seconds: song.durationSec!)),
+              if (widget.song.durationSec != null)
+                Text(formatDuration(Duration(seconds: widget.song.durationSec!)),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               const SizedBox(width: 8),
@@ -206,7 +230,81 @@ class SongTile extends StatelessWidget {
                   color: theme.colorScheme.primary),
             ],
           ),
-      onTap: onTap,
+      onTap: () {
+        if (_dx < -20) {
+          _close();
+        } else {
+          widget.onTap();
+        }
+      },
+    );
+  }
+
+  void _close() => setState(() => _dx = 0);
+
+  Widget _swipeBtn(IconData icon, Color color, VoidCallback onTap,
+      {bool active = false}) {
+    return GestureDetector(
+      onTap: () {
+        onTap();
+        _close();
+      },
+      child: Container(
+        width: 48,
+        color: color.withValues(alpha: active ? 0.85 : 0.65),
+        alignment: Alignment.center,
+        child: Icon(icon, color: Colors.white, size: 24),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_enabled) return _content(context);
+    final theme = Theme.of(context);
+    return Stack(
+      children: [
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 0,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onFavorite != null)
+                _swipeBtn(
+                    widget.song.starred
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    Colors.redAccent,
+                    widget.onFavorite!,
+                    active: widget.song.starred),
+              if (widget.onBlacklist != null)
+                _swipeBtn(Icons.heart_broken_rounded, Colors.orange,
+                    widget.onBlacklist!,
+                    active: widget.blacklisted),
+              if (widget.onDelete != null)
+                _swipeBtn(Icons.delete_outline_rounded, Colors.blueGrey,
+                    widget.onDelete!),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onHorizontalDragUpdate: (d) {
+            setState(() => _dx = (_dx + d.delta.dx).clamp(_minDx, 0.0));
+          },
+          onHorizontalDragEnd: (_) {
+            setState(() => _dx = _dx < -48 ? _minDx : 0);
+          },
+          child: Transform.translate(
+            offset: Offset(_dx, 0),
+            child: Container(
+              color: theme.colorScheme.surface,
+              child: _content(context),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

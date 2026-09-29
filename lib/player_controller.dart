@@ -781,6 +781,61 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
+  /// 收藏/取消收藏队列里第 i 首（播放列表面板左滑/右侧图标）
+  Future<void> toggleStarAt(int i) async {
+    if (i < 0 || i >= queue.length) return;
+    final s = queue[i];
+    final nowStarred = !s.starred;
+    queue[i] = Song(
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      albumId: s.albumId,
+      durationSec: s.durationSec,
+      coverArt: s.coverArt,
+      starred: nowStarred,
+      coverUrl: s.coverUrl,
+      streamUrl: s.streamUrl,
+      fromExternal: s.fromExternal,
+      externalSource: s.externalSource,
+    );
+    notifyListeners();
+    if (s.fromExternal) return;
+    try {
+      if (nowStarred) {
+        await client.starSong(s.id);
+      } else {
+        await client.unstarSong(s.id);
+      }
+    } catch (e) {
+      debugPrint('star toggle at failed: $e');
+    }
+  }
+
+  /// 从播放队列移除第 i 首（删除当前歌则跳到下一首继续）
+  Future<void> removeFromQueue(int i) async {
+    if (i < 0 || i >= queue.length) return;
+    final wasCurrent = i == index;
+    final q = List.of(queue)..removeAt(i);
+    if (wasCurrent) {
+      if (q.isEmpty) {
+        queue = q;
+        index = 0;
+        notifyListeners();
+        return;
+      }
+      index = index.clamp(0, q.length - 1);
+      queue = q;
+      notifyListeners();
+      await playAt(index);
+      return;
+    }
+    queue = q;
+    if (i < index) index--;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _completedSub.cancel();
