@@ -261,9 +261,9 @@ class _PlayerPageState extends State<PlayerPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyric ? widget.settings.decreaseLyric : null),
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
             _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyric ? widget.settings.increaseLyric : null),
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
             ListenableBuilder(
               listenable: widget.controller,
               builder: (context, _) {
