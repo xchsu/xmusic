@@ -200,10 +200,14 @@ class _PlayerPageState extends State<PlayerPage> {
               }),
               Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-              _MarqueeText(song.title,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800, fontSize: 22, height: 1.2)),
+              SizedBox(
+                width: double.infinity,
+                child: _MarqueeText(song.title,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800, fontSize: 22, height: 1.2)),
+              ),
               const SizedBox(height: 4),
               Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -1455,8 +1459,10 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
         maxLines: 1,
         textDirection: TextDirection.ltr,
       )..layout();
-      final boxW = cons.maxWidth;
-      final overflow = boxW > 0 && tp.width > boxW;
+      final boxW = cons.maxWidth.isFinite
+          ? cons.maxWidth
+          : (MediaQuery.sizeOf(ctx).width * 0.86);
+      final overflow = boxW > 0 && tp.width > boxW + 1;
       if (!overflow) {
         return Text(widget.text, style: widget.style, maxLines: 1,
             overflow: TextOverflow.ellipsis, textAlign: widget.textAlign);
