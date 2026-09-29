@@ -1510,6 +1510,9 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
         text: TextSpan(text: widget.text, style: widget.style),
         maxLines: 1,
         textDirection: TextDirection.ltr,
+        // 关键：必须用全局 textScaler，否则计算宽小于实际渲染宽（放大后），
+        // overflow 被误判为 false → 走省略号截断，后半段消失
+        textScaler: MediaQuery.textScalerOf(ctx),
       )..layout();
       final boxW = cons.maxWidth.isFinite
           ? cons.maxWidth
