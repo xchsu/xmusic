@@ -1505,7 +1505,7 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(seconds: 9));
+    _c = AnimationController(vsync: this, duration: const Duration(seconds: 6));
   }
   @override
   void dispose() {
@@ -1528,13 +1528,10 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
           : (cons.maxWidth.isFinite
               ? cons.maxWidth
               : (MediaQuery.sizeOf(ctx).width * 0.86));
-      final overflow = boxW > 0 && tp.width > boxW + 1;
-      if (!overflow) {
-        return Text(widget.text, style: widget.style, maxLines: 1,
-            overflow: TextOverflow.ellipsis, textAlign: widget.textAlign);
-      }
+      if (boxW <= 0) return const SizedBox.shrink();
+      // 一律用滚动容器：短歌名完整显示、长歌名滚出后半，绝不省略号截断。
+      // 滚动量按文本宽+间隙算，再取不小于视口宽，确保尾部一定能滚进来。
       _ensureStart();
-      // 单向循环滚动：文本完整滚过一圈(tp.width+间隙)，后半必然进入视口显示
       final scrollExtent = math.max(0.0, tp.width + 24);
       return ClipRect(
         child: SizedBox(
