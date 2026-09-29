@@ -518,7 +518,33 @@ class PlayerController extends ChangeNotifier {
     try {
       var result;
       final src = s.externalSource;
-      if (src == 'qq') {
+      if (lyricSourceIndex > 0) {
+        // 备用源：跨源按 歌名+歌手 搜索取词（1网易云 / 2QQ / 3LX）
+        try {
+          final kw = '${s.title} ${s.artist}';
+          if (lyricSourceIndex == 1) {
+            final hits = await external.searchNeteaseDirect(kw, limit: 3);
+            for (final cand in hits) {
+              final lr = await external.lyricFor(cand.id, source: 'netease');
+              if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+            }
+          } else if (lyricSourceIndex == 2) {
+            final hits = await external.searchQq(kw, limit: 3);
+            for (final cand in hits) {
+              final lr = await external.qqLyric(cand.id);
+              if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+            }
+          } else if (lyricSourceIndex == 3) {
+            final hits = await external.lxSearch(kw, limit: 3);
+            for (final cand in hits) {
+              if (cand.lrcUrl != null && cand.lrcUrl!.isNotEmpty) {
+                final lr = await external.lxLrc(cand.lrcUrl!);
+                if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+              }
+            }
+          }
+        } catch (_) {}
+      } else if (src == 'qq') {
         result = await external.qqLyric(s.id);
         // QQ 没词时按歌名+歌手搜网易云兜底（车机用户反馈"播放没歌词"）
         if (result == null || result.lines.isEmpty) {
@@ -576,7 +602,18 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void reloadLyrics() => _loadLyrics();
+  /// 歌词源索引：0默认 / 1网易云 / 2QQ / 3LX。双击刷新时 +1 循环切换。
+  int lyricSourceIndex = 0;
+  String get lyricSourceName => switch (lyricSourceIndex) {
+        0 => '默认',
+        1 => '网易云',
+        2 => 'QQ音乐',
+        _ => 'LX',
+      };
+  void reloadLyrics({bool switchSource = false}) {
+    if (switchSource) lyricSourceIndex = (lyricSourceIndex + 1) % 4;
+    _loadLyrics();
+  }
 
   // ---- 下载 ----
 

@@ -33,6 +33,7 @@ class AppSettings extends ChangeNotifier {
   static const _kQqCookie = 'qq_cookie';
   static const _kFilterOld = 'filter_old';
   static const _kOldYear = 'old_year';
+  static const _kBlacklist = 'blacklist';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -59,6 +60,7 @@ class AppSettings extends ChangeNotifier {
   int _lyricFuture = lyricFutureDefault;
   bool _autoPlay = true;
   bool _filterOld = true;
+  Set<String> _blacklist = {};
   int _oldYear = 1995;
   String downloadPath = '';
   String qqCookie = '';
@@ -104,6 +106,7 @@ class AppSettings extends ChangeNotifier {
     _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
     _filterOld = _prefs.getBool(_kFilterOld) ?? true;
     _oldYear = _prefs.getInt(_kOldYear) ?? 1995;
+    _blacklist = (_prefs.getStringList(_kBlacklist) ?? const []).toSet();
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
   }
@@ -212,8 +215,22 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setInt(_kOldYear, v);
   }
 
-  /// 歌曲是否属于老歌（被过滤）：开启开关且年份能确认且早于阈值。
+  /// 歌曲是否属于老歌（被过滤）：年份能确认且早于阈值。
   bool isOld(Song s) => s.year != null && s.year! < _oldYear;
+
+  /// 歌曲黑名单（不喜欢）：跨源按 "标题|歌手" 判重，加入后不再出现在排行榜/歌单/推荐。
+  static String _songKey(Song s) => '${s.title}|${s.artist}'.toLowerCase();
+  bool isBlacklisted(Song s) => _blacklist.contains(_songKey(s));
+  Future<void> addBlacklist(Song s) async {
+    _blacklist.add(_songKey(s));
+    notifyListeners();
+    await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+  }
+  Future<void> removeBlacklist(Song s) async {
+    _blacklist.remove(_songKey(s));
+    notifyListeners();
+    await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+  }
 
   Future<void> setThemeMode(AppThemeMode mode) async {
     if (mode == _themeMode) return;
