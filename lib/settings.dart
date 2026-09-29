@@ -69,6 +69,8 @@ class AppSettings extends ChangeNotifier {
   bool _filterOld = true;
   Set<String> _blacklist = {};
   bool _syncNas = false;
+  int _blacklistRev = 0;
+  int get blacklistRev => _blacklistRev;
   int _oldYear = 1995;
   String downloadPath = '';
   String qqCookie = '';
@@ -254,15 +256,26 @@ class AppSettings extends ChangeNotifier {
   // 黑名单按歌手过滤：加入一首即屏蔽该歌手全部（解决热歌榜同歌手刷屏）
   static String _songKey(Song s) =>
       (s.artist.isNotEmpty ? s.artist : s.title).toLowerCase().trim();
-  bool isBlacklisted(Song s) => _blacklist.contains(_songKey(s));
+  bool isBlacklisted(Song s) {
+    final a = (s.artist.isNotEmpty ? s.artist : s.title).toLowerCase().trim();
+    if (a.isEmpty) return false;
+    // 部分匹配：榜单/歌单里的歌手可能带 feat、多歌手（如"檀健次、王心凌"），黑名单含其主歌手即滤
+    return _blacklist.any((k) {
+      final kk = k.toLowerCase().trim();
+      if (kk.isEmpty) return false;
+      return a == kk || a.contains(kk) || kk.contains(a);
+    });
+  }
   Future<void> addBlacklist(Song s) async {
     _blacklist.add(_songKey(s));
+    _blacklistRev++;
     notifyListeners();
     await _prefs.setStringList(_kBlacklist, _blacklist.toList());
     unawaited(syncBlacklistPush());
   }
   Future<void> removeBlacklist(Song s) async {
     _blacklist.remove(_songKey(s));
+    _blacklistRev++;
     notifyListeners();
     await _prefs.setStringList(_kBlacklist, _blacklist.toList());
     unawaited(syncBlacklistPush());
