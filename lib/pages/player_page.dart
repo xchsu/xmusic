@@ -1494,15 +1494,24 @@ class _MarqueeText extends StatefulWidget {
 
 class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
+  late final ScrollController _s;
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(seconds: 6));
-    // 创建即开始滚动：不依赖后续 build / postFrame，保证动画一定在跑
-    _c.repeat();
+    _s = ScrollController();
+    _c = AnimationController(vsync: this, duration: const Duration(seconds: 6))
+      ..addListener(_tick)
+      ..repeat();
+  }
+  void _tick() {
+    if (!mounted || !_s.hasClients) return;
+    // maxScrollExtent 由 SingleChildScrollView 实际布局算出（真实文本宽-视口宽）：
+    // 长文本 >0 → 真实滚动、尾部必然滚入；短文本 <=0 → 静止完整显示，不滚动
+    _s.jumpTo(_s.position.maxScrollExtent * _c.value);
   }
   @override
   void dispose() {
+    _s.dispose();
     _c.dispose();
     super.dispose();
   }
@@ -1513,8 +1522,6 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
         text: TextSpan(text: widget.text, style: widget.style),
         maxLines: 1,
         textDirection: TextDirection.ltr,
-        // 关键：必须用全局 textScaler，否则计算宽小于实际渲染宽（放大后），
-        // overflow 被误判为 false → 走省略号截断，后半段消失
         textScaler: MediaQuery.textScalerOf(ctx),
       )..layout();
       final boxW = widget.maxWidth != null
@@ -1523,29 +1530,16 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
               ? cons.maxWidth
               : (MediaQuery.sizeOf(ctx).width * 0.86));
       if (boxW <= 0) return const SizedBox.shrink();
-      final overflow = tp.width > boxW + 1;
-      if (!overflow) {
-        // 文本不超宽：完整显示，不滚动
-        return Text(widget.text, style: widget.style, maxLines: 1,
-            softWrap: false, textAlign: widget.textAlign);
-      }
-      // 超宽才滚动；动画在 initState 已启动，尾部必然滚进来
-      final scrollExtent = math.max(0.0, tp.width + 24);
       return ClipRect(
         child: SizedBox(
           width: boxW,
           height: tp.height,
-          child: AnimatedBuilder(
-            animation: _c,
-            builder: (ctx, __) {
-              final t = _c.value;
-              final dx = -scrollExtent * t;
-              return Transform.translate(
-                offset: Offset(dx, 0),
-                child: Text(widget.text, style: widget.style, maxLines: 1,
-                    softWrap: false, textAlign: widget.textAlign),
-              );
-            },
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            controller: _s,
+            child: Text(widget.text, style: widget.style, maxLines: 1,
+                softWrap: false, textAlign: widget.textAlign),
           ),
         ),
       );
