@@ -164,6 +164,29 @@ class _AlbumPageState extends State<AlbumPage> {
                       ),
                     ),
                     onTap: () => _playSongs(songs, i),
+                    onFavorite: () async {
+                      final s = songs[i];
+                      final v = !s.starred;
+                      if (mounted) {
+                        setState(() => songs[i] = withStarred(s, v));
+                      }
+                      if (!s.fromExternal) {
+                        try {
+                          v
+                              ? await _client.starSong(s.id)
+                              : await _client.unstarSong(s.id);
+                        } catch (_) {}
+                      }
+                    },
+                    blacklisted: widget.settings.isBlacklisted(songs[i]),
+                    onBlacklist: () async {
+                      final s = songs[i];
+                      if (widget.settings.isBlacklisted(s)) {
+                        await widget.settings.removeBlacklist(s);
+                      } else {
+                        await widget.settings.addBlacklist(s);
+                      }
+                    },
                   ),
                 ),
             ],

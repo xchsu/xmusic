@@ -396,6 +396,25 @@ class _SearchPageState extends State<SearchPage> {
                 song: e.value,
                 client: _client,
                 onTap: () => _playSongs(r.songs, e.key),
+                onFavorite: () async {
+                  final s = e.value;
+                  if (!s.fromExternal) {
+                    try {
+                      s.starred
+                          ? await _client.unstarSong(s.id)
+                          : await _client.starSong(s.id);
+                    } catch (_) {}
+                  }
+                },
+                blacklisted: widget.settings.isBlacklisted(e.value),
+                onBlacklist: () async {
+                  final s = e.value;
+                  if (widget.settings.isBlacklisted(s)) {
+                    await widget.settings.removeBlacklist(s);
+                  } else {
+                    await widget.settings.addBlacklist(s);
+                  }
+                },
               )),
         ],
         if (r.albums.isNotEmpty) ...[

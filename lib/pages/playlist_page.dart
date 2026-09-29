@@ -160,22 +160,30 @@ class _PlaylistPageState extends State<PlaylistPage> {
                         itemBuilder: (context, k) {
                           final i = vis[k];
                           final song = songs[i];
-                          return Dismissible(
-                            key: ValueKey('pl_${widget.playlist.name}_${song.id}'),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              color: Theme.of(context).colorScheme.error,
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              child: const Icon(Icons.delete_outline_rounded,
-                                  color: Colors.white),
-                            ),
-                            onDismissed: (_) => _removeSong(song),
-                            child: SongTile(
-                              song: song,
-                              client: _client,
-                              onTap: () => _playSongs(songs, i),
-                            ),
+                          return SongTile(
+                            song: song,
+                            client: _client,
+                            onTap: () => _playSongs(songs, i),
+                            onFavorite: () async {
+                              final s = song;
+                              if (!s.fromExternal) {
+                                try {
+                                  s.starred
+                                      ? await _client.unstarSong(s.id)
+                                      : await _client.starSong(s.id);
+                                } catch (_) {}
+                              }
+                            },
+                            blacklisted: widget.settings.isBlacklisted(song),
+                            onBlacklist: () async {
+                              final s = song;
+                              if (widget.settings.isBlacklisted(s)) {
+                                await widget.settings.removeBlacklist(s);
+                              } else {
+                                await widget.settings.addBlacklist(s);
+                              }
+                            },
+                            onDelete: () => _removeSong(song),
                           );
                         },
                       ),
