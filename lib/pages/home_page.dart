@@ -383,15 +383,18 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            LayoutBuilder(builder: (context, c) => GridView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              gridDelegate: (isCarScreen(context) && c.maxWidth < c.maxHeight)
-                  ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
-                  : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.86 : 0.72),
-              children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
-            )),
+            Builder(builder: (context) {
+              final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
+              return GridView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                gridDelegate: _carP
+                    ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
+                    : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.86 : 0.72),
+                children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
+              );
+            }),
                       ],
           ),
       ),
