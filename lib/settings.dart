@@ -31,6 +31,8 @@ class AppSettings extends ChangeNotifier {
   static const _kAutoPlay = 'auto_play';
   static const _kDownloadPath = 'download_path';
   static const _kQqCookie = 'qq_cookie';
+  static const _kFilterOld = 'filter_old';
+  static const _kOldYear = 'old_year';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -56,6 +58,8 @@ class AppSettings extends ChangeNotifier {
   int _lyricPast = lyricPastDefault;
   int _lyricFuture = lyricFutureDefault;
   bool _autoPlay = true;
+  bool _filterOld = true;
+  int _oldYear = 1995;
   String downloadPath = '';
   String qqCookie = '';
   AppThemeMode _themeMode = AppThemeMode.system;
@@ -67,6 +71,8 @@ class AppSettings extends ChangeNotifier {
   int get lyricPast => _lyricPast;
   int get lyricFuture => _lyricFuture;
   bool get autoPlay => _autoPlay;
+  bool get filterOld => _filterOld;
+  int get oldYear => _oldYear;
   AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
@@ -96,6 +102,8 @@ class AppSettings extends ChangeNotifier {
     _lyricPast = _prefs.getInt(_kLyricPast) ?? lyricPastDefault;
     _lyricFuture = _prefs.getInt(_kLyricFuture) ?? lyricFutureDefault;
     _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
+    _filterOld = _prefs.getBool(_kFilterOld) ?? true;
+    _oldYear = _prefs.getInt(_kOldYear) ?? 1995;
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
   }
@@ -190,6 +198,22 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     await _prefs.setString(_kDownloadPath, path);
   }
+
+  /// 是否过滤老歌（默认开）：仅剔除能确认发行年份早于阈值的歌，年份缺失不误杀。
+  Future<void> setFilterOld(bool v) async {
+    _filterOld = v;
+    notifyListeners();
+    await _prefs.setBool(_kFilterOld, v);
+  }
+
+  Future<void> setOldYear(int v) async {
+    _oldYear = v;
+    notifyListeners();
+    await _prefs.setInt(_kOldYear, v);
+  }
+
+  /// 歌曲是否属于老歌（被过滤）：开启开关且年份能确认且早于阈值。
+  bool isOld(Song s) => _filterOld && s.year != null && s.year! < _oldYear;
 
   Future<void> setThemeMode(AppThemeMode mode) async {
     if (mode == _themeMode) return;

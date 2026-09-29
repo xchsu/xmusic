@@ -26,6 +26,22 @@ class ExternalApi {
     'Referer': 'https://www.bilibili.com/',
   };
 
+  /// 将各源发行时间/年份（毫秒或秒时间戳、或 4 位年份）解析为年份，失败返回 null。
+  static int? _yearOf(dynamic v) {
+    if (v == null) return null;
+    if (v is num) {
+      final n = v.toInt();
+      if (n > 9999) {
+        final ms = n > 100000000000 ? n : n * 1000;
+        return DateTime.fromMillisecondsSinceEpoch(ms).year;
+      }
+      return n;
+    }
+    final str = v.toString().trim();
+    final m = RegExp(r'^\d{4}').firstMatch(str);
+    return m == null ? null : int.parse(m.group(0)!);
+  }
+
   bool get isConfigured => baseUrl.trim().isNotEmpty;
   /// 内置默认聚合 API（gdstudio）；「外部API地址」留空时自动使用。
   static const String defaultAggregate = 'https://music-api.gdstudio.xyz';
@@ -122,6 +138,7 @@ class ExternalApi {
         durationSec: null,
         fromExternal: true,
         externalSource: source,
+        year: _yearOf(it['publishTime']),
       ));
     }
     return out;
@@ -464,6 +481,7 @@ class ExternalApi {
           durationSec: (d['interval'] as num?)?.toInt(),
           fromExternal: true,
           externalSource: 'qq',
+          year: _yearOf(d['pubtime'] ?? d['time']),
         );
       }).where((s) => s.id.isNotEmpty).take(limit).toList();
     } catch (_) {
@@ -505,6 +523,7 @@ class ExternalApi {
             coverUrl: (al['picUrl'] ?? '').toString(),
             durationSec: ((s['dt'] as num?)! / 1000).round(),
             fromExternal: true, externalSource: 'lx',
+            year: _yearOf(s['publishTime']),
           );
         }).toList();
       } catch (_) { continue; }
@@ -530,6 +549,7 @@ class ExternalApi {
             coverUrl: (al['picUrl'] ?? '').toString(),
             durationSec: ((s['dt'] as num? ?? 0) / 1000).round(),
             fromExternal: true, externalSource: 'lx',
+            year: _yearOf(s['publishTime']),
           );
         }).toList();
       } catch (_) { continue; }

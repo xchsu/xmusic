@@ -40,6 +40,7 @@ class Album {
         songCount: (j['songCount'] as num?)?.toInt(),
         year: (j['year'] as num?)?.toInt(),
         starred: j['starred'] != null,
+        year: (j['year'] as num?)?.toInt(),
       );
 }
 
@@ -103,6 +104,7 @@ class Song {
     this.fromExternal = false,
     this.externalSource,
     this.lrcUrl,
+    this.year,
   });
 
   final String id;
@@ -121,6 +123,8 @@ class Song {
   final String? externalSource;
   /// 外源歌曲自带歌词直链（如 LX/meting 的 lrc 接口），有则播放页直接用，不再走通用歌词查询。
   final String? lrcUrl;
+  /// 发行年份（1995 前视为老歌，用于过滤；缺失为 null 不参与过滤）。
+  final int? year;
 
   factory Song.fromJson(Map<String, dynamic> j) => Song(
         id: j['id'].toString(),
