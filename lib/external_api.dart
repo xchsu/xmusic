@@ -651,11 +651,10 @@ class ExternalApi {
     final body = {
       'comm': {'ct': 24, 'cv': 0, 'uin': uinNum, 'format': 'json', 'inCharset': 'utf-8'},
       'req_0': {
-        'module': 'v8.SmartBox.Music',
-        'method': 'GetRecommendSong',
+        'module': 'v8.FM',
+        'method': 'GetFmList',
         'param': {
-          'mid': '', 'count': count, 'uin': uinNum,
-          'lastMid': '', 'mini': false, 'scene': 'getSmartBoxRecommend',
+          'songCount': count, 'uin': uinNum, 'playAction': 'default',
         },
       },
     };

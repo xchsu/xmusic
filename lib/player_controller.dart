@@ -529,10 +529,24 @@ class PlayerController extends ChangeNotifier {
               if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
             }
           } else if (lyricSourceIndex == 2) {
-            final hits = await external.searchQq(kw, limit: 3);
-            for (final cand in hits) {
-              final lr = await external.qqLyric(cand.id);
-              if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+            // QQ 源：当前歌曲本身是 QQ 源直接取词；否则搜索；均无词则网易云兜底
+            if (s.externalSource == 'qq') {
+              final lr = await external.qqLyric(s.id);
+              if (lr != null && lr.lines.isNotEmpty) { result = lr; }
+            }
+            if (result == null) {
+              final hits = await external.searchQq(kw, limit: 3);
+              for (final cand in hits) {
+                final lr = await external.qqLyric(cand.id);
+                if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+              }
+            }
+            if (result == null) {
+              final nh = await external.searchNeteaseDirect(kw, limit: 3);
+              for (final cand in nh) {
+                final lr = await external.lyricFor(cand.id, source: 'netease');
+                if (lr != null && lr.lines.isNotEmpty) { result = lr; break; }
+              }
             }
           } else if (lyricSourceIndex == 3) {
             final hits = await external.lxSearch(kw, limit: 3);
