@@ -59,7 +59,7 @@ class PlayerController extends ChangeNotifier {
   PlayMode _repeat = PlayMode.shuffle;
   final Random _rnd = Random();
   /// 最近播放过的索引（避免随机重复）：随机切歌时避开这几首。
-  static const int _recentLimit = 4;
+  static const int _recentLimit = 10;
   final List<int> _recentIndexes = [];
 
   late final StreamSubscription<ProcessingState> _completedSub;
