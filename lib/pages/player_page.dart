@@ -326,6 +326,23 @@ class _PlayerPageState extends State<PlayerPage> {
         SizedBox(height: _gap),
         IconTheme(
           data: IconThemeData(size: side),
+          child: ListenableBuilder(
+            listenable: widget.controller,
+            builder: (context, _) {
+              final sg = widget.controller.current;
+              final blocked = sg != null && widget.settings.isBlacklisted(sg);
+              return IconButton(
+                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
+                icon: Icon(Icons.heart_broken_rounded,
+                    color: blocked ? Theme.of(context).colorScheme.error : null),
+                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
           child: IconButton(
             tooltip: '下载',
             icon: Icon(Icons.download_rounded),
@@ -343,23 +360,6 @@ class _PlayerPageState extends State<PlayerPage> {
               final msg = await widget.controller.uploadCurrentToNas();
               if (!context.mounted) return;
               showTopToast(context, msg, duration: const Duration(seconds: 2));
-            },
-          ),
-        ),
-        SizedBox(height: _gap),
-        IconTheme(
-          data: IconThemeData(size: side),
-          child: ListenableBuilder(
-            listenable: widget.controller,
-            builder: (context, _) {
-              final sg = widget.controller.current;
-              final blocked = sg != null && widget.settings.isBlacklisted(sg);
-              return IconButton(
-                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
-                icon: Icon(Icons.heart_broken_rounded,
-                    color: blocked ? Theme.of(context).colorScheme.error : null),
-                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
-              );
             },
           ),
         ),
