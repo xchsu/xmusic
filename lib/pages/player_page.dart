@@ -251,7 +251,9 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _actionSidebar(BuildContext context) {
     // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
     final car = _carUI(context);
-    final double side = 30;
+    final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final double side = _landP ? 22 : 30;
+    final double _gap = _landP ? 4.0 : 6.0;
     if (car) {
       // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸同样式
       return Container(
@@ -291,12 +293,12 @@ class _PlayerPageState extends State<PlayerPage> {
             data: IconThemeData(size: side),
             child: LyricSizeControls(settings: widget.settings),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: _gap),
           IconTheme(
             data: IconThemeData(size: side),
             child: _FavoriteButton(controller: widget.controller),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: _gap),
           IconTheme(
             data: IconThemeData(size: side),
             child: IconButton(
@@ -305,7 +307,7 @@ class _PlayerPageState extends State<PlayerPage> {
               onPressed: () => _downloadMenu(context),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: _gap),
           IconTheme(
             data: IconThemeData(size: side),
             child: IconButton(
