@@ -138,9 +138,9 @@ class _PlayerPageState extends State<PlayerPage> {
     final size = MediaQuery.of(context).size.width * 0.5;
     return Column(
       children: [
-        // 黑胶封面（占4份，黑胶尺寸自适应区域高度，绝不溢出到歌词区）
+        // 封面（占5份，尺寸自适应区域高度，绝不溢出到歌词区）
         Expanded(
-          flex: 4,
+          flex: 5,
           child: LayoutBuilder(
             builder: (context, box) {
               final s = math.min(size, box.maxHeight * 0.92);
@@ -174,9 +174,9 @@ class _PlayerPageState extends State<PlayerPage> {
             },
           ),
         ),
-        // 歌词区 + 右侧按钮栏（缩放/收藏/下载），与黑胶互不重叠
+        // 歌词区 + 右侧按钮栏（缩放/收藏/下载），与封面互不重叠
         Expanded(
-          flex: 5,
+          flex: 4,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
