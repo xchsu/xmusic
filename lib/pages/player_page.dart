@@ -1062,13 +1062,13 @@ class _TonearmPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.width / 2;
     final r = size.width / 2;
-    // 转轴：唱片顶部、偏右
-    final pivot = Offset(c + r * 0.10, r * 0.02);
-    // 针落点：唱片内右侧，半径 0.55r、角度 18°
-    const a = 0.32;
-    final needle = Offset(c + r * 0.55 * math.cos(a), c + r * 0.55 * math.sin(a));
-    // 抬起：暂停绕转轴逆时针抬起（针离开唱片朝上），播放归位
-    final liftRad = -lift * 0.42;
+    // 唱臂座：唱片右上方（真实黑胶唱机：曲臂从右后侧伸出）
+    final pivot = Offset(c + r * 0.82, r * 0.10);
+    // 针落点：唱片中心偏左上（半径 0.30r、角度 -0.55）
+    const a = -0.55;
+    final needle = Offset(c + r * 0.30 * math.cos(a), c + r * 0.30 * math.sin(a));
+    // 抬起：暂停绕唱臂座抬起（针离开唱片朝右上），播放归位
+    final liftRad = -lift * 0.55;
     canvas.save();
     canvas.translate(pivot.dx, pivot.dy);
     canvas.rotate(liftRad);
@@ -1076,31 +1076,31 @@ class _TonearmPainter extends CustomPainter {
     final dy = needle.dy - pivot.dy;
     final armLen = math.sqrt(dx * dx + dy * dy);
     canvas.rotate(math.atan2(dy, dx));
-    // 臂：沿 +x 到臂长，微渐变
+    // 臂：细长略带弧度（二次贝塞尔曲臂，更接近黑胶唱机）
     final armPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.centerLeft, end: Alignment.centerRight,
         colors: [Color(0xFF2C3140), Color(0xFF565E70)],
-      ).createShader(Rect.fromLTWH(0, -3, armLen, 6));
+      ).createShader(Rect.fromLTWH(0, -4, armLen, 8));
     final armPath = Path()
-      ..moveTo(0, -2.4)
-      ..lineTo(armLen, -1.5)
-      ..lineTo(armLen + r * 0.06, 1.8)
-      ..lineTo(0, 2.4)
+      ..moveTo(0, -2.8)
+      ..quadraticBezierTo(armLen * 0.55, -5.0, armLen, -1.8)
+      ..lineTo(armLen + r * 0.08, 2.2)
+      ..quadraticBezierTo(armLen * 0.55, 3.2, 0, 2.8)
       ..close();
     canvas.drawPath(armPath, armPaint);
-    // 针头（卡针）：臂末端小圆头，斜向唱片
+    // 针头（唱针）：臂末端小圆头，斜向唱片
     canvas.translate(armLen, 0);
-    canvas.rotate(-0.75);
+    canvas.rotate(-0.7);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(-6, -2.2, 16, 5.5), const Radius.circular(2.8)),
+      RRect.fromRectAndRadius(Rect.fromLTWH(-7, -2.4, 18, 6.2), const Radius.circular(3)),
       Paint()..color = const Color(0xFF1A1D24),
     );
-    canvas.drawCircle(const Offset(11, 0), 2.5, Paint()..color = const Color(0xFF8B93A5));
+    canvas.drawCircle(const Offset(12, 0), 2.8, Paint()..color = const Color(0xFF8B93A5));
     canvas.restore();
-    // 转轴座（盖在最上层）
-    canvas.drawCircle(pivot, 7, Paint()..color = const Color(0xFF3A4150));
-    canvas.drawCircle(pivot, 3.6, Paint()..color = const Color(0xFF14161C));
+    // 唱臂座（盖在最上层，随唱片尺寸缩放）
+    canvas.drawCircle(pivot, r * 0.055, Paint()..color = const Color(0xFF3A4150));
+    canvas.drawCircle(pivot, r * 0.028, Paint()..color = const Color(0xFF14161C));
   }
   @override
   bool shouldRepaint(_TonearmPainter old) => old.lift != lift;

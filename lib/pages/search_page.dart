@@ -300,7 +300,34 @@ class _SearchPageState extends State<SearchPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(
+                  value: 0,
+                  label: Text('本地'),
+                  icon: Icon(Icons.folder_rounded),
+                ),
+                ButtonSegment(
+                  value: 1,
+                  label: Text('NAS'),
+                  icon: Icon(Icons.dns_outlined),
+                ),
+                ButtonSegment(
+                  value: 2,
+                  label: Text('在线'),
+                  icon: Icon(Icons.public_rounded),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (s) {
+                setState(() => _mode = s.first);
+                _search();
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 8, 0),
             child: Row(
               children: [
                 Expanded(
@@ -329,33 +356,6 @@ class _SearchPageState extends State<SearchPage> {
                     },
                   ),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(
-                  value: 0,
-                  label: Text('本地'),
-                  icon: Icon(Icons.folder_rounded),
-                ),
-                ButtonSegment(
-                  value: 1,
-                  label: Text('NAS'),
-                  icon: Icon(Icons.dns_outlined),
-                ),
-                ButtonSegment(
-                  value: 2,
-                  label: Text('在线'),
-                  icon: Icon(Icons.public_rounded),
-                ),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (s) {
-                setState(() => _mode = s.first);
-                _search();
-              },
             ),
           ),
           Expanded(
