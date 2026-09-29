@@ -305,28 +305,42 @@ class _HomePageState extends State<HomePage> {
                 if (!snap.hasData || snap.data!.isEmpty) {
                   return const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('加载排行榜...')));
                 }
-                // 网易云前8 + QQ前4
+                // 网易云前8 + QQ前4，分两个子板块并标注来源
                 final ne = snap.data!.where((t) => t['source'] != 'qq').take(8).toList();
                 final qq = snap.data!.where((t) => t['source'] == 'qq').take(4).toList();
-                final lists = [...ne, ...qq];
-                // [xmusic] 2026-09-24 车机横屏参考网易云车机版：一行6个、方形封面+下方标题，
-                // 卡片更小不占满整屏；手机仍 3 列。
                 final car = isCarScreen(context);
                 final carP = car && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
-                // 车机竖屏固定 3 列；横屏/手机仍 extent 自动多列
-                return GridView(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: carP
-                      ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.98)
-                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.98 : 1.1),
-                  children: lists.map((t) => _toplistCard(
-                    t['name'] as String,
-                    t['id'] as String,
-                    t['coverImgUrl'] as String?,
-                    source: (t['source'] ?? '') as String,
-                  )).toList(),
+                Widget grid(List<Map<String, dynamic>> items, String source) {
+                  return GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    gridDelegate: carP
+                        ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.98)
+                        : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.98 : 1.1),
+                    children: items.map((t) => _toplistCard(
+                      t['name'] as String,
+                      t['id'] as String,
+                      t['coverImgUrl'] as String?,
+                      source: source,
+                    )).toList(),
+                  );
+                }
+                Widget sectionTitle(String text) => Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+                  child: Text(text,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700, fontSize: 13)),
+                );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    sectionTitle('网易云榜'),
+                    grid(ne, 'ne'),
+                    sectionTitle('QQ音乐榜'),
+                    grid(qq, 'qq'),
+                  ],
                 );
               },
             ),
@@ -503,6 +517,20 @@ class _HomePageState extends State<HomePage> {
 
   Widget _toplistCard(String name, String id, String? coverUrl,
       {String source = ''}) {
+    // 来源角标文案（网易云/QQ音乐）
+    final srcLabel = source == 'qq' ? 'QQ音乐' : '网易云';
+    Widget srcBadge() => Positioned(
+      left: 4, top: 4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black45,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(srcLabel,
+            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+      ),
+    );
     // [xmusic] 车机横屏参考网易云车机版：方封面 + 下方标题；手机保持原铺满卡。
     if (isCarScreen(context)) {
       final carP = isCarScreen(context) &&
@@ -519,51 +547,63 @@ class _HomePageState extends State<HomePage> {
               SizedBox(
                 height: 116,
                 width: double.infinity,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: (coverUrl != null && coverUrl.isNotEmpty)
-                      ? CachedNetworkImage(
-                          imageUrl: coverUrl,
-                          fit: BoxFit.cover,
-                          httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
-                          placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                          errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                        )
-                      : Container(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(8),
-                          child: Text(name,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
-                        ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: (coverUrl != null && coverUrl.isNotEmpty)
+                          ? CachedNetworkImage(
+                              imageUrl: coverUrl,
+                              fit: BoxFit.cover,
+                              httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                              placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                              errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                            )
+                          : Container(
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(8),
+                              child: Text(name,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
+                            ),
+                    ),
+                    srcBadge(),
+                  ],
                 ),
               )
             else
               AspectRatio(
                 aspectRatio: 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: (coverUrl != null && coverUrl.isNotEmpty)
-                      ? CachedNetworkImage(
-                          imageUrl: coverUrl,
-                          fit: BoxFit.cover,
-                          httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
-                          placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                          errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                        )
-                      : Container(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(8),
-                          child: Text(name,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
-                        ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: (coverUrl != null && coverUrl.isNotEmpty)
+                          ? CachedNetworkImage(
+                              imageUrl: coverUrl,
+                              fit: BoxFit.cover,
+                              httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                              placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                              errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                            )
+                          : Container(
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(8),
+                              child: Text(name,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
+                            ),
+                    ),
+                    srcBadge(),
+                  ],
                 ),
               ),
             const SizedBox(height: 6),
