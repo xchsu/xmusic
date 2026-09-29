@@ -67,7 +67,6 @@ class _LibraryPageState extends State<LibraryPage>
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('音乐库'),
         bottom: TabBar(
           controller: _tab,
           tabs: const [

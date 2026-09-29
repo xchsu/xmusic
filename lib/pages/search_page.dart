@@ -296,36 +296,43 @@ class _SearchPageState extends State<SearchPage> {
     return BigScreenText(
       child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: TextField(
-          controller: _query,
-          autofocus: true,
-          onChanged: _onChanged,
-          decoration: const InputDecoration(
-            hintText: '搜索歌曲 / 专辑 / 歌手',
-            border: InputBorder.none,
-          ),
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) => _search(),
-        ),
-        actions: [
-          if (_query.text.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                _query.clear();
-                setState(() {
-                  _results = null;
-                  _external = null;
-                  _error = null;
-                });
-              },
+      appBar: AppBar(),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _query,
+                    autofocus: true,
+                    onChanged: _onChanged,
+                    decoration: const InputDecoration(
+                      hintText: '搜索歌曲 / 专辑 / 歌手',
+                      border: InputBorder.none,
+                    ),
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _search(),
+                  ),
+                ),
+                if (_query.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _query.clear();
+                      setState(() {
+                        _results = null;
+                        _external = null;
+                        _error = null;
+                      });
+                    },
+                  ),
+              ],
             ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: SegmentedButton<int>(
               segments: const [
                 ButtonSegment(
@@ -351,12 +358,14 @@ class _SearchPageState extends State<SearchPage> {
               },
             ),
           ),
-        ),
-      ),
-      body: PageBackground(
-        controller: widget.controller,
-        settings: widget.settings,
-        child: _mode <= 1 ? _localBody(context, r) : _externalBody(),
+          Expanded(
+            child: PageBackground(
+              controller: widget.controller,
+              settings: widget.settings,
+              child: _mode <= 1 ? _localBody(context, r) : _externalBody(),
+            ),
+          ),
+        ],
       ),
     ));
   }

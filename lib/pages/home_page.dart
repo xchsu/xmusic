@@ -225,7 +225,6 @@ class _HomePageState extends State<HomePage> {
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('音素'),
         actions: [
           IconButton(
             tooltip: '搜索',
@@ -503,6 +502,8 @@ class _HomePageState extends State<HomePage> {
       {String source = ''}) {
     // [xmusic] 车机横屏参考网易云车机版：方封面 + 下方标题；手机保持原铺满卡。
     if (isCarScreen(context)) {
+      final carP = isCarScreen(context) &&
+          MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
       return InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => source == 'qq'
@@ -511,30 +512,57 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: (coverUrl != null && coverUrl.isNotEmpty)
-                    ? CachedNetworkImage(
-                        imageUrl: coverUrl,
-                        fit: BoxFit.cover,
-                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
-                        placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                        errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
-                      )
-                    : Container(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.all(8),
-                        child: Text(name,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
-                      ),
+            if (carP)
+              SizedBox(
+                height: 116,
+                width: double.infinity,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: (coverUrl != null && coverUrl.isNotEmpty)
+                      ? CachedNetworkImage(
+                          imageUrl: coverUrl,
+                          fit: BoxFit.cover,
+                          httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                          placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                          errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                        )
+                      : Container(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.all(8),
+                          child: Text(name,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ),
+                ),
+              )
+            else
+              AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: (coverUrl != null && coverUrl.isNotEmpty)
+                      ? CachedNetworkImage(
+                          imageUrl: coverUrl,
+                          fit: BoxFit.cover,
+                          httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                          placeholder: (_, __) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                          errorWidget: (_, __, ___) => Container(color: Theme.of(context).colorScheme.surfaceContainerHighest),
+                        )
+                      : Container(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.all(8),
+                          child: Text(name,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ),
+                ),
               ),
-            ),
             const SizedBox(height: 6),
             Text(name,
                 maxLines: 1,
@@ -604,31 +632,55 @@ class _HomePageState extends State<HomePage> {
   /// QQ 精选歌单卡：方形圆角封面 + 下方标题（文字放图下完整显示，不叠在图上截断；横竖屏同排布）。
   Widget _qqPlaylistCard(String name, String dissid, String? coverUrl) {
     final theme = Theme.of(context);
+    final carP = isCarScreen(context) &&
+        MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _openQqPlaylist(name, dissid),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: (coverUrl != null && coverUrl.isNotEmpty)
-                  ? CachedNetworkImage(
-                      imageUrl: coverUrl,
-                      fit: BoxFit.cover,
-                      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
-                      placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
-                      errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
-                    )
-                  : Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      alignment: Alignment.center,
-                      child: Icon(Icons.queue_music_rounded, color: theme.colorScheme.onSurfaceVariant),
-                    ),
+          if (carP)
+            SizedBox(
+              height: 116,
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (coverUrl != null && coverUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
+                        placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                        errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                      )
+                    : Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.queue_music_rounded, color: theme.colorScheme.onSurfaceVariant),
+                      ),
+              ),
+            )
+          else
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (coverUrl != null && coverUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
+                        placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                        errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                      )
+                    : Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.queue_music_rounded, color: theme.colorScheme.onSurfaceVariant),
+                      ),
+              ),
             ),
-          ),
           const SizedBox(height: 6),
           Text(name,
               maxLines: 2,
@@ -643,23 +695,37 @@ class _HomePageState extends State<HomePage> {
   /// LX 精选卡（网易云榜单/精选歌单，meting 先行版）：真实封面(可回退渐变) + 下方标题。
   Widget _lxCard(String name, String id, String? coverUrl) {
     final theme = Theme.of(context);
+    final carP = isCarScreen(context) &&
+        MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => _openLxPlaylist(name, id),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: (coverUrl != null && coverUrl.isNotEmpty)
-                  ? CachedNetworkImage(
-                      imageUrl: coverUrl,
-                      fit: BoxFit.cover,
-                      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
-                      placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
-                      errorWidget: (_, __, ___) => Container(
+          if (carP)
+            SizedBox(
+              height: 116,
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (coverUrl != null && coverUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                        placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                        errorWidget: (_, __, ___) => Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft, end: Alignment.bottomRight,
+                              colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+                            ),
+                          ),
+                          child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
+                        ),
+                      )
+                    : Container(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -668,18 +734,40 @@ class _HomePageState extends State<HomePage> {
                         ),
                         child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
                       ),
-                    )
-                  : Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft, end: Alignment.bottomRight,
-                          colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+              ),
+            )
+          else
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (coverUrl != null && coverUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                        placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                        errorWidget: (_, __, ___) => Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft, end: Alignment.bottomRight,
+                              colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+                            ),
+                          ),
+                          child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
                         ),
+                      )
+                    : Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft, end: Alignment.bottomRight,
+                            colors: [Color(0xFF1F2733), Color(0xFF3A4A5F)],
+                          ),
+                        ),
+                        child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
                       ),
-                      child: const Icon(Icons.album_rounded, color: Colors.white70, size: 34),
-                    ),
+              ),
             ),
-          ),
           const SizedBox(height: 6),
           Text(name,
               maxLines: 2,
