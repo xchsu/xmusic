@@ -598,17 +598,69 @@ class _PlayerPageState extends State<PlayerPage> {
                     itemBuilder: (context, i) {
                       final active = i == idx;
                       final sn = q[i];
+                      final cs = Theme.of(context).colorScheme;
+                      final bl = widget.settings.isBlacklisted(sn);
                       return ListTile(
                         dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                         leading: Text('${i + 1}',
                             style: TextStyle(
                                 color: active
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.onSurfaceVariant)),
-                        title: Text(sn.title,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(sn.artist,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    ? cs.primary
+                                    : cs.onSurfaceVariant)),
+                        // 歌名 + 歌手同一行
+                        title: Text.rich(
+                          TextSpan(children: [
+                            TextSpan(text: sn.title ?? ''),
+                            if ((sn.artist ?? '').isNotEmpty)
+                              TextSpan(
+                                text: ' · ${sn.artist}',
+                                style: TextStyle(
+                                    color: cs.onSurfaceVariant, fontSize: 12),
+                              ),
+                          ]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        // 收藏 / 黑名单 / 删除 三图标
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              iconSize: 20,
+                              icon: Icon(
+                                  sn.starred
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  color: sn.starred ? cs.primary : null),
+                              onPressed: () => widget.controller.toggleStarAt(i),
+                            ),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              iconSize: 20,
+                              icon: Icon(Icons.heart_broken_rounded,
+                                  color: bl
+                                      ? Colors.orange
+                                      : cs.onSurfaceVariant),
+                              onPressed: () async {
+                                if (bl) {
+                                  await widget.settings.removeBlacklist(sn);
+                                } else {
+                                  await widget.settings.addBlacklist(sn);
+                                }
+                              },
+                            ),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              iconSize: 20,
+                              icon: Icon(Icons.delete_outline_rounded,
+                                  color: cs.onSurfaceVariant),
+                              onPressed: () =>
+                                  widget.controller.removeFromQueue(i),
+                            ),
+                          ],
+                        ),
                         onTap: () {
                           widget.controller.playAt(i);
                           Navigator.of(ctx).pop();
