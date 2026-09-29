@@ -866,9 +866,8 @@ class _LyricsViewState extends State<LyricsView> {
                     : Colors.black.withValues(alpha: 0.28);
 
                 return Padding(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 9 * scale),
-                    child: AnimatedDefaultTextStyle(
+                  padding: EdgeInsets.symmetric(vertical: 9 * scale),
+                  child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
                         fontSize: _baseFontSize * scale,
@@ -894,7 +893,6 @@ class _LyricsViewState extends State<LyricsView> {
                         child: Text(line.text.isEmpty ? '♪' : line.text,
                           textAlign: widget.alignRight ? TextAlign.right : TextAlign.left),
                     ),
-                  ),
                 );
               },
             );
