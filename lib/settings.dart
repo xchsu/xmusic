@@ -251,7 +251,9 @@ class AppSettings extends ChangeNotifier {
   bool isOld(Song s) => s.year != null && s.year! < _oldYear;
 
   /// 歌曲黑名单（不喜欢）：跨源按 "标题|歌手" 判重，加入后不再出现在排行榜/歌单/推荐。
-  static String _songKey(Song s) => '${s.title}|${s.artist}'.toLowerCase();
+  // 黑名单按歌手过滤：加入一首即屏蔽该歌手全部（解决热歌榜同歌手刷屏）
+  static String _songKey(Song s) =>
+      (s.artist.isNotEmpty ? s.artist : s.title).toLowerCase().trim();
   bool isBlacklisted(Song s) => _blacklist.contains(_songKey(s));
   Future<void> addBlacklist(Song s) async {
     _blacklist.add(_songKey(s));
