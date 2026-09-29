@@ -205,13 +205,19 @@ class _PlayerPageState extends State<PlayerPage> {
               SizedBox(
                 width: double.infinity,
                 child: _MarqueeText(song.title,
+                  maxWidth: MediaQuery.sizeOf(context).width - 140,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800, fontSize: 22, height: 1.2)),
               ),
               const SizedBox(height: 4),
-              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, fontSize: 14)),
+              // 歌手+专辑也滚动（完整显示后半段，避免省略号截断）
+              SizedBox(
+                width: double.infinity,
+                child: _MarqueeText('${song.artist} - ${song.album}',
+                  maxWidth: MediaQuery.sizeOf(context).width - 140,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant, fontSize: 14)),
+              ),
               // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
               if (widget.controller.loadingUrl) ...[
                 const SizedBox(height: 6),
@@ -1475,10 +1481,13 @@ Future<void> openPlayerPage(
 
 /// 歌名滚动组件：文本超出可用宽度时循环左右滚动展示（不超出则普通省略号文本）。
 class _MarqueeText extends StatefulWidget {
-  const _MarqueeText(this.text, {super.key, this.style, this.textAlign = TextAlign.start});
+  const _MarqueeText(this.text,
+      {super.key, this.style, this.textAlign = TextAlign.start, this.maxWidth});
   final String text;
   final TextStyle? style;
   final TextAlign textAlign;
+  /// 确定的可视宽度；不传则用父约束。传明确宽度可避免 LayoutBuilder 拿到不准确的约束。
+  final double? maxWidth;
   @override
   State<_MarqueeText> createState() => _MarqueeTextState();
 }
@@ -1514,9 +1523,11 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
         // overflow 被误判为 false → 走省略号截断，后半段消失
         textScaler: MediaQuery.textScalerOf(ctx),
       )..layout();
-      final boxW = cons.maxWidth.isFinite
-          ? cons.maxWidth
-          : (MediaQuery.sizeOf(ctx).width * 0.86);
+      final boxW = widget.maxWidth != null
+          ? widget.maxWidth!
+          : (cons.maxWidth.isFinite
+              ? cons.maxWidth
+              : (MediaQuery.sizeOf(ctx).width * 0.86));
       final overflow = boxW > 0 && tp.width > boxW + 1;
       if (!overflow) {
         return Text(widget.text, style: widget.style, maxLines: 1,
