@@ -151,10 +151,20 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: StreamBuilder<bool>(
                       stream: widget.controller.player.playingStream,
                       builder: (context, snap) {
-                        return _CdDisc(
-                          size: s,
+                        final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
+                        return _SpinRotator(
                           spinning: snap.data ?? false,
-                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.64, requestSize: 600),
+                          child: Container(
+                            width: s, height: s,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              child: cov,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -347,10 +357,20 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: StreamBuilder<bool>(
                       stream: widget.controller.player.playingStream,
                       builder: (context, snap) {
-                        return _CdDisc(
-                          size: s,
+                        final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
+                        return _SpinRotator(
                           spinning: snap.data ?? false,
-                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.64, requestSize: 600),
+                          child: Container(
+                            width: s, height: s,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              child: cov,
+                            ),
+                          ),
                         );
                       },
                     ),
