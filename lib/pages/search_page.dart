@@ -57,6 +57,10 @@ class _SearchPageState extends State<SearchPage> {
     _debounce = Timer(const Duration(milliseconds: 400), () => _search());
   }
 
+  /// 过滤老歌（开关开 + 年份可确认且早于阈值时剔除）。
+  List<Song> _filterOld(List<Song> songs) =>
+      songs.where((s) => !widget.settings.isOld(s)).toList();
+
   Future<void> _search() async {
     final q = _query.text.trim();
     if (q.isEmpty) return;
@@ -77,8 +81,11 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final r = await _client.search(q);
       if (!mounted) return;
+      final filtered = r.songs.isEmpty
+          ? r
+          : SearchResults(songs: _filterOld(r.songs), albums: r.albums, artists: r.artists);
       setState(() {
-        _results = r;
+        _results = filtered;
         _loading = false;
       });
     } catch (e) {
@@ -135,12 +142,12 @@ class _SearchPageState extends State<SearchPage> {
         if (seen.add(key)) merged.add(s);
       }
     }
+    final filtered = _filterOld(merged);
     setState(() {
-      _external = merged;
+      _external = filtered;
       _externalLoading = false;
     });
-    // [xmusic] 2026-09-28 在线搜索结果：无封面的条目按「歌名 歌手」异步补封面（不阻塞列表）
-    _backfillCovers(merged);
+    _backfillCovers(filtered);
   }
 
   /// 在线搜索结果缺封面的条目，用酷我封面接口按「歌名 歌手」补图（最多补 40 条）。
@@ -170,6 +177,7 @@ class _SearchPageState extends State<SearchPage> {
             externalSource: s.externalSource,
             streamUrl: s.streamUrl,
             lrcUrl: s.lrcUrl,
+            year: s.year,
           );
         });
       } catch (_) {}
@@ -220,6 +228,7 @@ class _SearchPageState extends State<SearchPage> {
           fromExternal: true,
           externalSource: src,
           streamUrl: url,
+          year: song.year,
         );
       } catch (e) {
         _showSnack('获取播放地址失败：$e');

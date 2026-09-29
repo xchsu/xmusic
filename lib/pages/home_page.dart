@@ -71,14 +71,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// 每日30首：设置了 QQ cookie 用 QQ 热歌榜（播放走 QQ）；否则酷狗TOP500 → 网易云匹配播放。
+  /// 过滤老歌（开关开 + 年份可确认且早于阈值时剔除）。
+  List<Song> _filterOld(List<Song> songs) =>
+      songs.where((s) => !widget.settings.isOld(s)).toList();
+
   Future<List<Song>> _loadDaily30() async {
     final ext = widget.controller.external;
     final cookie = widget.settings.qqCookie;
     if (cookie.trim().isNotEmpty) {
       final qq = await ext.daily30FromQq(cookie: cookie);
-      if (qq.isNotEmpty) return qq;
+      if (qq.isNotEmpty) return _filterOld(qq);
     }
-    return ext.daily30FromKugou();
+    return _filterOld(await ext.daily30FromKugou());
   }
 
   /// 本地推荐：类似"每日30首"——按日期播种 + 当天缓存，每天变化（同日内稳定）。
@@ -90,7 +94,7 @@ class _HomePageState extends State<HomePage> {
     if (_localRecDay == today && _localRecCached.isNotEmpty) return _localRecCached;
     final pool = await _client.randomSongs(size: 60).catchError((_) => <Song>[]);
     pool.shuffle(Random(today.year * 10000 + today.month * 100 + today.day));
-    final picked = pool.take(30).toList();
+    final picked = _filterOld(pool.take(30).toList());
     _localRecDay = today;
     _localRecCached = picked;
     return picked;
@@ -131,7 +135,7 @@ class _HomePageState extends State<HomePage> {
     List<Song> fetched;
     String? error;
     try {
-      fetched = await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20));
+      fetched = _filterOld(await ext.getPlaylistSongs(playlistId).timeout(const Duration(seconds: 20)));
     } catch (e) {
       fetched = const [];
       error = '加载失败（$e）';
@@ -159,7 +163,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openQqToplist(String name, String id, String? coverUrl) async {
     final ext = widget.controller.external;
     final cookie = widget.settings.qqCookie;
-    final songs = await ext.qqToplistSongs(id, cookie: cookie, limit: 50);
+    final songs = _filterOld(await ext.qqToplistSongs(id, cookie: cookie, limit: 50));
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
@@ -181,7 +185,7 @@ class _HomePageState extends State<HomePage> {
     List<Song> songs;
     String? error;
     try {
-      songs = await ext.qqPlaylistSongs(dissid, limit: 100).timeout(const Duration(seconds: 20));
+      songs = _filterOld(await ext.qqPlaylistSongs(dissid, limit: 100).timeout(const Duration(seconds: 20)));
     } catch (e) {
       songs = const [];
       error = '加载失败（$e）';
