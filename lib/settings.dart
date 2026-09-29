@@ -12,6 +12,8 @@ class AppSettings extends ChangeNotifier {
   static const double scaleStep = 0.1;
 
   static const _kScale = 'lyric_scale';
+  static const _kScaleP = 'lyric_scale_p';
+  static const _kScaleL = 'lyric_scale_l';
   static const _kUrl = 'server_url';
   static const _kUser = 'username';
   static const _kSalt = 'salt';
@@ -52,7 +54,8 @@ class AppSettings extends ChangeNotifier {
   String webdavPass = '';
   String webdavPath = '';
   String webdavName = '';
-  double _lyricScale = 1.0;
+  double _lyricScalePortrait = 1.0;
+  double _lyricScaleLandscape = 1.0;
   int _bgColor = 0;
   bool _coverColorBg = false;
   int _lyricActive = lyricActiveDefault;
@@ -66,7 +69,8 @@ class AppSettings extends ChangeNotifier {
   String qqCookie = '';
   AppThemeMode _themeMode = AppThemeMode.system;
 
-  double get lyricScale => _lyricScale;
+  double get lyricScale => _lyricScalePortrait;
+  double lyricScaleFor(bool land) => land ? _lyricScaleLandscape : _lyricScalePortrait;
   int get bgColor => _bgColor;
   bool get coverColorBg => _coverColorBg;
   int get lyricActive => _lyricActive;
@@ -76,8 +80,10 @@ class AppSettings extends ChangeNotifier {
   bool get filterOld => _filterOld;
   int get oldYear => _oldYear;
   AppThemeMode get themeMode => _themeMode;
-  bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
-  bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
+  bool get canIncreaseLyric => _lyricScalePortrait < maxScale - 1e-9;
+  bool get canDecreaseLyric => _lyricScalePortrait > minScale + 1e-9;
+  bool canIncreaseLyricFor(bool land) => (land ? _lyricScaleLandscape : _lyricScalePortrait) < maxScale - 1e-9;
+  bool canDecreaseLyricFor(bool land) => (land ? _lyricScaleLandscape : _lyricScalePortrait) > minScale + 1e-9;
   bool get webdavConfigured => webdavUrl.trim().isNotEmpty;
 
   bool get hasLogin =>
@@ -96,7 +102,8 @@ class AppSettings extends ChangeNotifier {
     webdavPass = _prefs.getString(_kDavPass) ?? '';
     webdavPath = _prefs.getString(_kDavPath) ?? '';
     webdavName = _prefs.getString(_kDavName) ?? '';
-    _lyricScale = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
+    _lyricScalePortrait = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
+    _lyricScaleLandscape = (_prefs.getDouble(_kScaleL) ?? _lyricScalePortrait).clamp(minScale, maxScale);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;
     _coverColorBg = _prefs.getBool(_kCoverColorBg) ?? false;
@@ -157,14 +164,26 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setLyricScale(double v) async {
     v = v.clamp(minScale, maxScale);
-    if ((v - _lyricScale).abs() < 0.01) return;
-    _lyricScale = v;
+    if ((v - _lyricScalePortrait).abs() < 0.01) return;
+    _lyricScalePortrait = v;
     notifyListeners();
     await _prefs.setDouble(_kScale, v);
   }
 
-  void increaseLyric() => setLyricScale(_lyricScale + scaleStep);
-  void decreaseLyric() => setLyricScale(_lyricScale - scaleStep);
+  void increaseLyric() => setLyricScale(_lyricScalePortrait + scaleStep);
+  void decreaseLyric() => setLyricScale(_lyricScalePortrait - scaleStep);
+
+  Future<void> setLyricScaleFor(bool land, double v) async {
+    v = v.clamp(minScale, maxScale);
+    final cur = land ? _lyricScaleLandscape : _lyricScalePortrait;
+    if ((v - cur).abs() < 0.01) return;
+    if (land) { _lyricScaleLandscape = v; } else { _lyricScalePortrait = v; }
+    notifyListeners();
+    await _prefs.setDouble(land ? _kScaleL : _kScaleP, v);
+  }
+
+  void increaseLyricFor(bool land) => setLyricScaleFor(land, (land ? _lyricScaleLandscape : _lyricScalePortrait) + scaleStep);
+  void decreaseLyricFor(bool land) => setLyricScaleFor(land, (land ? _lyricScaleLandscape : _lyricScalePortrait) - scaleStep);
 
   Future<void> setBgColor(int v) async {
     _bgColor = v;
