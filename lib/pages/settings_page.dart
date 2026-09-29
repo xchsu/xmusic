@@ -248,6 +248,13 @@ class SettingsPage extends StatelessWidget {
             value: settings.autoPlay,
             onChanged: (v) => settings.setAutoPlay(v),
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.sync_rounded),
+            title: const Text('同步黑名单到 NAS'),
+            subtitle: const Text('收藏走服务器自动互通；黑名单用 NAS(WebDAV) 同步手机/车机'),
+            value: settings.syncNas,
+            onChanged: (v) => settings.setSyncNas(v),
+          ),
           ListTile(
             leading: const Icon(Icons.format_size_rounded),
             title: const Text('歌词大小'),

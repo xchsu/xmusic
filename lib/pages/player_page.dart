@@ -114,6 +114,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 ),
               ),
               SafeArea(
+                minimum: const EdgeInsets.only(bottom: 12),
                 child: Stack(
                   children: [
                     song == null
@@ -1461,8 +1462,8 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
             overflow: TextOverflow.ellipsis, textAlign: widget.textAlign);
       }
       _ensureStart();
-      // 只滚动"超出部分+间隙"，尾部能完整滚进视口；0→0.5 滚出、0.5→1 滚回，往返循环
-      final scrollExtent = math.max(0.0, tp.width - boxW + 24);
+      // 单向循环滚动：文本完整滚过一圈(tp.width+间隙)，后半必然进入视口显示
+      final scrollExtent = math.max(0.0, tp.width + 24);
       return ClipRect(
         child: SizedBox(
           width: boxW,
@@ -1471,7 +1472,7 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
             animation: _c,
             builder: (ctx, __) {
               final t = _c.value;
-              final dx = t < 0.5 ? -scrollExtent * (t * 2) : -scrollExtent * (2 - t * 2);
+              final dx = -scrollExtent * t;
               return Transform.translate(
                 offset: Offset(dx, 0),
                 child: Text(widget.text, style: widget.style, maxLines: 1,
