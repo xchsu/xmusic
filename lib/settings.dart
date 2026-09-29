@@ -213,7 +213,7 @@ class AppSettings extends ChangeNotifier {
   }
 
   /// 歌曲是否属于老歌（被过滤）：开启开关且年份能确认且早于阈值。
-  bool isOld(Song s) => _filterOld && s.year != null && s.year! < _oldYear;
+  bool isOld(Song s) => s.year != null && s.year! < _oldYear;
 
   Future<void> setThemeMode(AppThemeMode mode) async {
     if (mode == _themeMode) return;
