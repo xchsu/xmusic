@@ -252,8 +252,8 @@ class _PlayerPageState extends State<PlayerPage> {
     // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
     final car = _carUI(context);
     final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final double side = _landP ? 22 : 30;
-    final double _gap = _landP ? 4.0 : 6.0;
+    final double side = _landP ? 18 : 30;
+    final double _gap = _landP ? 2.0 : 6.0;
     if (car) {
       // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸同样式
       return Container(
