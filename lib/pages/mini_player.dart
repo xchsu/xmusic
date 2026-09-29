@@ -18,6 +18,7 @@ class MiniPlayer extends StatelessWidget {
       builder: (context, _) {
         final song = controller.current;
         final cs = Theme.of(context).colorScheme;
+        final carBig = isCarScreen(context);
 
         // 注意：不用 BackdropFilter 毛玻璃——透明窗口/车机上会渲染成拉伸色块；
         // 用半透明纯色 + 顶部细边 + 柔和阴影，兼顾质感与车机兼容。
@@ -51,7 +52,7 @@ class MiniPlayer extends StatelessWidget {
               ),
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: carBig ? 16 : 8),
                 child: song == null
                     // 常驻底栏：未播放时显示占位（音符 + 未在播放），
                     // 保证榜单/专辑/歌手等详情页一进去底部就有“全局小播放栏”，
@@ -59,8 +60,8 @@ class MiniPlayer extends StatelessWidget {
                     ? Row(
                         children: [
                           Container(
-                            width: 44,
-                            height: 44,
+                            width: carBig ? 60 : 44,
+                            height: carBig ? 60 : 44,
                             decoration: BoxDecoration(
                               color: cs.surfaceContainerHighest
                                   .withValues(alpha: 0.6),
@@ -79,6 +80,7 @@ class MiniPlayer extends StatelessWidget {
                                         color: cs.onSurfaceVariant)),
                           ),
                           Icon(Icons.play_circle_outline_rounded,
+                              size: carBig ? 32 : 24,
                               color: cs.onSurfaceVariant),
                           const SizedBox(width: 8),
                         ],
@@ -89,7 +91,7 @@ class MiniPlayer extends StatelessWidget {
                             client: controller.client,
                             coverId: song.coverArt,
                             coverUrl: song.coverUrl,
-                            size: 44,
+                            size: carBig ? 60 : 44,
                             radius: 8,
                             requestSize: 120,
                           ),
@@ -102,22 +104,24 @@ class MiniPlayer extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style:
-                                        Theme.of(context).textTheme.titleSmall),
+                                        Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: carBig ? 18 : null)),
                                 Text(song.artist,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style:
-                                        Theme.of(context).textTheme.bodySmall),
+                                        Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: carBig ? 14 : null)),
                               ],
                             ),
                           ),
                           IconButton(
+                            iconSize: carBig ? 32 : 24,
                             icon: Icon(controller.playing
                                 ? Icons.pause_rounded
                                 : Icons.play_arrow_rounded),
                             onPressed: controller.togglePlay,
                           ),
                           IconButton(
+                            iconSize: carBig ? 32 : 24,
                             icon: const Icon(Icons.skip_next_rounded),
                             onPressed:
                                 controller.hasNext ? controller.next : null,

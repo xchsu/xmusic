@@ -216,7 +216,7 @@ class SettingsPage extends StatelessWidget {
         child: Scaffold(
           // [xmusic] 2026-09-28 设置页透明：透出全局封面玻璃背景（之前是初始底色）
           backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(),
       body: ListView(
         children: [
           // ===== 个性化（主题 + 歌词） =====
@@ -283,17 +283,6 @@ class SettingsPage extends StatelessWidget {
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.lyricFuture), borderRadius: BorderRadius.circular(4)))
                 : const Text('默认'),
             onTap: () => _showColorPicker(context, '未唱行颜色', settings.lyricFuture, (c) => settings.setLyricColors(future: c)),
-          ),
-          const Divider(),
-
-          // ===== 车机模拟模式 =====
-          _sectionTitle(theme, '车机模拟'),
-          SwitchListTile(
-            secondary: const Icon(Icons.directions_car_filled_rounded),
-            title: const Text('车机模拟模式'),
-            subtitle: const Text('强制走车机 UI（大图标/横屏布局/字体放大）\n不上车也能用手机预览车机效果'),
-            value: settings.carSim,
-            onChanged: (v) => settings.setCarSim(v),
           ),
           const Divider(),
 
