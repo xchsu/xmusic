@@ -5,13 +5,9 @@ import 'package:flutter/material.dart';
 
 import 'subsonic.dart';
 
-/// 全局车机模拟模式开关：设置内「车机模拟模式」打开时，强制所有页面走车机 UI。
-bool carSimMode = false;
-
 /// 车机屏判定：横屏且最短边 >= 480dp（比亚迪等车机横屏大屏）。
 /// 车机上文字等比放大，避免"手机上正常、车机上显小"。
 bool isCarScreen(BuildContext context) {
-  if (carSimMode) return true;
   final s = MediaQuery.of(context).size;
   // 大屏（横竖）都按车机处理：比亚迪车机横屏/竖屏均为大屏，竖屏也走车机 UI
   return s.shortestSide >= 480;
@@ -19,7 +15,6 @@ bool isCarScreen(BuildContext context) {
 
 /// 大屏字体放大系数：车机横屏大屏 1.35x；竖屏大屏(最短边>=480dp，如车机竖屏/平板) 1.25x；手机 1.0x。
 double bigScreenTextScale(BuildContext context) {
-  if (carSimMode) return 1.35;
   final s = MediaQuery.sizeOf(context);
   if (s.shortestSide >= 480) return 1.35;
   return 1.0;

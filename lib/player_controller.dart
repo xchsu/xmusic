@@ -58,6 +58,9 @@ class PlayerController extends ChangeNotifier {
   // 默认随机播放（用户要求：播放界面控制栏默认随机）
   PlayMode _repeat = PlayMode.shuffle;
   final Random _rnd = Random();
+  /// 最近播放过的索引（避免随机重复）：随机切歌时避开这几首。
+  static const int _recentLimit = 4;
+  final List<int> _recentIndexes = [];
 
   late final StreamSubscription<ProcessingState> _completedSub;
   late final StreamSubscription<bool> _playingSub;
@@ -481,8 +484,20 @@ class PlayerController extends ChangeNotifier {
 
   void _playRandom() {
     if (queue.length <= 1) return;
-    var ni = index;
-    while (ni == index) { ni = _rnd.nextInt(queue.length); }
+    final n = queue.length;
+    // 候选池排除最近播过的几首（含当前），显著减小连续重复；池太小则退化为只避开当前
+    final banned = {..._recentIndexes, index};
+    int ni = index;
+    if (n > banned.length) {
+      final cands = List<int>.generate(n, (i) => i)
+          .where((i) => !banned.contains(i))
+          .toList();
+      ni = cands[_rnd.nextInt(cands.length)];
+    } else {
+      while (ni == index) { ni = _rnd.nextInt(n); }
+    }
+    _recentIndexes.add(ni);
+    if (_recentIndexes.length > _recentLimit) _recentIndexes.removeAt(0);
     unawaited(_loadAndPlay(ni));
   }
 

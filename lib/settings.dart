@@ -31,7 +31,6 @@ class AppSettings extends ChangeNotifier {
   static const _kAutoPlay = 'auto_play';
   static const _kDownloadPath = 'download_path';
   static const _kQqCookie = 'qq_cookie';
-  static const _kCarSim = 'car_sim';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -57,7 +56,6 @@ class AppSettings extends ChangeNotifier {
   int _lyricPast = lyricPastDefault;
   int _lyricFuture = lyricFutureDefault;
   bool _autoPlay = true;
-  bool _carSim = false;
   String downloadPath = '';
   String qqCookie = '';
   AppThemeMode _themeMode = AppThemeMode.system;
@@ -69,7 +67,6 @@ class AppSettings extends ChangeNotifier {
   int get lyricPast => _lyricPast;
   int get lyricFuture => _lyricFuture;
   bool get autoPlay => _autoPlay;
-  bool get carSim => _carSim;
   AppThemeMode get themeMode => _themeMode;
   bool get canIncreaseLyric => _lyricScale < maxScale - 1e-9;
   bool get canDecreaseLyric => _lyricScale > minScale + 1e-9;
@@ -101,8 +98,6 @@ class AppSettings extends ChangeNotifier {
     _autoPlay = _prefs.getBool(_kAutoPlay) ?? true;
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
-    _carSim = _prefs.getBool(_kCarSim) ?? false;
-    carSimMode = _carSim;
   }
 
   SubsonicClient buildClient() {
@@ -180,14 +175,6 @@ class AppSettings extends ChangeNotifier {
     await _prefs.setInt(_kLyricActive, _lyricActive);
     await _prefs.setInt(_kLyricPast, _lyricPast);
     await _prefs.setInt(_kLyricFuture, _lyricFuture);
-  }
-
-  /// 车机模拟模式：同步到全局 carSimMode，强制所有页面走车机 UI。
-  Future<void> setCarSim(bool v) async {
-    _carSim = v;
-    carSimMode = v;
-    notifyListeners();
-    await _prefs.setBool(_kCarSim, v);
   }
 
   Future<void> setAutoPlay(bool v) async {
