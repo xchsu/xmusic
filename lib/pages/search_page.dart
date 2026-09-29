@@ -81,11 +81,8 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final r = await _client.search(q);
       if (!mounted) return;
-      final filtered = r.songs.isEmpty
-          ? r
-          : SearchResults(songs: _filterOld(r.songs), albums: r.albums, artists: r.artists);
       setState(() {
-        _results = filtered;
+        _results = r;
         _loading = false;
       });
     } catch (e) {
@@ -142,12 +139,11 @@ class _SearchPageState extends State<SearchPage> {
         if (seen.add(key)) merged.add(s);
       }
     }
-    final filtered = _filterOld(merged);
     setState(() {
-      _external = filtered;
+      _external = merged;
       _externalLoading = false;
     });
-    _backfillCovers(filtered);
+    _backfillCovers(merged);
   }
 
   /// 在线搜索结果缺封面的条目，用酷我封面接口按「歌名 歌手」补图（最多补 40 条）。

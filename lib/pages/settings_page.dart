@@ -248,13 +248,6 @@ class SettingsPage extends StatelessWidget {
             value: settings.autoPlay,
             onChanged: (v) => settings.setAutoPlay(v),
           ),
-          SwitchListTile(
-            secondary: const Icon(Icons.history_rounded),
-            title: Text('过滤老歌（${settings.oldYear}年前）'),
-            subtitle: Text('自动推荐与搜索结果剔除能确认发行于${settings.oldYear}年前的歌；年份缺失不误杀'),
-            value: settings.filterOld,
-            onChanged: (v) => settings.setFilterOld(v),
-          ),
           ListTile(
             leading: const Icon(Icons.format_size_rounded),
             title: const Text('歌词大小'),
