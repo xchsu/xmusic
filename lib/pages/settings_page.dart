@@ -250,8 +250,8 @@ class SettingsPage extends StatelessWidget {
           ),
           SwitchListTile(
             secondary: const Icon(Icons.history_rounded),
-            title: const Text('过滤老歌（${settings.oldYear}年前）'),
-            subtitle: const Text('自动推荐与搜索结果剔除能确认发行于${settings.oldYear}年前的歌；年份缺失不误杀'),
+            title: Text('过滤老歌（${settings.oldYear}年前）'),
+            subtitle: Text('自动推荐与搜索结果剔除能确认发行于${settings.oldYear}年前的歌；年份缺失不误杀'),
             value: settings.filterOld,
             onChanged: (v) => settings.setFilterOld(v),
           ),
