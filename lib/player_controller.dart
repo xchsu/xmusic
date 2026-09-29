@@ -673,10 +673,6 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> previous() async {
-    if (player.position > const Duration(seconds: 3)) {
-      await player.seek(Duration.zero);
-      return;
-    }
     if (queue.isEmpty) return;
     final n = queue.length;
     var i = index <= 0 ? n - 1 : index - 1;
