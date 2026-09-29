@@ -82,7 +82,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
       child: Scaffold(
       // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text(widget.playlist.name)),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(widget.playlist.name),
+      ),
       body: PageBackground(
         controller: widget.controller,
         settings: widget.settings,

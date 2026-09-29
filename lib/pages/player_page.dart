@@ -482,6 +482,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   Widget _lyricsArea(BuildContext context, String songId, {int? visibleLines}) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         widget.controller.reloadLyrics();
         showTopToast(context, '刷新歌词', duration: const Duration(milliseconds: 700));
@@ -864,9 +865,7 @@ class _LyricsViewState extends State<LyricsView> {
                     ? Colors.white.withValues(alpha: 0.12)
                     : Colors.black.withValues(alpha: 0.28);
 
-                return InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: synced ? () => widget.player.seek(line.time) : null,
+                return Padding(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 9 * scale),
                     child: AnimatedDefaultTextStyle(
