@@ -29,6 +29,9 @@ class BigScreenText extends StatelessWidget {
     final mq = MediaQuery.of(context);
     final scale = bigScreenTextScale(context);
     if (scale <= 1.0) return child;
+    // 外层（main.dart 全局大屏放大）已放大则不重复，避免双重放大
+    final cur = mq.textScaler.scale(14) / 14;
+    if (cur >= 1.15) return child;
     return MediaQuery(data: mq.copyWith(textScaler: TextScaler.linear(scale)), child: child);
   }
 }

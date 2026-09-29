@@ -119,9 +119,13 @@ class MyApp extends StatelessWidget {
           builder: (context, child) {
             final mq = MediaQuery.of(context);
             final size = mq.size;
-            final isCarScreen = size.width > size.height && size.shortestSide >= 480;
+            // 大屏（横竖）整体放大：车机横屏 1.15-1.3，车机竖屏/平板 1.15-1.25，手机保持收敛区间
+            final isBig = size.shortestSide >= 480;
+            final isLand = size.width > size.height;
             final raw = mq.textScaler.scale(14);
-            final scale = isCarScreen ? raw.clamp(1.15, 1.3) : raw.clamp(0.9, 1.2);
+            final scale = isBig
+                ? raw.clamp(1.15, isLand ? 1.3 : 1.25)
+                : raw.clamp(0.9, 1.2);
             return MediaQuery(
               data: mq.copyWith(textScaler: TextScaler.linear(scale)),
               child: child!,

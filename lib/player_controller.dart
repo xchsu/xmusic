@@ -347,7 +347,7 @@ class PlayerController extends ChangeNotifier {
     // [xmusic] 2026-09-24 试听片段检测（用户反馈：排行榜/每日30首部分歌只有 11/30 秒）：
     // 酷我 /nf/ 试听已在 external_api.kuwoStreamUrl 拦截；这里兜底检测"声明时长>60s
     // 但实际可播时长<40s"的试听（如 QQ vkey 非会员 30s 试听），自动换 GDStudio 网易云完整版重播。
-    if (s.fromExternal && (s.durationSec ?? 0) > 60 && token == _playToken) {
+    if (s.fromExternal && token == _playToken) {
       try {
         await player.processingStateStream.firstWhere(
           (st) => st == ProcessingState.ready,
