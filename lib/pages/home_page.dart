@@ -328,7 +328,31 @@ class _HomePageState extends State<HomePage> {
               future: _toplists,
               builder: (context, snap) {
                 if (!snap.hasData || snap.data!.isEmpty) {
-                  return const Padding(padding: EdgeInsets.all(16), child: Center(child: Text('加载排行榜...')));
+                  // 后台加载中：先渲染占位图标卡（渐变底+榜单图标），数据加载完成自动填充，不再空白/转圈
+                  final car = isCarScreen(context);
+                  final carP = car && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
+                  return GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    gridDelegate: carP
+                        ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.98)
+                        : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.98 : 1.1),
+                    children: List.generate(carP ? 9 : 12, (i) {
+                      final tc = Theme.of(context).colorScheme;
+                      return Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft, end: Alignment.bottomRight,
+                            colors: [tc.surfaceContainerHighest, tc.surfaceContainerHighest.withOpacity(0.55)],
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(Icons.queue_music_rounded, color: tc.onSurfaceVariant.withOpacity(0.5), size: 26),
+                      );
+                    }),
+                  );
                 }
                 // 网易云前8 + QQ前4，分两个子板块并标注来源
                 final ne = snap.data!.where((t) => t['source'] != 'qq').take(8).toList();
