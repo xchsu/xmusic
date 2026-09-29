@@ -296,13 +296,7 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-            // 排行榜网格
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('排行榜',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700)),
-            ),
+            // 排行榜网格（QQ音乐榜 → lx精选 → 网易云榜，无总标题）
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _toplists,
               builder: (context, snap) {
@@ -340,10 +334,22 @@ class _HomePageState extends State<HomePage> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    sectionTitle('网易云榜'),
-                    grid(ne, 'ne'),
                     sectionTitle('QQ音乐榜'),
                     grid(qq, 'qq'),
+                    sectionTitle('LX精选'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: GridView(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: carP
+                            ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
+                            : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: car ? 176 : 118, mainAxisSpacing: car ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: car ? 0.86 : 0.72),
+                        children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
+                      ),
+                    ),
+                    sectionTitle('网易云榜'),
+                    grid(ne, 'ne'),
                   ],
                 );
               },
@@ -388,32 +394,7 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-            // LX 精选（网易云榜单/精选歌单，meting 先行版）
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('LX精选',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-            ),
-            Builder(builder: (context) {
-              final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
-              return GridView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                gridDelegate: _carP
-                    ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
-                    : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.86 : 0.72),
-                children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
-              );
-            }),
-                      ],
+          ],
           ),
       ),
     ));
