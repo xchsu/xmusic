@@ -632,9 +632,55 @@ class ExternalApi {
     {'id': '2250011882', 'name': '抖音热门', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951165647093663'},
   ];  /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
   Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
+    // 每日30首：填了有效 QQ cookie 优先走账号个性化推荐（按爱听）；否则兜底 QQ 热歌榜/酷狗。
+    if (cookie.trim().isNotEmpty) {
+      try {
+        final rec = await qqDailyRecommend(cookie, count: count);
+        if (rec.isNotEmpty) return rec;
+      } catch (_) {}
+    }
     final songs = await qqToplistCp('4', limit: count);
     if (songs.isEmpty) return daily30FromKugou(count: count); // 榜单接口异常时兜底
     return songs;
+  }
+
+  /// QQ 每日推荐（账号个性化，GetRecommendSong）：依赖登录 cookie，按账号爱听推荐。
+  /// 返回歌曲带直链封面/时长；若接口不可用或字段解析失败会抛异常由调用方兜底。
+  Future<List<Song>> qqDailyRecommend(String cookie, {int count = 30}) async {
+    final uinNum = int.tryParse(_uinFromCookie(cookie).replaceAll('o', '')) ?? 0;
+    final body = {
+      'comm': {'ct': 24, 'cv': 0, 'uin': uinNum, 'format': 'json', 'inCharset': 'utf-8'},
+      'req_0': {
+        'module': 'v8.SmartBox.Music',
+        'method': 'GetRecommendSong',
+        'param': {
+          'mid': '', 'count': count, 'uin': uinNum,
+          'lastMid': '', 'mini': false, 'scene': 'getSmartBoxRecommend',
+        },
+      },
+    };
+    final j = await _qqFcg(body, cookie: cookie);
+    final data = j['req_0']?['data'];
+    final list = (data?['songInfo'] as List?) ?? (data?['songList'] as List?) ?? const [];
+    return list.cast<Map>().map((t) {
+      final album = (t['album'] as Map?) ?? const {};
+      final albumMid = (album['mid'] ?? '').toString();
+      final singers = ((t['singer'] as List?) ?? const [])
+          .map((x) => ((x as Map?) ?? const {})['name']?.toString() ?? '')
+          .where((x) => x.isNotEmpty)
+          .join(' / ');
+      return Song(
+        id: (t['mid'] ?? '').toString(),
+        title: (t['name'] ?? '').toString(),
+        artist: singers.isEmpty ? '未知' : singers,
+        album: (album['name'] ?? '').toString(),
+        coverUrl: albumMid.isEmpty ? null : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
+        durationSec: (t['interval'] as num?)?.toInt(),
+        fromExternal: true,
+        externalSource: 'qq',
+        year: _yearOf(t['time'] ?? t['pubtime']),
+      );
+    }).where((x) => x.id.isNotEmpty).take(count).toList();
   }
 
   /// QQ 精选歌单：用歌单分类接口 fcg_get_diss_by_tag.fcg 一次拉50个候选（含名称+封面），
