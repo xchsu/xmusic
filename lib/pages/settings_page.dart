@@ -261,8 +261,8 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(),
       body: ListView(
         children: [
-          // ===== 个性化（主题 + 歌词） =====
-          _sectionTitle(theme, '个性化'),
+          // ===== 主题 =====
+          _sectionTitle(theme, '主题'),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
             title: const Text('主题模式'),
@@ -283,42 +283,6 @@ class SettingsPage extends StatelessWidget {
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
                 : const Icon(Icons.chevron_right),
             onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: false),
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.play_circle_outline_rounded),
-            title: const Text('启动时自动播放'),
-            value: settings.autoPlay,
-            onChanged: (v) => settings.setAutoPlay(v),
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.sync_rounded),
-            title: const Text('同步黑名单到 NAS'),
-            subtitle: const Text('收藏走服务器自动互通；黑名单用 NAS(WebDAV) 同步手机/车机'),
-            value: settings.syncNas,
-            onChanged: (v) => settings.setSyncNas(v),
-          ),
-          ListTile(
-            leading: const Icon(Icons.playlist_remove_rounded),
-            title: const Text('黑名单管理'),
-            subtitle: Text('${settings.blacklistItems.length} 条（歌手/歌名），点开查看和删减'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _showBlacklistEditor(context, settings),
-          ),
-          ListTile(
-            leading: const Icon(Icons.cloud_sync_rounded),
-            title: const Text('立即同步到 NAS'),
-            subtitle: const Text('把黑名单和 ID 歌单立即上传；失败会显示原因'),
-            trailing: const Icon(Icons.sync_rounded),
-            onTap: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              messenger.showSnackBar(const SnackBar(content: Text('同步中…')));
-              final err = await settings.syncBlacklistPush();
-              if (!context.mounted) return;
-              messenger.showSnackBar(SnackBar(
-                  content: Text(err == null
-                      ? '同步成功（黑名单 + ID 歌单已上传）'
-                      : err)));
-            },
           ),
           ListTile(
             leading: const Icon(Icons.format_size_rounded),
@@ -358,8 +322,44 @@ class SettingsPage extends StatelessWidget {
           ),
           const Divider(),
 
-          // ===== 源 =====
-          _sectionTitle(theme, '源'),
+          // ===== 个性化 =====
+          _sectionTitle(theme, '个性化'),
+          SwitchListTile(
+            secondary: const Icon(Icons.play_circle_outline_rounded),
+            title: const Text('启动时自动播放'),
+            value: settings.autoPlay,
+            onChanged: (v) => settings.setAutoPlay(v),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.sync_rounded),
+            title: const Text('同步黑名单到 NAS'),
+            subtitle: const Text('收藏走服务器自动互通；黑名单用 NAS(WebDAV) 同步手机/车机'),
+            value: settings.syncNas,
+            onChanged: (v) => settings.setSyncNas(v),
+          ),
+          ListTile(
+            leading: const Icon(Icons.playlist_remove_rounded),
+            title: const Text('黑名单管理'),
+            subtitle: Text('${settings.blacklistItems.length} 条（歌手/歌名），点开查看和删减'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _showBlacklistEditor(context, settings),
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud_sync_rounded),
+            title: const Text('立即同步到 NAS'),
+            subtitle: const Text('把黑名单和 ID 歌单立即上传；失败会显示原因'),
+            trailing: const Icon(Icons.sync_rounded),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.showSnackBar(const SnackBar(content: Text('同步中…')));
+              final err = await settings.syncBlacklistPush();
+              if (!context.mounted) return;
+              messenger.showSnackBar(SnackBar(
+                  content: Text(err == null
+                      ? '同步成功（黑名单 + ID 歌单已上传）'
+                      : err)));
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.dns_rounded),
             title: const Text('Navidrome 服务器'),
@@ -385,10 +385,6 @@ class SettingsPage extends StatelessWidget {
             isThreeLine: true,
             onTap: () => _showSourcesInfo(context),
           ),
-          const Divider(),
-
-          // ===== 下载 =====
-          _sectionTitle(theme, '下载'),
           ListTile(
             leading: const Icon(Icons.folder_open_rounded),
             title: const Text('申请存储权限'),
@@ -408,10 +404,9 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music（默认）' : settings.downloadPath),
             onTap: () => _pickDownloadDirectory(context),
           ),
-
           ListTile(
             leading: const Icon(Icons.cloud_download_outlined),
-            title: const Text('WebDAV (NAS)'),
+            title: const Text('NAS'),
             subtitle: Text(settings.webdavConfigured ? settings.webdavUrl : '未配置'),
             onTap: () => _showWebdavDialog(context),
           ),
