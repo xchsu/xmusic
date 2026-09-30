@@ -5,7 +5,6 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
-import '../cover_glass.dart';
 import 'mini_player.dart';
 import 'player_page.dart';
 
@@ -72,25 +71,21 @@ class _PlaylistPageState extends State<PlaylistPage> {
     await widget.controller.playQueue(songs, index);
     if (mounted) setState(() {});
     if (context.mounted) {
-      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PlayerPage(
+          settings: widget.settings,
+          controller: widget.controller,
+        ),
+      ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BigScreenText(
-      child: PageBackground(
-        controller: widget.controller,
-        settings: widget.settings,
-        child: Scaffold(
-        // [xmusic] 2026-09-29 整页透明：PageBackground 覆盖含 AppBar 的全屏，透出封面玻璃背景
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Text(widget.playlist.name),
-        ),
-        body: Column(
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(title: Text(widget.playlist.name)),
+      body: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Song>>(
@@ -160,30 +155,22 @@ class _PlaylistPageState extends State<PlaylistPage> {
                         itemBuilder: (context, k) {
                           final i = vis[k];
                           final song = songs[i];
-                          return SongTile(
-                            song: song,
-                            client: _client,
-                            onTap: () => _playSongs(songs, i),
-                            onFavorite: () async {
-                              final s = song;
-                              if (!s.fromExternal) {
-                                try {
-                                  s.starred
-                                      ? await _client.unstarSong(s.id)
-                                      : await _client.starSong(s.id);
-                                } catch (_) {}
-                              }
-                            },
-                            blacklisted: widget.settings.isBlacklisted(song),
-                            onBlacklist: () async {
-                              final s = song;
-                              if (widget.settings.isBlacklisted(s)) {
-                                await widget.settings.removeBlacklist(s);
-                              } else {
-                                await widget.settings.addBlacklist(s);
-                              }
-                            },
-                            onDelete: () => _removeSong(song),
+                          return Dismissible(
+                            key: ValueKey('pl_${widget.playlist.name}_${song.id}'),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              color: Theme.of(context).colorScheme.error,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: const Icon(Icons.delete_outline_rounded,
+                                  color: Colors.white),
+                            ),
+                            onDismissed: (_) => _removeSong(song),
+                            child: SongTile(
+                              song: song,
+                              client: _client,
+                              onTap: () => _playSongs(songs, i),
+                            ),
                           );
                         },
                       ),
@@ -195,8 +182,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
           ),
           MiniPlayer(settings: widget.settings, controller: widget.controller),
         ],
-        ),
       ),
-    ));
+    );
   }
 }
