@@ -791,7 +791,7 @@ class ExternalApi {
 
   /// QQ 歌单详情：歌单名 + 歌曲列表（qzone 匿名接口，song_num 上限约 1000）。
   /// 用于音乐库"导入歌单"：输入歌单 ID 拉取歌曲（不足 1000 首的歌单可拉全）。
-  Future<(String, List<Song>)> qqPlaylistDetail(String dissid,
+  Future<(String, List<Song>, String)> qqPlaylistDetail(String dissid,
       {int limit = 1000}) async {
     try {
       final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
@@ -807,9 +807,16 @@ class ExternalApi {
       });
       final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      if (list.isEmpty) return ('', const <Song>[]);
+      if (list.isEmpty) return ('', const <Song>[], '');
       final name = (list.first['dissname'] ?? '').toString();
       final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? <Map<String, dynamic>>[];
+      final cover = (list.first['pic'] ??
+                  list.first['pic_url'] ??
+                  list.first['logo'] ??
+                  list.first['imgurl'] ??
+                  '')
+              .toString()
+          .replaceAll('http://', 'https://');
       return (name, songs.map<Song>((m) {
         final mid = (m['songmid'] ?? '').toString();
         final title = (m['songname'] ?? '').toString();
@@ -825,9 +832,9 @@ class ExternalApi {
           fromExternal: true,
           externalSource: 'qq',
         );
-      }).where((s) => s.id.isNotEmpty).take(limit).toList());
+      }).where((s) => s.id.isNotEmpty).take(limit).toList(), cover);
     } catch (_) {
-      return ('', const <Song>[]);
+      return ('', const <Song>[], '');
     }
   }
 

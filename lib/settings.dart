@@ -184,9 +184,14 @@ class AppSettings extends ChangeNotifier {
   }
 
   /// 添加导入的 QQ 歌单（同 id 去重并置顶）。
-  Future<void> addImportedQqPlaylist(String id, String name) async {
+  Future<void> addImportedQqPlaylist(String id, String name,
+      {String cover = ''}) async {
     importedQqPlaylists.removeWhere((e) => e['id'] == id);
-    importedQqPlaylists.insert(0, {'id': id, 'name': name});
+    importedQqPlaylists.insert(0, {
+      'id': id,
+      'name': name,
+      if (cover.isNotEmpty) 'cover': cover,
+    });
     notifyListeners();
     await _prefs.setStringList(
         _kImportedQq, importedQqPlaylists.map((e) => jsonEncode(e)).toList());
@@ -405,6 +410,8 @@ class AppSettings extends ChangeNotifier {
               .map((m) => {
                     'id': (m['id'] ?? '').toString(),
                     'name': (m['name'] ?? '').toString(),
+                    if (((m['cover'] ?? '') as String).isNotEmpty)
+                      'cover': (m['cover'] ?? '').toString(),
                   })
               .toList();
           var plChanged = false;
