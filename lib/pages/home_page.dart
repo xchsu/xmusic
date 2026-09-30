@@ -27,11 +27,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
-  late Future<List<Song>> _daily30;
-  /// 最近一次加载每日30首在线的日期（yyyyMMdd），跨天自动重新拉取账号每日推荐。
-  String _daily30Date = '';
-  late Future<List<Song>> _localRec;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
+  late Future<List<Song>> _localRec;
 
   SubsonicClient get _client => widget.controller.client;
 
@@ -49,8 +46,6 @@ class _HomePageState extends State<HomePage> {
     final ext = widget.controller.external;
     // 真实排行榜：网易云 + （有QQ cookie时）QQ 榜单
     _toplists = _loadToplists();
-    // 每日30首：飙升榜/新歌榜/原创榜 各取前10去重（避开热歌榜，避免与下方排行榜网格重复）
-    _daily30 = _loadDaily30();
     // QQ 精选歌单（硬编码 dissid，本地列表零网络请求；点进去才拉歌曲）
     _qqPlaylists = ext.qqPlaylists();
     // 本地推荐
@@ -81,7 +76,7 @@ class _HomePageState extends State<HomePage> {
   /// 过滤老歌（开关开 + 年份可确认且早于阈值时剔除）。
   List<Song> _filterOld(List<Song> songs) =>
       songs.where((s) => !widget.settings.isOld(s)).toList();
-  /// 风格为 DJ 的曲目（歌名/歌手/专辑任一带 dj，大小写不敏感）全部过滤，用于榜单/歌单/每日30首。
+  /// 风格为 DJ 的曲目（歌名/歌手/专辑任一带 dj，大小写不敏感）全部过滤，用于榜单/歌单。
   bool _isDj(Song s) {
     bool hit(String? v) {
       if (v == null || v.isEmpty) return false;
@@ -95,21 +90,7 @@ class _HomePageState extends State<HomePage> {
           .where((s) => !widget.settings.isBlacklisted(s) && !_isDj(s))
           .toList();
 
-  Future<List<Song>> _loadDaily30() async {
-    _daily30Date = _dateStr();
-    // 每日30首：统一走 QQ（热歌榜，填了 cookie 时账号相关更贴合；接口异常内部兜底酷狗）
-    final ext = widget.controller.external;
-    final qq = await ext.daily30FromQq(cookie: widget.settings.qqCookie);
-    return _filterBlacklist(_filterOld(qq));
-  }
-
-  /// 今日日期串 yyyyMMdd，用于每日30首在线跨天刷新。
-  String _dateStr() {
-    final n = DateTime.now();
-    return '${n.year}${n.month.toString().padLeft(2, '0')}${n.day.toString().padLeft(2, '0')}';
-  }
-
-  /// 本地推荐：类似"每日30首"——按日期播种 + 当天缓存，每天变化（同日内稳定）。
+  /// 本地推荐：按日期播种 + 当天缓存，每天变化（同日内稳定）。
   DateTime _localRecDay = DateTime(2000);
   List<Song> _localRecCached = const [];
   Future<List<Song>> _dailyLocalRec() async {
@@ -139,7 +120,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _reload() async {
     _load();
-    await Future.wait([_toplists, _daily30, _qqPlaylists]);
+    await Future.wait([_toplists, _qqPlaylists]);
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
@@ -269,11 +250,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 跨天自动刷新每日30首在线（QQ 账号每日推荐每天变；home 常驻不重建也检查）
-    if (_daily30Date != _dateStr()) {
-      _daily30Date = _dateStr();
-      _daily30 = _loadDaily30();
-    }
     return Builder(builder: (context) {
       final mq = MediaQuery.of(context);
       final car = isCarScreen(context);
@@ -300,58 +276,47 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            // 每日30首：在线 + 本地 两栏（横屏下整块限宽，避免图片过大）
+            // QQ 精选歌单（用户强烈要求；硬编码 dissid，点进才拉歌曲）
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('每日30首',
+                    child: Text('QQ歌单',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700)),
+                  ),
+                  IconButton(
+                    tooltip: '换一批',
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    onPressed: () {
+                      setState(() => _qqPlaylists = widget.controller.external.qqPlaylists());
+                    },
                   ),
                 ],
               ),
             ),
-            FutureBuilder<List<Song>>(
-              future: _daily30,
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _qqPlaylists,
               builder: (context, snap) {
-                final car = isCarScreen(context);
-                final online = snap.hasData ? snap.data! : const <Song>[];
-                final card = Row(
-                  children: [
-                    Expanded(
-                      child: _daily30Card(
-                        title: '在线',
-                        subtitle: online.isNotEmpty ? '${online.length}首 · 飙升/新歌/原创' : '加载中...',
-                        icon: Icons.cloud_download_rounded,
-                        coverUrl: online.isNotEmpty ? online.first.coverUrl : null,
-                        colors: const [Color(0xFF3A6DF0), Color(0xFF5B8CFA)],
-                        onTap: online.isNotEmpty
-                            ? () => _openPlaylist('每日30首·在线', '', songs: online)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _daily30Card(
-                        title: '本地',
-                        subtitle: '每天变化 · 本地随机',
-                        icon: Icons.folder_rounded,
-                        colors: const [Color(0xFF00A884), Color(0xFF2FB8A0)],
-                        onTap: _openDailyLocal,
-                      ),
-                    ),
-                  ],
-                );
-                return Padding(
+                final list = snap.data ?? const [];
+                final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
+                return GridView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: car
-                      ? Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: card))
-                      : card,
+                  gridDelegate: _carP
+                      ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
+                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.86 : 0.72),
+                  children: list.map((p) => _qqPlaylistCard(
+                    p['name'] as String,
+                    p['dissid'] as String,
+                    p['coverImgUrl'] as String?,
+                  )).toList(),
                 );
               },
             ),
+
             // 排行榜网格（QQ音乐榜 → lx精选 → 网易云榜，无总标题）
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _toplists,
@@ -424,6 +389,8 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     sectionTitle('QQ音乐榜'),
                     grid(qq, 'qq'),
+                    sectionTitle('网易云榜'),
+                    grid(ne, 'ne'),
                     sectionTitle('LX精选'),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -436,49 +403,7 @@ class _HomePageState extends State<HomePage> {
                         children: ExternalApi.lxPresets.map((p) => _lxCard(p['name']!, p['id']!, p['coverUrl'] as String?)).toList(),
                       ),
                     ),
-                    sectionTitle('网易云榜'),
-                    grid(ne, 'ne'),
                   ],
-                );
-              },
-            ),
-            // QQ 精选歌单（用户强烈要求；硬编码 dissid，点进才拉歌曲）
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('QQ歌单',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700)),
-                  ),
-                  IconButton(
-                    tooltip: '换一批',
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                    onPressed: () {
-                      setState(() => _qqPlaylists = widget.controller.external.qqPlaylists());
-                    },
-                  ),
-                ],
-              ),
-            ),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _qqPlaylists,
-              builder: (context, snap) {
-                final list = snap.data ?? const [];
-                final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
-                return GridView(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: _carP
-                      ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
-                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.86 : 0.72),
-                  children: list.map((p) => _qqPlaylistCard(
-                    p['name'] as String,
-                    p['dissid'] as String,
-                    p['coverImgUrl'] as String?,
-                  )).toList(),
                 );
               },
             ),

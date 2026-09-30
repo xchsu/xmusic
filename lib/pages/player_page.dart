@@ -599,14 +599,18 @@ class _PlayerPageState extends State<PlayerPage> {
           alignment: Alignment.bottomRight,
           child: Container(
             width: 340,
-            height: mq.size.height * 0.5,
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(16),
             ),
             clipBehavior: Clip.antiAlias,
-            child: _queuePanel(ctx),
+            // 高度用 FractionallySizedBox 固定（0.6 屏高），
+            // 避免 Container(height) 在 showGeneralDialog 里 Expanded 高度为 0、只显示标题。
+            child: FractionallySizedBox(
+              heightFactor: 0.6,
+              child: _queuePanel(ctx),
+            ),
           ),
         ),
       );
