@@ -809,7 +809,7 @@ class ExternalApi {
       });
       final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
       final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      if (list.isEmpty) return ('', const []);
+      if (list.isEmpty) return ('', const <Song>[]);
       final name = (list.first['dissname'] ?? '').toString();
       final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? <Map<String, dynamic>>[];
       return (name, songs.map<Song>((m) {
@@ -829,7 +829,7 @@ class ExternalApi {
         );
       }).where((s) => s.id.isNotEmpty).take(limit).toList());
     } catch (_) {
-      return ('', const []);
+      return ('', const <Song>[]);
     }
   }
 
