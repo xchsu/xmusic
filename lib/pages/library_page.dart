@@ -13,7 +13,7 @@ import '../widgets.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
 import 'playlist_page.dart';import 'player_page.dart';
-import '../mini_player.dart';
+import 'mini_player.dart';
 
 
 /// Library page with tabs: 歌单 / 专辑 / 歌手 / 本地(真本地扫描).
