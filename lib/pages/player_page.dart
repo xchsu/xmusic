@@ -584,13 +584,16 @@ class _PlayerPageState extends State<PlayerPage> {
     final mq = MediaQuery.of(context);
     final carLand = isCarScreen(context) && mq.size.width > mq.size.height;
     if (carLand) {
-      // 车机/手机横屏：右下角收窄小窗浮层。showDialog + Align 真正贴右下（不用
-      // showModalBottomSheet——其 sheet 有最大宽度限制，大屏会居中）。
-      // barrier 透明只露出面板（面板本身实心不透明），pop 用 dialog 的 ctx 正确关闭。
-      showDialog(
+      // 车机/手机横屏：右下角收窄小窗浮层。showGeneralDialog 的 pageBuilder 直接
+      // 放 overlay（无 Dialog 包裹/Center 居中），Align(bottomRight) 真正贴右下。
+      // barrier 透明只露出面板（面板本身实心不透明），pop 用 panel 的 ctx 正确关闭。
+      showGeneralDialog(
         context: context,
         barrierColor: Colors.transparent,
-        builder: (ctx) => Align(
+        barrierDismissible: true,
+        barrierLabel: '',
+        transitionDuration: const Duration(milliseconds: 150),
+        pageBuilder: (ctx, _, __) => Align(
           alignment: Alignment.bottomRight,
           child: Container(
             width: 340,
