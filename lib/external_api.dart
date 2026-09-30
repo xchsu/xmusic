@@ -698,29 +698,34 @@ class ExternalApi {
   /// QQ 精选歌单：用歌单分类接口 fcg_get_diss_by_tag.fcg 一次拉50个候选（含名称+封面），
   /// 预检 qzone songlist 非空才保留，shuffle 取12个（车机6列2行/手机3列4行）。
   Future<List<Map<String, dynamic>>> qqPlaylists({int categoryId = 10000000, int take = 12}) async {
-    Object? lastErr;
-    // 主路径 + qzone 备用路径：任一成功即返回（splcloud 偶发风控时 qzone 路径可兜底）
-    for (final base in [
-      'https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg',
-      'https://c.y.qq.com/qzone/fcg-bin/fcg_get_diss_by_tag.fcg',
-    ]) {
+    // 主路径（splcloud 本机实测 200 稳定返回 50 条）；备用 qzone 路径实测 404，已移除。
+    // 失败重试 2 次，最终抛出聚合了 statusCode/响应摘要的真实错误（首页会显示，便于定位）。
+    final uri = Uri.parse('https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg')
+        .replace(queryParameters: {
+      'categoryId': '$categoryId', // 歌单分类（10000000 全部，30000000 流行，50000000 摇滚…）
+      'sortId': '5',            // 综合排序
+      'sin': '0', 'ein': '49',  // 取 0-49 共 50 个候选
+      'format': 'json', 'json': '1', 'utf8': '1',
+      'inCharset': 'utf8', 'outCharset': 'utf-8',
+    });
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
+      'Referer': 'https://y.qq.com/',
+      'Origin': 'https://y.qq.com',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      'Connection': 'keep-alive',
+    };
+    final errs = <String>[];
+    for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        final uri = Uri.parse(base).replace(queryParameters: {
-          'categoryId': '$categoryId', // 歌单分类（10000000 全部，30000000 流行，50000000 摇滚…）
-          'sortId': '5',            // 综合排序
-          'sin': '0', 'ein': '49',  // 取 0-49 共 50 个候选
-          'format': 'json', 'json': '1', 'utf8': '1',
-          'inCharset': 'utf8', 'outCharset': 'utf-8',
-        });
-        final resp = await http.get(uri, headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
-          'Referer': 'https://y.qq.com/',
-          'Origin': 'https://y.qq.com',
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-          'Connection': 'keep-alive',
-        }).timeout(const Duration(seconds: 12));
-        // 响应可能是明文 JSON 或 gzip：两种都试，再退到提取 JSON 片段
+        final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+        if (resp.statusCode != 200) {
+          errs.add('HTTP ${resp.statusCode}（第${attempt + 1}次）');
+          await Future.delayed(const Duration(milliseconds: 400));
+          continue;
+        }
+        // 响应可能是明文 JSON 或 gzip：两种都试；再从 "code" 起提取 JSON 片段（避免风控页里的 {} 误提取）
         Map<String, dynamic>? j;
         try {
           j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
@@ -729,13 +734,18 @@ class ExternalApi {
             j = jsonDecode(utf8.decode(gzip.decode(resp.bodyBytes))) as Map<String, dynamic>;
           } catch (_) {
             final txt = utf8.decode(resp.bodyBytes, allowMalformed: true);
-            final m = RegExp(r'\{.*\}', dotAll: true).firstMatch(txt);
+            final m = RegExp(r'\{"code".*?\}', dotAll: true).firstMatch(txt);
             if (m != null) j = jsonDecode(m.group(0)!) as Map<String, dynamic>;
           }
         }
+        if (j == null || j['code'] != 0) {
+          errs.add('code=${j?['code']} msg=${j?['message']}（第${attempt + 1}次）');
+          await Future.delayed(const Duration(milliseconds: 400));
+          continue;
+        }
         // 接口结构：新版 data.list / 旧版 disslist，两种都兼容
-        final list = (((j?['data'] as Map?)?['list']) as List?) ??
-            (j?['disslist'] as List?) ??
+        final list = (((j['data'] as Map?)?['list']) as List?) ??
+            (j['disslist'] as List?) ??
             const [];
         final maps = <Map<String, dynamic>>[];
         final seen = <String>{};
@@ -752,21 +762,22 @@ class ExternalApi {
           });
         }
         if (maps.isEmpty) {
-          lastErr = StateError('$base 返回空列表');
-          continue; // 换备用路径
+          errs.add('解析出空列表（第${attempt + 1}次）');
+          await Future.delayed(const Duration(milliseconds: 400));
+          continue;
         }
         maps.shuffle();
-        // [xmusic] 2026-09-30 直接按收听数降序返回；接口异常/无数据由首页显示失败/占位——
+        // [xmusic] 2026-09-30 直接按收听数降序返回；接口异常由首页显示失败原因——
         // 绝不回退到用户个人歌单（用户明确不想要）。
         maps.sort((a, b) =>
             ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
         return maps.take(take).toList();
       } catch (e) {
-        lastErr = e;
+        errs.add('$e（第${attempt + 1}次）');
+        await Future.delayed(const Duration(milliseconds: 400));
       }
     }
-    // 两条路径都失败：抛出真实错误，由首页显示原因（方便定位是网络/风控/解析）
-    throw lastErr ?? StateError('QQ 歌单广场接口不可用');
+    throw StateError('QQ 歌单广场接口失败：${errs.join('；')}');
   }
 
   /// QQ 歌单歌曲（qzone 匿名接口）
