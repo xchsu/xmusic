@@ -811,8 +811,8 @@ class ExternalApi {
       final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       if (list.isEmpty) return ('', const []);
       final name = (list.first['dissname'] ?? '').toString();
-      final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      return (name, songs.map((m) {
+      final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? <Map<String, dynamic>>[];
+      return (name, songs.map<Song>((m) {
         final mid = (m['songmid'] ?? '').toString();
         final title = (m['songname'] ?? '').toString();
         final artist =
