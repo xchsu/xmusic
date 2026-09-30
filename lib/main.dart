@@ -125,7 +125,7 @@ class MyApp extends StatelessWidget {
             final isLand = size.width > size.height;
             final raw = mq.textScaler.scale(14);
             final scale = isBig
-                ? (raw * (isLand ? 1.5 : 1.3)).clamp(1.2, 2.2)
+                ? (raw * (isLand ? 1.5 : 1.6)).clamp(1.2, 2.2)
                 : raw.clamp(0.9, 1.2);
             return MediaQuery(
               data: mq.copyWith(textScaler: TextScaler.linear(scale)),
