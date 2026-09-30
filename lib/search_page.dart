@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../external_api.dart';
 import '../local_library.dart';
@@ -8,6 +9,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
 import 'player_page.dart';
@@ -32,9 +34,93 @@ class _SearchPageState extends State<SearchPage> {
   bool _loading = false;
   String? _error;
   int _mode = 0; // 0 = 本地(本地下载), 1 = NAS(Subsonic服务器), 2 = 在线(外网)
+  List<String> _history = [];
 
   SubsonicClient get _client => widget.controller.client;
   ExternalApi get _externalApi => ExternalApi(widget.settings.externalApiUrl);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  static const _kHistory = 'search_history';
+
+  Future<void> _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kHistory) ?? const <String>[];
+    if (mounted) setState(() => _history = list);
+  }
+
+  Future<void> _recordHistory(String q) async {
+    if (q.trim().isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kHistory) ?? <String>[];
+    list.remove(q);
+    list.insert(0, q);
+    if (list.length > 20) list.removeRange(20, list.length);
+    await prefs.setStringList(_kHistory, list);
+    if (mounted) setState(() => _history = List.of(list));
+  }
+
+  Future<void> _removeHistory(String q) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kHistory) ?? <String>[];
+    list.remove(q);
+    await prefs.setStringList(_kHistory, list);
+    if (mounted) setState(() => _history = list);
+  }
+
+  Widget _historyBody(BuildContext context) {
+    if (_history.isEmpty) {
+      return Center(
+        child: Text('输入关键词搜索',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(top: 8, bottom: 96),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              Text('历史搜索',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              IconButton(
+                tooltip: '清空历史',
+                icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove(_kHistory);
+                  if (mounted) setState(() => _history = []);
+                },
+              ),
+            ],
+          ),
+        ),
+        ..._history.map((kw) => ListTile(
+              dense: true,
+              leading: const Icon(Icons.history, size: 20),
+              title: Text(kw, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onTap: () {
+                _query.text = kw;
+                _search();
+              },
+              trailing: IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: () => _removeHistory(kw),
+              ),
+            )),
+      ],
+    );
+  }
 
   @override
   void dispose() {
@@ -56,9 +142,14 @@ class _SearchPageState extends State<SearchPage> {
     _debounce = Timer(const Duration(milliseconds: 400), () => _search());
   }
 
+  /// 过滤老歌（开关开 + 年份可确认且早于阈值时剔除）。
+  List<Song> _filterOld(List<Song> songs) =>
+      songs.where((s) => !widget.settings.isOld(s)).toList();
+
   Future<void> _search() async {
     final q = _query.text.trim();
     if (q.isEmpty) return;
+    _recordHistory(q);
     if (_mode == 0) {
       await _searchLocalDownloads(q);
     } else if (_mode == 1) {
@@ -138,6 +229,41 @@ class _SearchPageState extends State<SearchPage> {
       _external = merged;
       _externalLoading = false;
     });
+    _backfillCovers(merged);
+  }
+
+  /// 在线搜索结果缺封面的条目，用酷我封面接口按「歌名 歌手」补图（最多补 40 条）。
+  Future<void> _backfillCovers(List<Song> merged) async {
+    final missing =
+        merged.where((s) => (s.coverUrl ?? '').isEmpty).take(40).toList();
+    if (missing.isEmpty) return;
+    final api = _externalApi;
+    for (final s in missing) {
+      try {
+        final url = await api.kugouSearchCover('${s.title} ${s.artist}');
+        if (url == null || url.isEmpty || !mounted) continue;
+        final list = _external;
+        if (list == null) continue;
+        final i = list.indexWhere((x) => x.id == s.id);
+        if (i < 0) continue;
+        setState(() {
+          list[i] = Song(
+            id: s.id,
+            title: s.title,
+            artist: s.artist,
+            album: s.album,
+            coverArt: null,
+            coverUrl: url,
+            durationSec: s.durationSec,
+            fromExternal: s.fromExternal,
+            externalSource: s.externalSource,
+            streamUrl: s.streamUrl,
+            lrcUrl: s.lrcUrl,
+            year: s.year,
+          );
+        });
+      } catch (_) {}
+    }
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
@@ -146,12 +272,7 @@ class _SearchPageState extends State<SearchPage> {
       _showSnack('播放失败: ${widget.controller.lastError}');
     }
     if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PlayerPage(
-        settings: widget.settings,
-        controller: widget.controller,
-      ),
-    ));
+    await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     if (mounted) setState(() {});
   }
 
@@ -189,6 +310,7 @@ class _SearchPageState extends State<SearchPage> {
           fromExternal: true,
           externalSource: src,
           streamUrl: url,
+          year: song.year,
         );
       } catch (e) {
         _showSnack('获取播放地址失败：$e');
@@ -262,37 +384,46 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final r = _results;
-    return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _query,
-          autofocus: true,
-          onChanged: _onChanged,
-          decoration: const InputDecoration(
-            hintText: '搜索歌曲 / 专辑 / 歌手',
-            border: InputBorder.none,
-          ),
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) => _search(),
-        ),
-        actions: [
-          if (_query.text.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                _query.clear();
-                setState(() {
-                  _results = null;
-                  _external = null;
-                  _error = null;
-                });
-              },
+    return BigScreenText(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _query,
+                    autofocus: true,
+                    onChanged: _onChanged,
+                    decoration: const InputDecoration(
+                      hintText: '搜索歌曲 / 专辑 / 歌手',
+                      border: InputBorder.none,
+                    ),
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _search(),
+                  ),
+                ),
+                if (_query.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _query.clear();
+                      setState(() {
+                        _results = null;
+                        _external = null;
+                        _error = null;
+                      });
+                    },
+                  ),
+              ],
             ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
             child: SegmentedButton<int>(
               segments: const [
                 ButtonSegment(
@@ -318,21 +449,23 @@ class _SearchPageState extends State<SearchPage> {
               },
             ),
           ),
-        ),
+          Expanded(
+            child: PageBackground(
+              controller: widget.controller,
+              settings: widget.settings,
+              child: _mode <= 1 ? _localBody(context, r) : _externalBody(),
+            ),
+          ),
+        ],
       ),
-      body: _mode <= 1 ? _localBody(context, r) : _externalBody(),
-    );
+    ));
   }
 
   Widget _localBody(BuildContext context, SearchResults? r) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
     if (r == null) {
-      return Center(
-        child: Text('输入关键词搜索',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
+      return _historyBody(context);
     }
     return ListView(
       padding: EdgeInsets.only(
@@ -345,6 +478,25 @@ class _SearchPageState extends State<SearchPage> {
                 song: e.value,
                 client: _client,
                 onTap: () => _playSongs(r.songs, e.key),
+                onFavorite: () async {
+                  final s = e.value;
+                  if (!s.fromExternal) {
+                    try {
+                      s.starred
+                          ? await _client.unstarSong(s.id)
+                          : await _client.starSong(s.id);
+                    } catch (_) {}
+                  }
+                },
+                blacklisted: widget.settings.isBlacklisted(e.value),
+                onBlacklist: () async {
+                  final s = e.value;
+                  if (widget.settings.isBlacklisted(s)) {
+                    await widget.settings.removeBlacklist(s);
+                  } else {
+                    await widget.settings.addBlacklist(s);
+                  }
+                },
               )),
         ],
         if (r.albums.isNotEmpty) ...[
@@ -410,11 +562,7 @@ class _SearchPageState extends State<SearchPage> {
     }
     final songs = _external;
     if (songs == null) {
-      return Center(
-        child: Text('搜索外网歌曲',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
+      return _historyBody(context);
     }
     if (songs.isEmpty) {
       return const Padding(
@@ -431,8 +579,27 @@ class _SearchPageState extends State<SearchPage> {
         return ListTile(
           leading: CoverImage(client: _client, coverId: s.coverArt, coverUrl: s.coverUrl, size: 48, radius: 8, requestSize: 200),
           title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${s.artist}  ·  ${_srcLabel(s.externalSource)}',
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(s.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  // [xmusic] 2026-09-28 不同源不同颜色标注：LX绿/QQ蓝/酷我橙/网易云红/聚合紫
+                  color: _srcColor(s.externalSource),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(_srcLabel(s.externalSource),
+                    style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          isThreeLine: true,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -464,5 +631,15 @@ class _SearchPageState extends State<SearchPage> {
         'kuwo' => '酷我(KW)',
         'netease' => '网易云',
         _ => '聚合',
+      };
+
+  /// 不同源的颜色标注：LX绿 / QQ蓝 / 酷我橙 / 网易云红 / 其它聚合紫。
+  Color _srcColor(String? src) => switch (src) {
+        'lx' => const Color(0xFF00A884),
+        'qq' => const Color(0xFF3A6DF0),
+        'kuwo' => const Color(0xFFE68A2E),
+        'netease' => const Color(0xFFD94B4B),
+        'bilibili' => const Color(0xFFFB7299),
+        _ => const Color(0xFF7A6BC4),
       };
 }
