@@ -629,8 +629,9 @@ class _HomePageState extends State<HomePage> {
                 ),
               )
             else
-              AspectRatio(
-                aspectRatio: 1,
+              SizedBox(
+                height: 132,
+                width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [

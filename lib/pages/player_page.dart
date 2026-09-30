@@ -440,10 +440,10 @@ class _PlayerPageState extends State<PlayerPage> {
                           child: Column(
                             children: [
                               _MarqueeText(song.title, textAlign: TextAlign.center,
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 34 : 24)),
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 18 : 24)),
                               SizedBox(height: car ? 10 : 6),
-                              Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 22 : 15)),
+                              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 12 : 15)),
                             ],
                           ),
                         ),
@@ -582,38 +582,37 @@ class _PlayerPageState extends State<PlayerPage> {
   void _openQueue(BuildContext context) {
     final mq = MediaQuery.of(context);
     final carLand = isCarScreen(context) && mq.size.width > mq.size.height;
-    if (carLand) {
-      // 车机横屏：播放列表面板靠右下角小窗显示
-      showDialog(
-        context: context,
-        builder: (ctx) => Align(
-          alignment: Alignment.bottomRight,
-          child: Container(
-            width: 400,
-            height: mq.size.height * 0.72,
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: _queuePanel(context),
-          ),
-        ),
-      );
-      return;
-    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.4,
-        expand: false,
-        builder: (ctx, scrollController) =>
-            _queuePanel(context, scrollController: scrollController),
-      ),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        if (carLand) {
+          // 车机横屏：靠右下角小窗，不覆盖整个底部（统一用 ctx，pop 正确关闭面板）
+          return Align(
+            alignment: Alignment.bottomRight,
+            child: Container(
+              width: 380,
+              height: mq.size.height * 0.55,
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: _queuePanel(ctx),
+            ),
+          );
+        }
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          maxChildSize: 0.9,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (ctx, scrollController) =>
+              _queuePanel(ctx, scrollController: scrollController),
+        );
+      },
     );
   }
 
