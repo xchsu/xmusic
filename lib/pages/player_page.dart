@@ -586,16 +586,15 @@ class _PlayerPageState extends State<PlayerPage> {
     // 必须只按方向判，车机横屏同样宽>高，两者都走右下浮窗）。
     final land = mq.size.width > mq.size.height;
     if (land) {
-      // 横屏：右下角收窄小窗浮层。showGeneralDialog 的 pageBuilder 直接
-      // 放 overlay（无 Dialog 包裹/Center 居中），Align(bottomRight) 真正贴右下。
-      // barrier 透明只露出面板（面板本身实心不透明），pop 用 panel 的 ctx 正确关闭。
-      showGeneralDialog(
+      // 横屏：右下角收窄小窗浮层。showModalBottomSheet(isScrollControlled:true)
+      // 提供全屏有界约束（竖屏已验证 FractionallySizedBox 可靠填充，Expanded 不会高度为 0），
+      // Align 贴右下 + 固定宽度收窄。
+      showModalBottomSheet(
         context: context,
+        isScrollControlled: true,
         barrierColor: Colors.transparent,
-        barrierDismissible: true,
-        barrierLabel: '',
-        transitionDuration: const Duration(milliseconds: 150),
-        pageBuilder: (ctx, _, __) => Align(
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => Align(
           alignment: Alignment.bottomRight,
           child: Container(
             width: 340,
@@ -605,8 +604,6 @@ class _PlayerPageState extends State<PlayerPage> {
               borderRadius: BorderRadius.circular(16),
             ),
             clipBehavior: Clip.antiAlias,
-            // 高度用 FractionallySizedBox 固定（0.6 屏高），
-            // 避免 Container(height) 在 showGeneralDialog 里 Expanded 高度为 0、只显示标题。
             child: FractionallySizedBox(
               heightFactor: 0.6,
               child: _queuePanel(ctx),
