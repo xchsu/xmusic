@@ -695,92 +695,98 @@ class ExternalApi {
     }).where((x) => x.id.isNotEmpty).take(count).toList();
   }
 
-  /// QQ 精选歌单：用歌单分类接口 fcg_get_diss_by_tag.fcg 一次拉50个候选（含名称+封面），
-  /// 预检 qzone songlist 非空才保留，shuffle 取12个（车机6列2行/手机3列4行）。
-  Future<List<Map<String, dynamic>>> qqPlaylists({int categoryId = 10000000, int take = 12}) async {
-    // 实测：fcg_get_diss_by_tag 只有"全部(10000000)"与语言分类(165-169)有数据，
-    // 风格分类 id（30000000 等）接口一律返回空列表 → 空时自动 fallback 到"全部"。
-    final cats = categoryId == 10000000 ? [10000000] : [categoryId, 10000000];
-    final errs = <String>[];
-    for (final cat in cats) {
-      for (var attempt = 0; attempt < 2; attempt++) {
-        try {
-          final uri = Uri.parse('https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg')
-              .replace(queryParameters: {
-            'categoryId': '$cat',
-            'sortId': '5',            // 综合排序
-            'sin': '0', 'ein': '49',  // 取 0-49 共 50 个候选
-            'format': 'json', 'json': '1', 'utf8': '1',
-            'inCharset': 'utf8', 'outCharset': 'utf-8',
-          });
-          const headers = {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
-            'Referer': 'https://y.qq.com/',
-            'Origin': 'https://y.qq.com',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Connection': 'keep-alive',
-          };
-          final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
-          if (resp.statusCode != 200) {
-            errs.add('HTTP ${resp.statusCode}（分类$cat 第${attempt + 1}次）');
-            await Future.delayed(const Duration(milliseconds: 400));
-            continue;
-          }
-          // 响应可能是明文 JSON 或 gzip：两种都试；再从 "code" 起提取 JSON 片段（避免风控页里的 {} 误提取）
-          Map<String, dynamic>? j;
-          try {
-            j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-          } catch (_) {
-            try {
-              j = jsonDecode(utf8.decode(gzip.decode(resp.bodyBytes))) as Map<String, dynamic>;
-            } catch (_) {
-              final txt = utf8.decode(resp.bodyBytes, allowMalformed: true);
-              final m = RegExp(r'\{"code".*?\}', dotAll: true).firstMatch(txt);
-              if (m != null) j = jsonDecode(m.group(0)!) as Map<String, dynamic>;
+  /// QQ 精选歌单（新版 musicu.fcg 接口）：
+  /// - categoryId == 0（全部）：music.playlist.PlaylistSquare/GetRecommendWhole 推荐歌单
+  /// - categoryId > 0（风格分类，如流行3152/电子45/轻音乐49/民谣48/说唱42/摇滚41/古风61）：
+  ///   music.playlist.PlayListCategory/get_category_content
+  /// 实测各风格分类均有独立数据（total≈1000），封面/播放量/创建者齐全，无需兜底合并。
+  Future<List<Map<String, dynamic>>> qqPlaylists({int categoryId = 0, int take = 12}) async {
+    try {
+      final Map<String, dynamic> req1 = categoryId == 0
+          ? {
+              'module': 'music.playlist.PlaylistSquare',
+              'method': 'GetRecommendWhole',
+              'param': {'IsReqFeed': true, 'FeedReq': {'From': 0, 'Size': 50}},
             }
-          }
-          if (j == null || j['code'] != 0) {
-            errs.add('code=${j?['code']} msg=${j?['message']}（分类$cat 第${attempt + 1}次）');
-            await Future.delayed(const Duration(milliseconds: 400));
-            continue;
-          }
-          // 接口结构：新版 data.list / 旧版 disslist，两种都兼容
-          final list = (((j['data'] as Map?)?['list']) as List?) ??
-              (j['disslist'] as List?) ??
-              const [];
-          final maps = <Map<String, dynamic>>[];
-          final seen = <String>{};
-          for (final it in list.cast<Map>()) {
-            final id = it['dissid']?.toString() ?? '';
-            if (id.isEmpty || !seen.add(id)) continue;
-            var img = it['pic_url']?.toString() ?? it['imgurl']?.toString() ?? '';
-            if (img.startsWith('http://')) img = 'https://' + img.substring(7);
-            maps.add({
-              'dissid': id,
-              'name': it['dissname']?.toString() ?? '歌单',
-              'coverImgUrl': img,
-              'listennum': (it['listennum'] as num?)?.toInt() ?? 0,
-            });
-          }
-          if (maps.isEmpty) {
-            errs.add('分类$cat 空列表（第${attempt + 1}次）');
-            await Future.delayed(const Duration(milliseconds: 400));
-            continue;
-          }
-          maps.shuffle();
-          // [xmusic] 2026-09-30 按收听数降序；接口异常/分类无数据由首页显示失败原因或兜底——
-          // 绝不回退到用户个人歌单（用户明确不想要）。
-          maps.sort((a, b) =>
-              ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
-          return maps.take(take).toList();
-        } catch (e) {
-          errs.add('$e（分类$cat 第${attempt + 1}次）');
-          await Future.delayed(const Duration(milliseconds: 400));
+          : {
+              'module': 'music.playlist.PlayListCategory',
+              'method': 'get_category_content',
+              'param': {
+                'caller': '474769524', // 固定 uin，接口仅用于识别调用方，无需登录态
+                'category_id': categoryId,
+                'size': 50,
+                'page': 0,
+                'use_page': 1,
+              },
+            };
+      final data = {'comm': {'ct': 24, 'cv': 0}, 'req_1': req1};
+      final uri = Uri.parse('https://t.y.qq.com/cgi-bin/musicu.fcg').replace(
+          queryParameters: {'format': 'json', 'data': jsonEncode(data)});
+      final resp = await http.get(uri, headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
+        'Referer': 'https://y.qq.com/n/ryqq_v2/category',
+        'Origin': 'https://y.qq.com',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      }).timeout(const Duration(seconds: 15));
+      if (resp.statusCode != 200) {
+        throw StateError('QQ 歌单广场接口 HTTP ${resp.statusCode}');
+      }
+      Map<String, dynamic>? j;
+      try {
+        j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      } catch (_) {
+        try {
+          j = jsonDecode(utf8.decode(gzip.decode(resp.bodyBytes))) as Map<String, dynamic>;
+        } catch (_) {
+          final txt = utf8.decode(resp.bodyBytes, allowMalformed: true);
+          final m = RegExp(r'\{"code".*?\}', dotAll: true).firstMatch(txt);
+          if (m != null) j = jsonDecode(m.group(0)!) as Map<String, dynamic>;
         }
       }
+      final r1 = j?['req_1'] as Map?;
+      if (j == null || j['code'] != 0 || r1 == null || r1['code'] != 0) {
+        throw StateError('QQ 歌单广场接口异常 code=${j?['code']} req=${r1?['code']}');
+      }
+      final body = (r1['data'] as Map?) ?? const {};
+      final List<dynamic> items = categoryId == 0
+          ? (((body['FeedRsp'] as Map?)?['List']) as List?) ?? const []
+          : (((body['content'] as Map?)?['v_item']) as List?) ?? const [];
+      final maps = <Map<String, dynamic>>[];
+      final seen = <String>{};
+      for (final raw in items.cast<Map>()) {
+        final Map<String, dynamic> basic;
+        if (categoryId == 0) {
+          final p = (raw['Playlist'] as Map?) ?? const {};
+          basic = (p['basic'] as Map?) ?? const {};
+        } else {
+          basic = (raw['basic'] as Map?) ?? const {};
+        }
+        final id = basic['tid']?.toString() ?? '';
+        if (id.isEmpty || !seen.add(id)) continue;
+        final cover = basic['cover'] as Map?;
+        var img = cover?['default_url']?.toString() ?? '';
+        if (img.isEmpty) img = cover?['pic_url2']?.toString() ?? '';
+        if (img.startsWith('http://')) img = 'https://' + img.substring(7);
+        final creator = basic['creator'] as Map?;
+        maps.add({
+          'dissid': id,
+          'name': basic['title']?.toString() ?? '歌单',
+          'coverImgUrl': img,
+          'listennum': (basic['play_cnt'] as num?)?.toInt() ?? 0,
+          'creator': creator?['nick']?.toString() ?? '',
+        });
+      }
+      if (maps.isEmpty) {
+        throw StateError('QQ 歌单广场接口返回空列表（分类$categoryId）');
+      }
+      // 按收听数降序，取前 take 个（车机6列2行/手机3列4行）
+      maps.sort((a, b) =>
+          ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
+      return maps.take(take).toList();
+    } catch (e) {
+      rethrow;
     }
-    throw StateError('QQ 歌单广场接口失败：${errs.join('；')}');
   }
 
   /// QQ 歌单歌曲（qzone 匿名接口）

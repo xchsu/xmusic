@@ -28,16 +28,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
-  int _qqCategoryId = 10000000; // QQ歌单分类：10000000全部/165国语/166粤语/167英语/168韩语/169日语
+  int _qqCategoryId = 0; // QQ歌单分类：0全部(推荐)/3152流行/41摇滚/48民谣/45电子/42说唱/61古风/49纯音乐(轻音乐)
   static const List<Map<String, dynamic>> _qqCategories = [
-    {'id': 10000000, 'name': '全部'},
-    {'id': 30000000, 'name': '流行'},
-    {'id': 50000000, 'name': '摇滚'},
-    {'id': 60000000, 'name': '民谣'},
-    {'id': 70000000, 'name': '电子'},
-    {'id': 80000000, 'name': '说唱'},
-    {'id': 90000000, 'name': '古风'},
-    {'id': 40000000, 'name': '纯音乐'},
+    {'id': 0, 'name': '全部'},
+    {'id': 3152, 'name': '流行'},
+    {'id': 41, 'name': '摇滚'},
+    {'id': 48, 'name': '民谣'},
+    {'id': 45, 'name': '电子'},
+    {'id': 42, 'name': '说唱'},
+    {'id': 61, 'name': '古风'},
+    {'id': 49, 'name': '纯音乐'},
   ];
   late Future<List<Song>> _localRec;
 
@@ -303,7 +303,8 @@ class _HomePageState extends State<HomePage> {
                     tooltip: '换一批',
                     icon: const Icon(Icons.refresh_rounded, size: 20),
                     onPressed: () {
-                      setState(() => _qqPlaylists = widget.controller.external.qqPlaylists());
+                      setState(() => _qqPlaylists = widget.controller.external
+                          .qqPlaylists(categoryId: _qqCategoryId));
                     },
                   ),
                 ],
