@@ -892,7 +892,7 @@ class _ImportTabState extends State<_ImportTab> {
     final dissid = _extractId(raw ?? '');
     if (dissid.isEmpty || !mounted) return;
     setState(() => _busy = true);
-    final (name, songs) =
+    final (name, songs, cover) =
         await widget.controller.external.qqPlaylistDetail(dissid);
     if (!mounted) return;
     setState(() => _busy = false);
@@ -902,7 +902,8 @@ class _ImportTabState extends State<_ImportTab> {
       return;
     }
     await widget.settings.addImportedQqPlaylist(
-        dissid, name.isEmpty ? '歌单 $dissid' : name);
+        dissid, name.isEmpty ? '歌单 $dissid' : name,
+        cover: cover);
     if (!mounted) return;
     setState(() {});
     await Navigator.of(context).push(MaterialPageRoute(
@@ -918,7 +919,7 @@ class _ImportTabState extends State<_ImportTab> {
 
   Future<void> _open(String id, String name) async {
     setState(() => _busy = true);
-    final (_, songs) = await widget.controller.external.qqPlaylistDetail(id);
+    final (_, songs, _) = await widget.controller.external.qqPlaylistDetail(id);
     if (!mounted) return;
     setState(() => _busy = false);
     if (songs.isEmpty) {
@@ -1022,10 +1023,17 @@ class _ImportTabState extends State<_ImportTab> {
                                   ),
                                 ),
                                 alignment: Alignment.center,
-                                child: const Icon(
-                                    Icons.queue_music_rounded,
-                                    color: Colors.white,
-                                    size: 34),
+                                child: (e['cover'] ?? '').toString().isEmpty
+                                    ? const Icon(Icons.queue_music_rounded,
+                                        color: Colors.white, size: 34)
+                                    : Image.network(
+                                        (e['cover'] ?? '').toString(),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Icon(
+                                            Icons.queue_music_rounded,
+                                            color: Colors.white,
+                                            size: 34),
+                                      ),
                               ),
                             ),
                           ),
