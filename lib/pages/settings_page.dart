@@ -360,6 +360,10 @@ class SettingsPage extends StatelessWidget {
                       : err)));
             },
           ),
+          const Divider(),
+
+          // ===== 源 =====
+          _sectionTitle(theme, '源'),
           ListTile(
             leading: const Icon(Icons.dns_rounded),
             title: const Text('Navidrome 服务器'),
@@ -385,6 +389,10 @@ class SettingsPage extends StatelessWidget {
             isThreeLine: true,
             onTap: () => _showSourcesInfo(context),
           ),
+          const Divider(),
+
+          // ===== 下载 =====
+          _sectionTitle(theme, '下载'),
           ListTile(
             leading: const Icon(Icons.folder_open_rounded),
             title: const Text('申请存储权限'),
