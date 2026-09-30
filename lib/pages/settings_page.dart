@@ -63,6 +63,47 @@ class SettingsPage extends StatelessWidget {
   /// 取色弹窗文字细描边：弹窗内白字在浅色/自定义背景上可读（不压字）
   static TextStyle _stroke(TextStyle? base) => (base ?? const TextStyle());
 
+  void _showBlacklistEditor(BuildContext context, AppSettings settings) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('黑名单管理'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 360,
+            child: StatefulBuilder(
+              builder: (ctx, setState) {
+                final cur = settings.blacklistItems;
+                if (cur.isEmpty) {
+                  return const Center(child: Text('暂无黑名单'));
+                }
+                return ListView.builder(
+                  itemCount: cur.length,
+                  itemBuilder: (_, i) => ListTile(
+                    dense: true,
+                    title: Text(cur[i]),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await settings.removeBlacklistKey(cur[i]);
+                        if (ctx.mounted) setState(() {});
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(), child: const Text('关闭')),
+          ],
+        );
+      },
+    );
+  }
+
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick, {bool isTheme = false}) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
     HSVColor hsv = currentColor != 0 ? HSVColor.fromColor(Color(currentColor)) : HSVColor.fromColor(Colors.amber);
@@ -255,6 +296,13 @@ class SettingsPage extends StatelessWidget {
             subtitle: const Text('收藏走服务器自动互通；黑名单用 NAS(WebDAV) 同步手机/车机'),
             value: settings.syncNas,
             onChanged: (v) => settings.setSyncNas(v),
+          ),
+          ListTile(
+            leading: const Icon(Icons.playlist_remove_rounded),
+            title: const Text('黑名单管理'),
+            subtitle: Text('${settings.blacklistItems.length} 条（歌手/歌名），点开查看和删减'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _showBlacklistEditor(context, settings),
           ),
           ListTile(
             leading: const Icon(Icons.format_size_rounded),
