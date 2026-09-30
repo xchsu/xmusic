@@ -334,16 +334,24 @@ class _HomePageState extends State<HomePage> {
               future: _qqPlaylists,
               builder: (context, snap) {
                 final list = snap.data ?? const [];
-                final cards = list.isEmpty
-                    ? const <Map<String, dynamic>>[
-                        {'name': '我喜欢', 'dissid': '1175961954'},
-                        {'name': '300首华语金曲', 'dissid': '9683093831'},
-                        {'name': '华语精选', 'dissid': '9683093651'},
-                        {'name': '神仙打架', 'dissid': '9683093123'},
-                        {'name': '华语流行KTV必点', 'dissid': '9683092862'},
-                        {'name': '听过', 'dissid': '9683091761'},
-                      ]
-                    : list;
+                // [xmusic] 2026-09-30 去掉内置兜底（曾把用户微信歌单当占位显示在首页）：
+                // 接口无数据时显示占位提示，绝不回退到用户个人歌单。
+                if (list.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_off_outlined, size: 18, color: Colors.grey),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text('歌单广场暂无数据，点右上角刷新重试',
+                              style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                final cards = list;
                 final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
                 return GridView(
                   shrinkWrap: true,
