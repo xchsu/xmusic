@@ -697,11 +697,11 @@ class ExternalApi {
 
   /// QQ 精选歌单：用歌单分类接口 fcg_get_diss_by_tag.fcg 一次拉50个候选（含名称+封面），
   /// 预检 qzone songlist 非空才保留，shuffle 取12个（车机6列2行/手机3列4行）。
-  Future<List<Map<String, dynamic>>> qqPlaylists() async {
+  Future<List<Map<String, dynamic>>> qqPlaylists({int categoryId = 10000000, int take = 12}) async {
     try {
       final uri = Uri.parse('https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg')
           .replace(queryParameters: {
-        'categoryId': '10000000', // 综合/流行
+        'categoryId': '$categoryId', // 歌单分类（10000000 全部，165 国语，166 粤语，167 英语…）
         'sortId': '5',            // 综合排序
         'sin': '0', 'ein': '49',  // 取 0-49 共 50 个候选
         'format': 'json', 'inCharset': 'utf8', 'outCharset': 'utf-8',
@@ -719,6 +719,7 @@ class ExternalApi {
           'dissid': id,
           'name': it['dissname']?.toString() ?? '歌单',
           'coverImgUrl': it['imgurl']?.toString(),
+          'listennum': (it['listennum'] as num?)?.toInt() ?? 0,
         });
       }
       maps.shuffle();
@@ -746,8 +747,9 @@ class ExternalApi {
           valid.add(pl);
         } catch (_) {}
       }));
-      valid.shuffle();
-      return valid.take(12).toList();
+      valid.sort((a, b) =>
+          ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
+      return valid.take(take).toList();
     } catch (_) {
       return const [];
     }
