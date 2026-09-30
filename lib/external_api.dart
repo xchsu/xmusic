@@ -701,10 +701,11 @@ class ExternalApi {
     try {
       final uri = Uri.parse('https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg')
           .replace(queryParameters: {
-        'categoryId': '$categoryId', // 歌单分类（10000000 全部，165 国语，166 粤语，167 英语…）
+        'categoryId': '$categoryId', // 歌单分类（10000000 全部，30000000 流行，50000000 摇滚…）
         'sortId': '5',            // 综合排序
         'sin': '0', 'ein': '49',  // 取 0-49 共 50 个候选
-        'format': 'json', 'inCharset': 'utf8', 'outCharset': 'utf-8',
+        'format': 'json', 'json': '1', 'utf8': '1',
+        'inCharset': 'utf8', 'outCharset': 'utf-8',
       });
       final resp = await http.get(uri, headers: {
         'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
@@ -715,40 +716,24 @@ class ExternalApi {
       for (final it in list.cast<Map>()) {
         final id = it['dissid']?.toString() ?? '';
         if (id.isEmpty || !seen.add(id)) continue;
+        var img = it['imgurl']?.toString() ?? '';
+        if (img.startsWith('http://')) img = 'https://' + img.substring(7);
         maps.add({
           'dissid': id,
           'name': it['dissname']?.toString() ?? '歌单',
-          'coverImgUrl': it['imgurl']?.toString(),
+          'coverImgUrl': img,
           'listennum': (it['listennum'] as num?)?.toInt() ?? 0,
         });
       }
       maps.shuffle();
-      // [xmusic] 2026-09-30 去掉逐歌单预检（40 个并行 qzone 请求慢且易被限流导致整版空白），
-      // 直接按收听数降序固定返回；接口无数据/异常时回退到内置 QQ 歌单，保证首页歌单广场不空白。
+      // [xmusic] 2026-09-30 直接按收听数降序返回；接口异常/无数据一律返回空，
+      // 由首页显示"暂无歌单"占位——绝不回退到用户个人歌单（用户明确不想要）。
       maps.sort((a, b) =>
           ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
-      final out = maps.take(take).toList();
-      if (out.isNotEmpty) return out;
-      return _qqFallbackPlaylists(take);
+      return maps.take(take).toList();
     } catch (_) {
-      return _qqFallbackPlaylists(take);
+      return const [];
     }
-  }
-
-  /// 内置 QQ 歌单兜底（用户微信账号常用歌单），接口不可用时保证首页有卡。
-  List<Map<String, dynamic>> _qqFallbackPlaylists(int take) {
-    const fallback = [
-      {'dissid': '1175961954', 'name': '我喜欢'},
-      {'dissid': '9683093831', 'name': '300首华语金曲'},
-      {'dissid': '9683093651', 'name': '华语精选'},
-      {'dissid': '9683093123', 'name': '神仙打架'},
-      {'dissid': '9683092862', 'name': '华语流行KTV必点'},
-      {'dissid': '9683091761', 'name': '听过'},
-    ];
-    return fallback
-        .take(take)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
   }
 
   /// QQ 歌单歌曲（qzone 匿名接口）
@@ -835,6 +820,37 @@ class ExternalApi {
       }).where((s) => s.id.isNotEmpty).take(limit).toList(), cover);
     } catch (_) {
       return ('', const <Song>[], '');
+    }
+  }
+
+  /// 轻量取歌单封面（复用 qzone 详情接口，song_num=1 只解析封面，不拉歌曲列表）。
+  /// 用于 ID 歌单补封面：旧版导入的歌单无 cover 字段，进页面时懒加载回写。
+  Future<String> qqPlaylistCover(String dissid) async {
+    try {
+      final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+          .replace(queryParameters: {
+        'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
+        'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+        'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
+        'hostUin': '0', 'song_num': '1', 'song_begin': '0',
+      });
+      final resp = await http.get(u, headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://y.qq.com/',
+      });
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (list.isEmpty) return '';
+      final c = (list.first['pic'] ??
+                  list.first['pic_url'] ??
+                  list.first['logo'] ??
+                  list.first['imgurl'] ??
+                  '')
+              .toString()
+          .replaceAll('http://', 'https://');
+      return c;
+    } catch (_) {
+      return '';
     }
   }
 
