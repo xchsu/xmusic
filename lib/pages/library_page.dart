@@ -789,6 +789,30 @@ class _ImportTabState extends State<_ImportTab> {
   List<Map<String, String>> get _list => widget.settings.importedQqPlaylists;
 
   @override
+  void initState() {
+    super.initState();
+    // 旧版导入的歌单无 cover：进页面后异步补封面（蓝色图标 → 歌单封面）。
+    WidgetsBinding.instance.addPostFrameCallback((_) => _backfillCovers());
+  }
+
+  /// 对 cover 为空的 ID 歌单逐个拉封面并回写（失败静默，不阻塞列表）。
+  Future<void> _backfillCovers() async {
+    final need =
+        _list.where((e) => (e['cover'] ?? '').toString().isEmpty).toList();
+    if (need.isEmpty) return;
+    for (final e in need) {
+      if (!mounted) return;
+      final cover =
+          await widget.controller.external.qqPlaylistCover(e['id']!);
+      if (!mounted) return;
+      if (cover.isNotEmpty) {
+        await widget.settings.updateImportedQqCover(e['id']!, cover: cover);
+        if (mounted) setState(() {});
+      }
+    }
+  }
+
+  @override
   void dispose() {
     super.dispose();
   }
