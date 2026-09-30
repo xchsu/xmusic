@@ -202,6 +202,17 @@ class AppSettings extends ChangeNotifier {
     unawaited(syncBlacklistPush());
   }
 
+  /// 重命名导入的 QQ 歌单（改本地名并同步 NAS）。
+  Future<void> renameImportedQqPlaylist(String id, String name) async {
+    final i = importedQqPlaylists.indexWhere((e) => e['id'] == id);
+    if (i < 0) return;
+    importedQqPlaylists[i] = {'id': id, 'name': name};
+    notifyListeners();
+    await _prefs.setStringList(
+        _kImportedQq, importedQqPlaylists.map((e) => jsonEncode(e)).toList());
+    unawaited(syncBlacklistPush());
+  }
+
   Future<void> setLyricScale(double v) async {
     v = v.clamp(minScale, maxScale);
     if ((v - _lyricScalePortrait).abs() < 0.01) return;
