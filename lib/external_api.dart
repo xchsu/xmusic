@@ -723,33 +723,11 @@ class ExternalApi {
         });
       }
       maps.shuffle();
-      // [xmusic] 2026-09-27 修复"首页歌单没数据"：qzone 对部分歌单返回空 cdlist（如 7707261125 空）。
-      // 预检歌曲非空才保留，过滤无数据歌单，确保首页 QQ 歌单卡片/点进都有数据。
-      final valid = <Map<String, dynamic>>[];
-      final checks = maps.take(40).toList();
-      await Future.wait(checks.map((pl) async {
-        try {
-          final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
-              .replace(queryParameters: {
-            'type': '1', 'utf8': '1', 'disstid': pl['dissid'], 'format': 'json',
-            'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
-            'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
-            'hostUin': '0', 'song_num': '1', 'song_begin': '0',
-          });
-          final resp2 = await http.get(u, headers: {
-            'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
-          final jj = jsonDecode(utf8.decode(resp2.bodyBytes)) as Map<String, dynamic>;
-          final cd = (jj['cdlist'] as List?)?.cast<Map>()?.firstOrNull;
-          if (cd == null) return;
-          final songlist = (cd['songlist'] as List?) ?? const [];
-          if (songlist.isEmpty) return; // 无歌曲 → 丢弃
-          if (cd['logo'] != null) pl['coverImgUrl'] = cd['logo'].toString();
-          valid.add(pl);
-        } catch (_) {}
-      }));
-      valid.sort((a, b) =>
+      // [xmusic] 2026-09-30 去掉逐歌单预检（40 个并行 qzone 请求慢且易被限流导致整版空白），
+      // 直接按收听数降序固定返回，保证首页歌单广场立即有卡片。
+      maps.sort((a, b) =>
           ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
-      return valid.take(take).toList();
+      return maps.take(take).toList();
     } catch (_) {
       return const [];
     }
