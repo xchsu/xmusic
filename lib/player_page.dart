@@ -1,13 +1,12 @@
 import 'dart:async';
+import '../cover_glass.dart';
 import '../toast.dart';
 import 'home_shell.dart';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -27,6 +26,11 @@ import '../widgets.dart';
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key, required this.settings, required this.controller});
 
+  /// 路由名：用于播放页单例去重（popUntil 定位）。
+  static const String routeName = 'playerPage';
+  /// 当前栈中播放页实例数（>=1 说明已有一层，点歌不再重复 push）。
+  static int _stackCount = 0;
+
   final AppSettings settings;
   final PlayerController controller;
 
@@ -38,12 +42,10 @@ enum _OrientMode { auto, landscape, portrait }
 
 class _PlayerPageState extends State<PlayerPage> {
   _OrientMode _orient = _OrientMode.auto;
-  Color? _coverTint; // 当前封面主色（封面颜色透出背景用）
-  String _coverKey = '';
-
   @override
   void initState() {
     super.initState();
+    PlayerPage._stackCount++;
     // 显式允许所有四个方向（空列表在某些版本不生效/反而锁方向），跟随系统自动旋转
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -55,6 +57,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   @override
   void dispose() {
+    PlayerPage._stackCount--;
     // 离开播放页时还原系统方向（允许所有方向），避免把其他页面锁住
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -63,52 +66,6 @@ class _PlayerPageState extends State<PlayerPage> {
       DeviceOrientation.landscapeRight,
     ]);
     super.dispose();
-  }
-
-  /// 封面颜色：歌曲/封面变化时调度异步取主色（仅在设置开启时）。
-  void _scheduleCoverExtract(Song? song) {
-    if (!widget.settings.coverColorBg) return;
-    final key = song == null
-        ? ''
-        : (song.coverUrl?.isNotEmpty == true
-            ? song.coverUrl!
-            : 'art:${song.coverArt}');
-    if (key.isEmpty || key == _coverKey) return;
-    _coverKey = key;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _extractCoverColor(song, key);
-    });
-  }
-
-  Future<void> _extractCoverColor(Song song, String key) async {
-    try {
-      final url = song.coverUrl?.isNotEmpty == true
-          ? song.coverUrl!
-          : widget.controller.client.coverUrl(song.coverArt, size: 600);
-      final resp = await http
-          .get(Uri.parse(url), headers: const {'User-Agent': 'Mozilla/5.0'})
-          .timeout(const Duration(seconds: 8));
-      if (resp.statusCode != 200) return;
-      final codec = await ui.instantiateImageCodec(resp.bodyBytes);
-      final frame = await codec.getNextFrame();
-      final img = frame.image;
-      final bd = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
-      if (bd == null) return;
-      final bytes = bd.buffer.asUint8List();
-      int r = 0, g = 0, b = 0, n = 0;
-      final w = img.width, h = img.height;
-      final step = math.max(1, (w * h) ~/ 4000);
-      for (int y = 0; y < h; y += step) {
-        for (int x = 0; x < w; x += step) {
-          final i = (y * w + x) * 4;
-          if (i + 2 >= bytes.length) continue;
-          r += bytes[i]; g += bytes[i + 1]; b += bytes[i + 2]; n++;
-        }
-      }
-      if (n == 0) return;
-      final tint = Color.fromARGB(255, r ~/ n, g ~/ n, b ~/ n);
-      if (mounted && _coverKey == key) setState(() => _coverTint = tint);
-    } catch (_) {}
   }
 
   /// 三态循环：自动（跟随系统旋转）→ 强制横屏 → 强制竖屏 → 自动。
@@ -143,46 +100,21 @@ class _PlayerPageState extends State<PlayerPage> {
         listenable: Listenable.merge([widget.controller, widget.settings]),
       builder: (context, _) {
         final song = widget.controller.current;
-        _scheduleCoverExtract(song);
         final landscape =
             MediaQuery.of(context).orientation == Orientation.landscape;
-        final cs = Theme.of(context).colorScheme;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        // [xmusic] 玻璃背景：跟随主题的磨砂玻璃（浅色浅、深色深），不铺封面、不透壁纸。
-        // 壁纸透出需原生 FLAG_SHOW_WALLPAPER，但车机上会显示成黑底，故弃用；确保浅色不黑。
-        final coverTint =
-            (widget.settings.coverColorBg && _coverTint != null)
-                ? _coverTint!
-                : cs.primary;
-        // 手动自定义背景色：玻璃透出（半透明让壁纸透出，而非实心纯色），深浅主题用不同通透度
-        final customBg = widget.settings.bgColor != 0
-            ? Color(widget.settings.bgColor)
-                .withValues(alpha: isDark ? 0.55 : 0.78)
-            : null;
         return Scaffold(
-          backgroundColor: widget.settings.coverColorBg
-              ? cs.surface
-              : (customBg ?? cs.surface),
+          backgroundColor: Colors.transparent,
           body: Stack(
             children: [
-              // 玻璃洗色：主题色轻渐变打底，做出玻璃通透感（浅色更透、深色沉稳）；
-              // 开启「封面颜色」时用当前封面主色透出（跟随系统/深浅主题 + 透出当前封面）。
-              Container(
-                decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: isDark ? 0.50 : 0.36),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      coverTint.withValues(alpha: 0.14),
-                      Colors.transparent,
-                      coverTint.withValues(alpha: 0.09),
-                    ],
-                    stops: const [0.0, 0.55, 1.0],
-                  ),
+              // [xmusic] 2026-09-28 全 App 封面玻璃：背景透出当前播放歌曲封面图片（随切歌更新）
+              Positioned.fill(
+                child: CoverGlassBackground(
+                  controller: widget.controller,
+                  settings: widget.settings,
                 ),
               ),
               SafeArea(
+                minimum: const EdgeInsets.only(bottom: 12),
                 child: Stack(
                   children: [
                     song == null
@@ -207,9 +139,9 @@ class _PlayerPageState extends State<PlayerPage> {
     final size = MediaQuery.of(context).size.width * 0.5;
     return Column(
       children: [
-        // 黑胶封面（占4份，黑胶尺寸自适应区域高度，绝不溢出到歌词区）
+        // 封面（占5份，尺寸自适应区域高度，绝不溢出到歌词区）
         Expanded(
-          flex: 4,
+          flex: 5,
           child: LayoutBuilder(
             builder: (context, box) {
               final s = math.min(size, box.maxHeight * 0.92);
@@ -220,10 +152,17 @@ class _PlayerPageState extends State<PlayerPage> {
                     child: StreamBuilder<bool>(
                       stream: widget.controller.player.playingStream,
                       builder: (context, snap) {
-                        return _CdDisc(
-                          size: s,
-                          spinning: snap.data ?? false,
-                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.64, requestSize: 600),
+                        final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
+                        return Container(
+                          width: s, height: s,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(s * 0.055),
+                            boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(s * 0.055),
+                            child: cov,
+                          ),
                         );
                       },
                     ),
@@ -233,9 +172,9 @@ class _PlayerPageState extends State<PlayerPage> {
             },
           ),
         ),
-        // 歌词区 + 右侧按钮栏（缩放/收藏/下载），与黑胶互不重叠
+        // 歌词区 + 右侧按钮栏（缩放/收藏/下载），与封面互不重叠
         Expanded(
-          flex: 5,
+          flex: 4,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -261,14 +200,27 @@ class _PlayerPageState extends State<PlayerPage> {
               }),
               Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-              Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800, fontSize: 26, height: 1.2)),
-              const SizedBox(height: 4),
-              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
+              SizedBox(
+                width: double.infinity,
+                child: _MarqueeText(song.title,
+                  maxWidth: MediaQuery.sizeOf(context).width - 140,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 18 : 22,
+                    height: 1.2)),
+              ),
+              SizedBox(height: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 10 : 4),
+              // 歌手+专辑也滚动（完整显示后半段，避免省略号截断）
+              SizedBox(
+                width: double.infinity,
+                child: _MarqueeText('${song.artist} - ${song.album}',
+                  maxWidth: MediaQuery.sizeOf(context).width - 140,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14)),
+              ),
               // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
               if (widget.controller.loadingUrl) ...[
                 const SizedBox(height: 6),
@@ -309,34 +261,114 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  // 右侧竖排按钮：旋转、歌词缩放、收藏、下载。放在歌词板块右边，不占歌名行。
+  void _toggleBlacklist(Song? song) {
+    if (song == null) return;
+    final s = widget.settings;
+    if (s.isBlacklisted(song)) {
+      s.removeBlacklist(song);
+      showTopToast(context, '已移出黑名单');
+    } else {
+      s.addBlacklist(song);
+      showTopToast(context, '已加入黑名单，不再出现在榜单/歌单');
+    }
+  }
+
+  // 右侧竖排按钮：歌词缩放、收藏、下载、上传NAS、黑名单。放在歌词板块右边，不占歌名行。
   Widget _actionSidebar(BuildContext context) {
-    // [xmusic] 2026-09-27 右侧按钮：歌词/收藏/下载 car 48；NAS 单独缩到 car 36（用户嫌 NAS 大）、栏宽 58/48
-    final car = isCarScreen(context);
-    return Container(
-      width: car ? 58 : 48,
-      margin: const EdgeInsets.only(right: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // 旋转按钮已按用户要求移除（保留 _toggleRotation/_orient 供系统旋转/恢复逻辑使用）
-          IconTheme(
-            data: IconThemeData(size: car ? 48 : 36),
-            child: LyricSizeControls(settings: widget.settings),
+    // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
+    final car = _carUI(context);
+    final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final double side = _landP ? 18 : 30;
+    final double _gap = _landP ? 2.0 : 6.0;
+    if (car) {
+      // 车机：统一用 _MiniCornerButton，与主页/返回按钮同尺寸同样式
+      return Container(
+        width: 72,
+        margin: const EdgeInsets.only(right: 8),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+            _MiniCornerButton(icon: Icons.text_decrease_rounded, onTap: widget.settings.canDecreaseLyricFor(_landP) ? () => widget.settings.decreaseLyricFor(_landP) : null),
+            const SizedBox(height: 12),
+            _MiniCornerButton(icon: Icons.text_increase_rounded, onTap: widget.settings.canIncreaseLyricFor(_landP) ? () => widget.settings.increaseLyricFor(_landP) : null),
+            const SizedBox(height: 12),
+            ListenableBuilder(
+              listenable: widget.controller,
+              builder: (context, _) {
+                final starred = widget.controller.currentStarred;
+                return _MiniCornerButton(
+                  icon: starred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: starred ? Theme.of(context).colorScheme.primary : null,
+                  onTap: widget.controller.toggleStar,
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            ListenableBuilder(
+              listenable: widget.controller,
+              builder: (context, _) {
+                final sg = widget.controller.current;
+                final blocked = sg != null && widget.settings.isBlacklisted(sg);
+                return _MiniCornerButton(
+                  icon: Icons.heart_broken_rounded,
+                  color: blocked ? Theme.of(context).colorScheme.error : null,
+                  onTap: sg == null ? null : () => _toggleBlacklist(sg),
+                );
+              },
+            ),
+          ],
           ),
-          const SizedBox(height: 2),
-          IconTheme(
-            data: IconThemeData(size: car ? 48 : 36),
-            child: _FavoriteButton(controller: widget.controller),
+        ),
+      );
+    }
+    // 手机：竖屏小图标 IconTheme 30；横屏用 FittedBox 把整列按钮自适应缩放到歌词区可用高度，避免溢出到进度条
+    final Widget bar = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: LyricSizeControls(settings: widget.settings, land: _landP),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: _FavoriteButton(controller: widget.controller),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: ListenableBuilder(
+            listenable: widget.controller,
+            builder: (context, _) {
+              final sg = widget.controller.current;
+              final blocked = sg != null && widget.settings.isBlacklisted(sg);
+              return IconButton(
+                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
+                icon: Icon(Icons.heart_broken_rounded,
+                    color: blocked ? Theme.of(context).colorScheme.error : null),
+                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
+              );
+            },
           ),
-          IconButton(
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: IconButton(
             tooltip: '下载',
-            icon: Icon(Icons.download_rounded, size: car ? 48 : 36),
+            icon: Icon(Icons.download_rounded),
             onPressed: () => _downloadMenu(context),
           ),
-          IconButton(
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: IconButton(
             tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined, size: car ? 36 : 30),
+            icon: Icon(Icons.cloud_upload_outlined),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
@@ -344,7 +376,16 @@ class _PlayerPageState extends State<PlayerPage> {
               showTopToast(context, msg, duration: const Duration(seconds: 2));
             },
           ),
-        ],
+        ),
+      ],
+    );
+    return Container(
+      width: _landP ? 40 : 44,
+      margin: const EdgeInsets.only(right: 8),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: bar,
       ),
     );
   }
@@ -359,27 +400,35 @@ class _PlayerPageState extends State<PlayerPage> {
           flex: 5,
           child: LayoutBuilder(
             builder: (context, box) {
-              final s = math.min(box.maxWidth * 0.62, box.maxHeight * 0.62);
+              final car = isCarScreen(context);
+              final s = math.min(box.maxWidth * (car ? 0.72 : 0.62), box.maxHeight * (car ? 0.78 : 0.62));
               return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 左：CD 唱片（带环境光晕 + 识别卡针）+ 歌曲信息
-                  Center(
-                    child: StreamBuilder<bool>(
-                      stream: widget.controller.player.playingStream,
-                      builder: (context, snap) {
-                        return _CdDisc(
-                          size: s,
-                          spinning: snap.data ?? false,
-                          cover: CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s * 0.64, requestSize: 600),
-                        );
-                      },
+                  // 封面：自适应占满上方空间（车机横屏加大）
+                  Expanded(
+                    child: Center(
+                      child: StreamBuilder<bool>(
+                        stream: widget.controller.player.playingStream,
+                        builder: (context, snap) {
+                          final cov = CoverImage(client: widget.controller.client, coverId: song.coverArt, coverUrl: song.coverUrl, size: s, requestSize: 600);
+                          return Container(
+                            width: s, height: s,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 26, offset: const Offset(0, 12))],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(s * 0.055),
+                              child: cov,
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                  // [xmusic] 2026-09-24 车机横屏：歌名/歌手/专辑 下移并放大（黑胶与信息间距拉大、字号加大）
-                  SizedBox(height: isCarScreen(context) ? 40 : 20),
+                  // 歌名/歌手/专辑 + 首页/返回：下移到底部，与播放控制栏齐平
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -389,12 +438,13 @@ class _PlayerPageState extends State<PlayerPage> {
                         }),
                         Expanded(
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: isCarScreen(context) ? 34 : 24)),
-                              SizedBox(height: isCarScreen(context) ? 10 : 6),
-                              Text('${song.artist} · ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: isCarScreen(context) ? 22 : 15)),
+                              _MarqueeText(song.title, textAlign: TextAlign.center,
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 26 : 24)),
+                              SizedBox(height: car ? 10 : 6),
+                              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 15)),
                             ],
                           ),
                         ),
@@ -447,9 +497,18 @@ class _PlayerPageState extends State<PlayerPage> {
 
   Widget _lyricsArea(BuildContext context, String songId, {int? visibleLines}) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        widget.controller.reloadLyrics();
+        showTopToast(context, '刷新歌词', duration: const Duration(milliseconds: 700));
+      },
       onDoubleTap: () {
         widget.controller.reloadLyrics();
-        showTopToast(context, '刷新歌词...', duration: const Duration(milliseconds: 800));
+        showTopToast(context, '刷新歌词', duration: const Duration(milliseconds: 800));
+      },
+      onLongPress: () {
+        widget.controller.reloadLyrics(switchSource: true);
+        showTopToast(context, '歌词源：${widget.controller.lyricSourceName}', duration: const Duration(milliseconds: 900));
       },
       child: Builder(
         builder: (context) {
@@ -484,7 +543,7 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _lyricsAreaFixed(BuildContext context, String songId, {int? visibleLines}) {
     final area = _lyricsArea(context, songId, visibleLines: visibleLines);
     if (visibleLines == null) return area;
-    final scale = widget.settings.lyricScale;
+    final scale = widget.settings.lyricScaleFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height);
     return SizedBox(
       height: visibleLines * (22 * 1.4 + 9 * 2) * scale + 10,
       child: area,
@@ -522,59 +581,162 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   void _openQueue(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    // 横屏判定直接用宽>高（手机横屏最短边可能 <480，isCarScreen 会返回 false，
+    // 必须只按方向判，车机横屏同样宽>高，两者都走右下浮窗）。
+    final land = mq.size.width > mq.size.height;
+    if (land) {
+      // 横屏：右下角收窄小窗浮层。Navigator.push 全屏透明路由 + Stack + Positioned
+      // 绝对定位右下（right/bottom 16），位置确定贴右下、不会居中；Container 显式高度
+      // 让 _queuePanel 的 Column+Expanded 可靠填充列表；点面板外关闭。
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          opaque: false,
+          barrierColor: Colors.transparent,
+          transitionDuration: const Duration(milliseconds: 150),
+          pageBuilder: (ctx, _, __) {
+            final h = MediaQuery.sizeOf(ctx).height;
+            return Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Stack(
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => Navigator.of(ctx).pop(),
+                    ),
+                  ),
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: Container(
+                      width: 340,
+                      height: h * 0.6,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _queuePanel(ctx),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.4,
-        expand: false,
-        builder: (ctx, scrollController) => Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('播放列表',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-            ),
-            Expanded(
-              child: ListenableBuilder(
-                listenable: widget.controller,
-                builder: (context, _) {
-                  final q = widget.controller.queue;
-                  final idx = widget.controller.index;
-                  return ListView.builder(
-                    controller: scrollController,
-                    itemCount: q.length,
-                    itemBuilder: (context, i) {
-                      final active = i == idx;
-                      final sn = q[i];
-                      return ListTile(
-                        dense: true,
-                        leading: Text('${i + 1}',
-                            style: TextStyle(
-                                color: active
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.onSurfaceVariant)),
-                        title: Text(sn.title,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(sn.artist,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        onTap: () {
-                          widget.controller.playAt(i);
-                          Navigator.of(ctx).pop();
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+      // 固定 60% 屏高的内容区，_queuePanel 的 Column+Expanded 可靠填充列表
+      // （DraggableScrollableSheet 在某些设备 Expanded 高度为 0，列表变空白）。
+      builder: (ctx) => FractionallySizedBox(
+        heightFactor: 0.6,
+        child: _queuePanel(ctx),
       ),
     );
   }
+
+  Widget _queuePanel(BuildContext context,
+      {ScrollController? scrollController}) {
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: Text('播放列表',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, height: 1.0)),
+        ),
+        Expanded(
+          child: ListenableBuilder(
+            listenable: widget.controller,
+            builder: (context, _) {
+              final q = widget.controller.queue;
+              final idx = widget.controller.index;
+              return ListView.builder(
+                controller: scrollController,
+                itemCount: q.length,
+                itemBuilder: (context, i) {
+                  final active = i == idx;
+                  final sn = q[i];
+                  final cs = Theme.of(context).colorScheme;
+                  final bl = widget.settings.isBlacklisted(sn);
+                  return ListTile(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12),
+                    leading: Text('${i + 1}',
+                        style: TextStyle(
+                            color: active ? cs.primary : cs.onSurfaceVariant)),
+                    // 歌名 + 歌手同一行，短横线连接
+                    title: Text.rich(
+                      TextSpan(children: [
+                        TextSpan(text: sn.title ?? ''),
+                        if ((sn.artist ?? '').isNotEmpty)
+                          TextSpan(
+                            text: ' - ${sn.artist}',
+                            style: TextStyle(
+                                color: cs.onSurfaceVariant, fontSize: 12),
+                          ),
+                      ]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // 收藏 / 黑名单 / 删除 三图标
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 20,
+                          icon: Icon(
+                              sn.starred
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: sn.starred ? cs.primary : null),
+                          onPressed: () =>
+                              widget.controller.toggleStarAt(i),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 20,
+                          icon: Icon(Icons.heart_broken_rounded,
+                              color: bl ? Colors.orange : cs.onSurfaceVariant),
+                          onPressed: () async {
+                            if (bl) {
+                              await widget.settings.removeBlacklist(sn);
+                            } else {
+                              await widget.settings.addBlacklist(sn);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 20,
+                          icon: Icon(Icons.delete_outline_rounded,
+                              color: cs.onSurfaceVariant),
+                          onPressed: () =>
+                              widget.controller.removeFromQueue(i),
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      widget.controller.playAt(i);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
 }
 
 /// Big single line that tracks the currently-active lyric (portrait).
@@ -617,7 +779,7 @@ class _CurrentLyricLineState extends State<_CurrentLyricLine> {
     return ListenableBuilder(
       listenable: widget.settings,
       builder: (context, _) {
-        final scale = widget.settings.lyricScale;
+        final scale = widget.settings.lyricScaleFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height);
         return Text(
           text.isEmpty ? '♪' : text,
           textAlign: TextAlign.left,
@@ -689,9 +851,10 @@ class _RepeatButton extends StatelessWidget {
 
 /// − 100% + buttons that change the lyric font scale (persisted).
 class LyricSizeControls extends StatelessWidget {
-  const LyricSizeControls({super.key, required this.settings});
+  const LyricSizeControls({super.key, required this.settings, this.land = false});
 
   final AppSettings settings;
+  final bool land;
 
   @override
   Widget build(BuildContext context) {
@@ -705,13 +868,13 @@ class LyricSizeControls extends StatelessWidget {
               tooltip: '减小歌词字号',
               icon: const Icon(Icons.text_decrease),
               onPressed:
-                  settings.canDecreaseLyric ? settings.decreaseLyric : null,
+                  settings.canDecreaseLyricFor(land) ? () => settings.decreaseLyricFor(land) : null,
             ),
             IconButton(
               tooltip: '增大歌词字号',
               icon: const Icon(Icons.text_increase),
               onPressed:
-                  settings.canIncreaseLyric ? settings.increaseLyric : null,
+                  settings.canIncreaseLyricFor(land) ? () => settings.increaseLyricFor(land) : null,
             ),
           ],
         );
@@ -742,7 +905,7 @@ class LyricsView extends StatefulWidget {
 
 class _LyricsViewState extends State<LyricsView> {
   static const double _baseFontSize = 22;
-  static const double _anchor = 0.38;
+  double _anchor = 0.38; // 当前行锚点，按已唱1行动态算
 
   final ItemScrollController _scroll = ItemScrollController();
   StreamSubscription<Duration>? _positionSub;
@@ -797,16 +960,20 @@ class _LyricsViewState extends State<LyricsView> {
     return ListenableBuilder(
       listenable: widget.settings,
       builder: (context, _) {
-        final scale = widget.settings.lyricScale;
+        final scale = widget.settings.lyricScaleFor(MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height);
 
         return LayoutBuilder(
           builder: (context, constraints) {
+            // 已唱占1行、当前占1行、余下给未唱：当前行锚在顶部 padding+1行已唱 处
+            final _rowH = (_baseFontSize * 1.4 + 18) * scale;
+            _anchor = ((constraints.maxHeight * 0.03) + 1.5 * _rowH) / constraints.maxHeight;
+            _anchor = _anchor.clamp(0.04, 0.30);
             return ScrollablePositionedList.builder(
               itemScrollController: _scroll,
               itemCount: lines.length,
               padding: EdgeInsets.symmetric(
                 horizontal: 24,
-                vertical: constraints.maxHeight * 0.08,
+                vertical: constraints.maxHeight * 0.03,
               ),
               itemBuilder: (context, i) {
                 final line = lines[i];
@@ -817,12 +984,9 @@ class _LyricsViewState extends State<LyricsView> {
                     ? Colors.white.withValues(alpha: 0.12)
                     : Colors.black.withValues(alpha: 0.28);
 
-                return InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: synced ? () => widget.player.seek(line.time) : null,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 9 * scale),
-                    child: AnimatedDefaultTextStyle(
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: 9 * scale),
+                  child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
                         fontSize: _baseFontSize * scale,
@@ -848,7 +1012,6 @@ class _LyricsViewState extends State<LyricsView> {
                         child: Text(line.text.isEmpty ? '♪' : line.text,
                           textAlign: widget.alignRight ? TextAlign.right : TextAlign.left),
                     ),
-                  ),
                 );
               },
             );
@@ -1083,13 +1246,13 @@ class _TonearmPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.width / 2;
     final r = size.width / 2;
-    // 转轴：唱片顶部、偏右
-    final pivot = Offset(c + r * 0.10, r * 0.02);
-    // 针落点：唱片内右侧，半径 0.55r、角度 18°
-    const a = 0.32;
-    final needle = Offset(c + r * 0.55 * math.cos(a), c + r * 0.55 * math.sin(a));
-    // 抬起：暂停绕转轴逆时针抬起（针离开唱片朝上），播放归位
-    final liftRad = -lift * 0.42;
+    // 唱臂座：唱片右上方（真实黑胶唱机：曲臂从右后侧伸出）
+    final pivot = Offset(c + r * 0.82, r * 0.10);
+    // 针落点：唱片中心偏左上（半径 0.30r、角度 -0.55）
+    const a = -0.55;
+    final needle = Offset(c + r * 0.30 * math.cos(a), c + r * 0.30 * math.sin(a));
+    // 抬起：暂停绕唱臂座抬起（针离开唱片朝右上），播放归位
+    final liftRad = -lift * 0.55;
     canvas.save();
     canvas.translate(pivot.dx, pivot.dy);
     canvas.rotate(liftRad);
@@ -1097,40 +1260,45 @@ class _TonearmPainter extends CustomPainter {
     final dy = needle.dy - pivot.dy;
     final armLen = math.sqrt(dx * dx + dy * dy);
     canvas.rotate(math.atan2(dy, dx));
-    // 臂：沿 +x 到臂长，微渐变
+    // 臂：细长略带弧度（二次贝塞尔曲臂，更接近黑胶唱机）
     final armPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.centerLeft, end: Alignment.centerRight,
         colors: [Color(0xFF2C3140), Color(0xFF565E70)],
-      ).createShader(Rect.fromLTWH(0, -3, armLen, 6));
+      ).createShader(Rect.fromLTWH(0, -4, armLen, 8));
     final armPath = Path()
-      ..moveTo(0, -2.4)
-      ..lineTo(armLen, -1.5)
-      ..lineTo(armLen + r * 0.06, 1.8)
-      ..lineTo(0, 2.4)
+      ..moveTo(0, -2.8)
+      ..quadraticBezierTo(armLen * 0.55, -5.0, armLen, -1.8)
+      ..lineTo(armLen + r * 0.08, 2.2)
+      ..quadraticBezierTo(armLen * 0.55, 3.2, 0, 2.8)
       ..close();
     canvas.drawPath(armPath, armPaint);
-    // 针头（卡针）：臂末端小圆头，斜向唱片
+    // 针头（唱针）：臂末端小圆头，斜向唱片
     canvas.translate(armLen, 0);
-    canvas.rotate(-0.75);
+    canvas.rotate(-0.7);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(-6, -2.2, 16, 5.5), const Radius.circular(2.8)),
+      RRect.fromRectAndRadius(Rect.fromLTWH(-7, -2.4, 18, 6.2), const Radius.circular(3)),
       Paint()..color = const Color(0xFF1A1D24),
     );
-    canvas.drawCircle(const Offset(11, 0), 2.5, Paint()..color = const Color(0xFF8B93A5));
+    canvas.drawCircle(const Offset(12, 0), 2.8, Paint()..color = const Color(0xFF8B93A5));
     canvas.restore();
-    // 转轴座（盖在最上层）
-    canvas.drawCircle(pivot, 7, Paint()..color = const Color(0xFF3A4150));
-    canvas.drawCircle(pivot, 3.6, Paint()..color = const Color(0xFF14161C));
+    // 唱臂座（盖在最上层，随唱片尺寸缩放）
+    canvas.drawCircle(pivot, r * 0.055, Paint()..color = const Color(0xFF3A4150));
+    canvas.drawCircle(pivot, r * 0.028, Paint()..color = const Color(0xFF14161C));
   }
   @override
   bool shouldRepaint(_TonearmPainter old) => old.lift != lift;
 }
+/// 车机/大屏判定：横屏或最短边 >=480dp 均视为大屏（含竖屏车机），用于放大按钮/图标
+bool _carUI(BuildContext context) =>
+    isCarScreen(context) || MediaQuery.sizeOf(context).shortestSide >= 480;
+
 /// 小玻璃圆钮（歌名行两侧：首页/返回）
 class _MiniCornerButton extends StatelessWidget {
-  const _MiniCornerButton({required this.icon, required this.onTap});
+  const _MiniCornerButton({required this.icon, this.onTap, this.color});
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final Color? color;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1143,8 +1311,9 @@ class _MiniCornerButton extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: SizedBox(
-              width: isCarScreen(context) ? 80 : 40, height: isCarScreen(context) ? 80 : 40,
-              child: Icon(icon, size: isCarScreen(context) ? 44 : 20, color: theme.colorScheme.onSurface),
+              // [xmusic] 2026-09-28 手机主页/返回也加大：56 容器 / 40 图标（对齐控制栏图标），车机 64/48
+              width: _carUI(context) ? 64 : 44, height: _carUI(context) ? 64 : 44,
+              child: Icon(icon, size: _carUI(context) ? 48 : 30, color: color ?? theme.colorScheme.onSurface),
             ),
           ),
         ),
@@ -1282,9 +1451,10 @@ class _Controls extends StatelessWidget {
     final gap = compact ? 20.0 : 20.0;
     // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
     final car = isCarScreen(context);
-    final playSize = car ? 48.0 : 40.0;
-    final navSize = car ? 48.0 : 40.0;
-    final sideIcon = car ? 48.0 : 40.0;
+    final land = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final playSize = car ? (land ? 76.0 : 82.0) : 40.0;
+    final navSize = car ? (land ? 76.0 : 82.0) : 40.0;
+    final sideIcon = car ? 72.0 : 40.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1341,5 +1511,102 @@ class _Controls extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+
+/// 播放页单例入口：栈中已存在播放页则归一到最上层（不重复 push），
+/// 否则 push 一层。避免从不同列表反复点歌把播放页堆叠多层（“返回要两次”）。
+Future<void> openPlayerPage(
+  BuildContext context, {
+  required AppSettings settings,
+  required PlayerController controller,
+}) async {
+  final nav = Navigator.of(context);
+  if (PlayerPage._stackCount > 0) {
+    nav.popUntil(
+        (r) => r.isFirst || r.settings.name == PlayerPage.routeName);
+    return;
+  }
+  await nav.push(MaterialPageRoute(
+    settings: const RouteSettings(name: PlayerPage.routeName),
+    builder: (_) => PlayerPage(settings: settings, controller: controller),
+  ));
+}
+
+
+/// 歌名滚动组件：文本超出可用宽度时循环左右滚动展示（不超出则普通省略号文本）。
+class _MarqueeText extends StatefulWidget {
+  const _MarqueeText(this.text,
+      {super.key, this.style, this.textAlign = TextAlign.start, this.maxWidth});
+  final String text;
+  final TextStyle? style;
+  final TextAlign textAlign;
+  /// 确定的可视宽度；不传则用父约束。传明确宽度可避免 LayoutBuilder 拿到不准确的约束。
+  final double? maxWidth;
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  late final ScrollController _s;
+  @override
+  void initState() {
+    super.initState();
+    _s = ScrollController();
+    _c = AnimationController(vsync: this, duration: const Duration(seconds: 6))
+      ..addListener(_tick)
+      ..repeat();
+  }
+  void _tick() {
+    if (!mounted || !_s.hasClients) return;
+    // maxScrollExtent 由 SingleChildScrollView 实际布局算出（真实文本宽-视口宽）：
+    // 长文本 >0 → 真实滚动、尾部必然滚入；短文本 <=0 → 静止完整显示，不滚动
+    _s.jumpTo(_s.position.maxScrollExtent * _c.value);
+  }
+  @override
+  void dispose() {
+    _s.dispose();
+    _c.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (ctx, cons) {
+      final tp = TextPainter(
+        text: TextSpan(text: widget.text, style: widget.style),
+        maxLines: 1,
+        textDirection: TextDirection.ltr,
+        textScaler: MediaQuery.textScalerOf(ctx),
+      )..layout();
+      final boxW = widget.maxWidth != null
+          ? widget.maxWidth!
+          : (cons.maxWidth.isFinite
+              ? cons.maxWidth
+              : (MediaQuery.sizeOf(ctx).width * 0.86));
+      if (boxW <= 0) return const SizedBox.shrink();
+      // 短文本（能完整显示）：不滚动，按 textAlign 对齐（居中则真正居中），完整展示
+      if (tp.width <= boxW) {
+        return Align(
+          alignment: widget.textAlign == TextAlign.center ? Alignment.center : Alignment.centerLeft,
+          child: Text(widget.text, style: widget.style, maxLines: 1,
+              overflow: TextOverflow.ellipsis, softWrap: false, textAlign: widget.textAlign),
+        );
+      }
+      return ClipRect(
+        child: SizedBox(
+          width: boxW,
+          height: tp.height,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            controller: _s,
+            child: Text(widget.text, style: widget.style, maxLines: 1,
+                softWrap: false, textAlign: widget.textAlign),
+          ),
+        ),
+      );
+    });
   }
 }
