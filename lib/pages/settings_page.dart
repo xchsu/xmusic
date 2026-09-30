@@ -369,17 +369,6 @@ class SettingsPage extends StatelessWidget {
             isThreeLine: true,
             onTap: () => _showSourcesInfo(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.music_note_rounded, color: Colors.orange),
-            title: const Text('QQ音乐 Cookie'),
-            subtitle: Text(settings.qqCookie.trim().isEmpty
-                ? '未设置：QQ 榜单/每日30首已匿名可用\n填 Cookie 解锁会员/付费的 QQ 直连播放（点击查看）'
-                : '已设置：解锁会员/付费 QQ 直连播放\n点击可修改（Cookie 含登录态，勿外泄）'),
-            isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showQqCookieDialog(context),
-          ),
-
           const Divider(),
 
           // ===== 下载 =====
