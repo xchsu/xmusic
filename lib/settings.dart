@@ -41,6 +41,7 @@ class AppSettings extends ChangeNotifier {
   static const _kBlacklist = 'blacklist';
   static const _kSyncNas = 'sync_nas';
   static const _kImportedQq = 'imported_qq_playlists';
+  static const _kNavHintDismissed = 'nav_hint_dismissed';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -73,6 +74,9 @@ class AppSettings extends ChangeNotifier {
   int _blacklistRev = 0;
   int get blacklistRev => _blacklistRev;
   int _oldYear = 1995;
+  bool _navHintDismissed = false;
+  /// 未配置 Navidrome 时的"前往配置"提醒是否已勾选"下次不再提醒"。
+  bool get navHintDismissed => _navHintDismissed;
   String downloadPath = '';
   String qqCookie = '';
   /// 导入的 QQ 歌单列表（id + 歌单名），音乐库"导入歌单"门类使用。
@@ -99,6 +103,12 @@ class AppSettings extends ChangeNotifier {
   Future<void> setSyncNas(bool v) async {
     _syncNas = v;
     await _prefs.setBool(_kSyncNas, v);
+    notifyListeners();
+  }
+
+  Future<void> setNavHintDismissed(bool v) async {
+    _navHintDismissed = v;
+    await _prefs.setBool(_kNavHintDismissed, v);
     notifyListeners();
   }
 
@@ -131,6 +141,7 @@ class AppSettings extends ChangeNotifier {
     _oldYear = _prefs.getInt(_kOldYear) ?? 1995;
     _blacklist = (_prefs.getStringList(_kBlacklist) ?? const []).toSet();
     _syncNas = _prefs.getBool(_kSyncNas) ?? false;
+    _navHintDismissed = _prefs.getBool(_kNavHintDismissed) ?? false;
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';

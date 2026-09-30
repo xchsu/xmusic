@@ -30,12 +30,13 @@ class _PlaylistPageState extends State<PlaylistPage> {
   late Future<List<Song>> _future;
   Set<String> _removed = <String>{};
 
-  SubsonicClient get _client => widget.controller.client;
+  SubsonicClient? get _client => widget.controller.client;
 
   @override
   void initState() {
     super.initState();
-    _future = _client.playlistSongs(widget.playlist.id);
+    _future = _client?.playlistSongs(widget.playlist.id) ??
+        Future.value(<Song>[]);
     _loadRemoved();
   }
 
@@ -103,7 +104,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
                         const SizedBox(height: 12),
                         FilledButton(
                           onPressed: () => setState(() =>
-                              _future = _client.playlistSongs(widget.playlist.id)),
+                              _future = _client?.playlistSongs(widget.playlist.id) ??
+                                  Future.value(<Song>[])),
                           child: const Text('重试'),
                         ),
                       ],

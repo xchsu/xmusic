@@ -37,7 +37,7 @@ class _LibraryPageState extends State<LibraryPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
 
-  SubsonicClient get _client => widget.controller.client;
+  SubsonicClient? get _client => widget.controller.client;
 
   @override
   void initState() {
@@ -73,7 +73,7 @@ class _LibraryPageState extends State<LibraryPage>
           isScrollable: true,
           tabAlignment: TabAlignment.center,
           tabs: const [
-            Tab(text: '歌单'),
+            Tab(text: 'NAS歌单'),
             Tab(text: 'ID歌单'),
             Tab(text: '本地'),
             Tab(text: '收藏'),
@@ -126,7 +126,8 @@ class _FavoriteTabState extends State<_FavoriteTab> {
   @override
   void initState() {
     super.initState();
-    _future = widget.controller.client.starredSongs();
+    _future = widget.controller.client?.starredSongs() ??
+        Future.value(<Song>[]);
   }
 
   Future<void> _play(List<Song> songs, int i) async {
@@ -155,7 +156,8 @@ class _FavoriteTabState extends State<_FavoriteTab> {
                 const SizedBox(height: 12),
                 FilledButton(
                   onPressed: () => setState(() =>
-                      _future = widget.controller.client.starredSongs()),
+                      _future = widget.controller.client?.starredSongs() ??
+                          Future.value(<Song>[])),
                   child: const Text('重试'),
                 ),
               ],
@@ -184,7 +186,7 @@ class _FavoriteTabState extends State<_FavoriteTab> {
 class _AlbumTab extends StatefulWidget {
   const _AlbumTab({required this.client, required this.onOpenAlbum});
 
-  final SubsonicClient client;
+  final SubsonicClient? client;
   final void Function(Album) onOpenAlbum;
 
   @override
@@ -203,7 +205,7 @@ class _AlbumTabState extends State<_AlbumTab> {
   String? _error;
   int _offset = 0;
 
-  SubsonicClient get _client => widget.client;
+  SubsonicClient? get _client => widget.client;
 
   @override
   void initState() {
@@ -228,8 +230,17 @@ class _AlbumTabState extends State<_AlbumTab> {
       _initLoading = true;
       _error = null;
     });
+    final c = _client;
+    if (c == null) {
+      if (!mounted) return;
+      setState(() {
+        _initLoading = false;
+        _error = '未配置 Navidrome，请到 设置-源 中配置服务器';
+      });
+      return;
+    }
     try {
-      final page = await _client.albumList(
+      final page = await c.albumList(
           type: 'alphabeticalByName', size: _pageSize, offset: 0);
       if (!mounted) return;
       setState(() {
@@ -251,9 +262,11 @@ class _AlbumTabState extends State<_AlbumTab> {
 
   Future<void> _loadMore() async {
     if (_loadingMore || !_hasMore || _initLoading) return;
+    final c = _client;
+    if (c == null) return;
     setState(() => _loadingMore = true);
     try {
-      final page = await _client.albumList(
+      final page = await c.albumList(
           type: 'alphabeticalByName', size: _pageSize, offset: _offset);
       if (!mounted) return;
       setState(() {
@@ -336,7 +349,7 @@ class _ArtistTab extends StatefulWidget {
     required this.controller,
   });
 
-  final SubsonicClient client;
+  final SubsonicClient? client;
   final AppSettings settings;
   final PlayerController controller;
 
@@ -357,7 +370,7 @@ class _ArtistTabState extends State<_ArtistTab> {
   @override
   void initState() {
     super.initState();
-    _future = widget.client.artists();
+    _future = widget.client?.artists() ?? Future.value(<Artist>[]);
   }
 
   /// 按歌手名取歌手头像：优先网易云 type=100 歌手搜索的真实头像（用户要的是"歌手图片"），
@@ -447,7 +460,8 @@ class _ArtistTabState extends State<_ArtistTab> {
                 Text('加载失败：${snap.error}'),
                 const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: () => setState(() => _future = widget.client.artists()),
+                  onPressed: () => setState(() => _future =
+                      widget.client?.artists() ?? Future.value(<Artist>[])),
                   child: const Text('重试'),
                 ),
               ],
@@ -490,7 +504,7 @@ class _PlaylistTab extends StatefulWidget {
     required this.controller,
   });
 
-  final SubsonicClient client;
+  final SubsonicClient? client;
   final AppSettings settings;
   final PlayerController controller;
 
@@ -504,7 +518,7 @@ class _PlaylistTabState extends State<_PlaylistTab> {
   @override
   void initState() {
     super.initState();
-    _future = widget.client.playlists();
+    _future = widget.client?.playlists() ?? Future.value(<Playlist>[]);
   }
 
   @override
@@ -523,7 +537,9 @@ class _PlaylistTabState extends State<_PlaylistTab> {
                 Text('加载失败：${snap.error}'),
                 const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: () => setState(() => _future = widget.client.playlists()),
+                  onPressed: () => setState(() => _future =
+                      widget.client?.playlists() ??
+                          Future.value(<Playlist>[])),
                   child: const Text('重试'),
                 ),
               ],
@@ -1132,6 +1148,62 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
     }
   }
 
+  /// 下载整个歌单到 NAS（WebDAV）：逐首上传，对话框显示进度，结束汇总结果。
+  Future<void> _downloadAllToNas() async {
+    if (!widget.settings.webdavConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('未配置 NAS (WebDAV)，请到 设置-个性化 中配置')));
+      return;
+    }
+    final songs = List.of(_songs);
+    if (songs.isEmpty) return;
+    var done = 0;
+    var ok = 0;
+    String? firstErr;
+    void Function(void Function())? setDlg;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) {
+          setDlg = set;
+          return AlertDialog(
+            title: const Text('下载到 NAS'),
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(width: 16),
+                Text('正在上传 $done/${songs.length}…'),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    for (final s in songs) {
+      final r = await widget.controller.uploadSongToNas(s);
+      done++;
+      if (r.startsWith('已上传')) {
+        ok++;
+      } else {
+        firstErr ??= r;
+      }
+      setDlg?.call(() {});
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop(); // 关闭进度框
+    final summary = ok == songs.length
+        ? '已上传全部 $ok 首到 NAS'
+        : '完成：成功 $ok/${songs.length} 首' +
+            (firstErr != null ? '，失败示例：$firstErr' : '');
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(summary)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1154,6 +1226,12 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
                     icon: const Icon(Icons.shuffle_rounded),
                     label: const Text('随机播放'),
                     onPressed: widget.songs.isEmpty ? null : _playRandom,
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton.filledTonal(
+                    icon: const Icon(Icons.download_rounded),
+                    tooltip: '下载整个歌单到 NAS',
+                    onPressed: widget.songs.isEmpty ? null : _downloadAllToNas,
                   ),
                 ],
               ),

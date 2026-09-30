@@ -44,7 +44,7 @@ class PlayerController extends ChangeNotifier {
     audioHandler.allowPlay = true;
   }
 
-  final SubsonicClient client;
+  final SubsonicClient? client; // 未配置 Navidrome 时为 null（首页/榜单/搜索仍可用）
   final AppSettings settings;
   AudioPlayer get player => audioHandler.player;
 
@@ -238,7 +238,7 @@ class PlayerController extends ChangeNotifier {
       } catch (_) {}
       return '';
     }
-    return client.streamUrl(s.id).toString();
+    return client?.streamUrl(s.id)?.toString() ?? '';
   }
 
   /// 更新通知栏/锁屏显示的歌曲元数据。
@@ -248,7 +248,7 @@ class PlayerController extends ChangeNotifier {
       if (s.coverUrl != null && s.coverUrl!.isNotEmpty) {
         art = Uri.tryParse(s.coverUrl!);
       } else if (s.coverArt != null) {
-        art = client.coverUrl(s.coverArt!, size: 500);
+        art = client?.coverUrl(s.coverArt!, size: 500);
       }
       audioHandler.setMediaItem(MediaItem(
         id: s.id,
@@ -451,7 +451,7 @@ class PlayerController extends ChangeNotifier {
     try {
       url = s.coverUrl?.isNotEmpty == true
           ? s.coverUrl!
-          : client.coverUrl(s.coverArt, size: 600)?.toString();
+          : client?.coverUrl(s.coverArt, size: 600)?.toString();
     } catch (_) { url = null; }
     if (url == null || url.isEmpty) return;
     try {
@@ -592,7 +592,7 @@ class PlayerController extends ChangeNotifier {
             }
           } catch (_) {}
         }
-        result ??= await client.lyricsFor(s);
+        result ??= await client?.lyricsFor(s);
         if (result == null || result.lines.isEmpty) {
           try {
             final hits = await external
@@ -772,9 +772,9 @@ class PlayerController extends ChangeNotifier {
     if (s.fromExternal) return;
     try {
       if (nowStarred) {
-        await client.starSong(s.id);
+        await client?.starSong(s.id);
       } else {
-        await client.unstarSong(s.id);
+        await client?.unstarSong(s.id);
       }
     } catch (e) {
       debugPrint('star toggle failed: $e');
@@ -804,9 +804,9 @@ class PlayerController extends ChangeNotifier {
     if (s.fromExternal) return;
     try {
       if (nowStarred) {
-        await client.starSong(s.id);
+        await client?.starSong(s.id);
       } else {
-        await client.unstarSong(s.id);
+        await client?.unstarSong(s.id);
       }
     } catch (e) {
       debugPrint('star toggle at failed: $e');

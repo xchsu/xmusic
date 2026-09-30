@@ -5,7 +5,6 @@ import '../settings.dart';
 import '../subsonic.dart';
 import '../toast.dart';
 import '../widgets.dart';
-import '../cover_glass.dart';
 import 'album_page.dart';
 import 'player_page.dart';
 import 'mini_player.dart';
@@ -31,23 +30,36 @@ class ArtistPage extends StatefulWidget {
 class _ArtistPageState extends State<ArtistPage> {
   late Future<List<Album>> _future;
 
-  SubsonicClient get _client => widget.controller.client;
+  SubsonicClient? get _client => widget.controller.client;
 
   @override
   void initState() {
     super.initState();
-    _future = _client.artistAlbums(widget.artist.id);
+    _future = _client?.artistAlbums(widget.artist.id) ??
+        Future.value(<Album>[]);
   }
 
   Future<void> _playAll({bool shuffle = false}) async {
+    final c = _client;
+    if (c == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('未配置 Navidrome，请到 设置-源 中配置服务器')));
+      return;
+    }
     try {
-      final songs = await _client.artistSongs(widget.artist.name);
+      final songs = await c.artistSongs(widget.artist.name);
       if (!mounted) return;
       if (shuffle) songs.shuffle();
       await widget.controller.playQueue(songs, 0);
       if (mounted) setState(() {});
       if (context.mounted) {
-        await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => PlayerPage(
+            settings: widget.settings,
+            controller: widget.controller,
+          ),
+        ));
       }
     } catch (e) {
       if (!mounted) return;
@@ -67,16 +79,11 @@ class _ArtistPageState extends State<ArtistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BigScreenText(
-      child: Scaffold(
+    return Scaffold(
       // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
-      // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: Text(widget.artist.name)),
-      body: PageBackground(
-        controller: widget.controller,
-        settings: widget.settings,
-        child: Column(
+      body: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Album>>(
@@ -94,7 +101,8 @@ class _ArtistPageState extends State<ArtistPage> {
                         const SizedBox(height: 12),
                         FilledButton(
                           onPressed: () => setState(() =>
-                              _future = _client.artistAlbums(widget.artist.id)),
+                              _future = _client?.artistAlbums(widget.artist.id) ??
+                                  Future.value(<Album>[])),
                           child: const Text('重试'),
                         ),
                       ],
@@ -182,7 +190,7 @@ class _ArtistPageState extends State<ArtistPage> {
             controller: widget.controller,
           ),
         ],
-      )),
-    ));
+      ),
+    );
   }
 }

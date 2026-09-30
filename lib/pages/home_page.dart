@@ -41,7 +41,7 @@ class _HomePageState extends State<HomePage> {
   ];
   late Future<List<Song>> _localRec;
 
-  SubsonicClient get _client => widget.controller.client;
+  SubsonicClient? get _client => widget.controller.client;
 
   @override
   late int _lastBlRev;
@@ -108,7 +108,9 @@ class _HomePageState extends State<HomePage> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     if (_localRecDay == today && _localRecCached.isNotEmpty) return _localRecCached;
-    final pool = await _client.randomSongs(size: 60).catchError((_) => <Song>[]);
+    final pool = await (_client?.randomSongs(size: 60) ??
+            Future.value(<Song>[]))
+        .catchError((_) => <Song>[]);
     pool.shuffle(Random(today.year * 10000 + today.month * 100 + today.day));
     final picked = _filterBlacklist(_filterOld(pool.take(30).toList()));
     _localRecDay = today;
@@ -940,7 +942,7 @@ class _PlaylistDetail extends StatefulWidget {
 
   final String title;
   final List<Song> songs;
-  final SubsonicClient client;
+  final SubsonicClient? client;
   final AppSettings settings;
   final PlayerController controller;
   final void Function(int index) onPlay;
@@ -987,6 +989,65 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
       if (!_removed.contains(widget.songs[i].id)) out.add(i);
     }
     return out;
+  }
+
+  /// 下载整个歌单到 NAS（WebDAV）：逐首上传，对话框显示进度，结束汇总结果。
+  Future<void> _downloadAllToNas() async {
+    if (!widget.settings.webdavConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('未配置 NAS (WebDAV)，请到 设置-个性化 中配置')));
+      return;
+    }
+    final songs = widget.songs
+        .where((s) => !_removed.contains(s.id))
+        .toList();
+    if (songs.isEmpty) return;
+    var done = 0;
+    var ok = 0;
+    String? firstErr;
+    void Function(void Function())? setDlg;
+    // 弹出进度对话框（StatefulBuilder 让进度能刷新）
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) {
+          setDlg = set;
+          return AlertDialog(
+            title: const Text('下载到 NAS'),
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(width: 16),
+                Text('正在上传 $done/${songs.length}…'),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    for (final s in songs) {
+      final r = await widget.controller.uploadSongToNas(s);
+      done++;
+      if (r.startsWith('已上传')) {
+        ok++;
+      } else {
+        firstErr ??= r;
+      }
+      setDlg?.call(() {});
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop(); // 关闭进度框
+    final summary = ok == songs.length
+        ? '已上传全部 $ok 首到 NAS'
+        : '完成：成功 $ok/${songs.length} 首' +
+            (firstErr != null ? '，失败示例：$firstErr' : '');
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(summary)));
   }
 
   @override
@@ -1057,6 +1118,14 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                   icon: const Icon(Icons.shuffle_rounded),
                   label: const Text('随机'),
                 ),
+                const SizedBox(width: 12),
+                IconButton.filledTonal(
+                  onPressed: _visibleIndices.isEmpty || error != null
+                      ? null
+                      : _downloadAllToNas,
+                  icon: const Icon(Icons.download_rounded),
+                  tooltip: '下载整个歌单到 NAS',
+                ),
               ],
             ),
           ),
@@ -1096,8 +1165,8 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                           if (!s.fromExternal) {
                             try {
                               s.starred
-                                  ? await client.unstarSong(s.id)
-                                  : await client.starSong(s.id);
+                                  ? await client?.unstarSong(s.id)
+                                  : await client?.starSong(s.id);
                             } catch (_) {}
                           }
                         },
@@ -1130,7 +1199,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
 class _Card extends StatelessWidget {
   const _Card({required this.song, required this.client, required this.onTap});
   final Song song;
-  final SubsonicClient client;
+  final SubsonicClient? client;
   final VoidCallback onTap;
 
   @override

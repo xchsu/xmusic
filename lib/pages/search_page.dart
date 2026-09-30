@@ -36,7 +36,7 @@ class _SearchPageState extends State<SearchPage> {
   int _mode = 0; // 0 = 本地(本地下载), 1 = NAS(Subsonic服务器), 2 = 在线(外网)
   List<String> _history = [];
 
-  SubsonicClient get _client => widget.controller.client;
+  SubsonicClient? get _client => widget.controller.client;
   ExternalApi get _externalApi => ExternalApi(widget.settings.externalApiUrl);
 
   @override
@@ -164,8 +164,17 @@ class _SearchPageState extends State<SearchPage> {
       _loading = true;
       _error = null;
     });
+    final c = _client;
+    if (c == null) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '未配置 Navidrome，请到 设置-源 中配置服务器';
+      });
+      return;
+    }
     try {
-      final r = await _client.search(q);
+      final r = await c.search(q);
       if (!mounted) return;
       setState(() {
         _results = r;
@@ -353,8 +362,13 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _addToPlaylist(BuildContext context, Song s) async {
+    final c = _client;
+    if (c == null) {
+      _showSnack('未配置 Navidrome，无法添加歌单');
+      return;
+    }
     try {
-      final pls = await _client.playlists();
+      final pls = await c.playlists();
       if (!mounted) return;
       if (pls.isEmpty) { _showSnack('没有歌单'); return; }
       if (!mounted) return;
@@ -369,7 +383,7 @@ class _SearchPageState extends State<SearchPage> {
         ),
       );
       if (chosen == null) return;
-      await _client.addToPlaylist(chosen.id, s.id);
+      await c.addToPlaylist(chosen.id, s.id);
       _showSnack('已添加到 ${chosen.name}');
     } catch (e) {
       _showSnack('添加失败: $e');
@@ -483,8 +497,8 @@ class _SearchPageState extends State<SearchPage> {
                   if (!s.fromExternal) {
                     try {
                       s.starred
-                          ? await _client.unstarSong(s.id)
-                          : await _client.starSong(s.id);
+                          ? await _client?.unstarSong(s.id)
+                          : await _client?.starSong(s.id);
                     } catch (_) {}
                   }
                 },

@@ -20,7 +20,14 @@ class HomeShell extends StatefulWidget {
 
   /// 播放页「主页」按钮调用：pop 回壳后切到首页 tab。
   /// 用 ++ 而不是直接赋值 0：ValueNotifier 同值不通知，若上次已是 0 会失效。
-  static void switchToHome() => _HomeShellState._tabRequest.value++;
+  static void switchToHome() => switchToTab(0);
+
+  /// 跨页面请求切换到指定 tab（0 首页 / 1 音乐库 / 2 搜索 / 3 设置）。
+  /// 播放页"主页"调 switchToHome；首次进入的"前往配置"弹窗调 switchToTab(3)。
+  static void switchToTab(int tab) {
+    _HomeShellState._tabRequest.value = tab;
+    _HomeShellState._tabPing.value++; // 触发通知（同值切换也生效）
+  }
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -32,31 +39,85 @@ class _HomeShellState extends State<HomeShell> {
   bool _autoOpened = false;
   /// 跨页面（播放页"主页"按钮）请求切换 tab：值 = 目标 tab 下标。
   static final ValueNotifier<int> _tabRequest = ValueNotifier<int>(0);
+  /// 触发计数器：每次 switchToTab 递增，保证同值请求也能通知到监听者。
+  static final ValueNotifier<int> _tabPing = ValueNotifier<int>(0);
 
   @override
   void initState() {
     super.initState();
     _tabRequest.addListener(_onTabRequest);
+    _tabPing.addListener(_onTabRequest);
     // [xmusic] 冷启动默认进播放页：首帧渲染后 push 一次（不重复）。
+    // 未配置 Navidrome 时不自动进播放页（无播放队列），改为弹"前往配置"提醒。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _autoOpened) return;
       _autoOpened = true;
+      if (!widget.settings.hasLogin) {
+        _maybeShowNavidromeHint();
+        return;
+      }
       openPlayerPage(
         context, settings: widget.settings, controller: widget.controller,
       );
     });
   }
 
+  /// 首次进入且未配置 Navidrome：弹窗提醒前往设置配置；可勾选"下次不再提醒"。
+  void _maybeShowNavidromeHint() {
+    if (widget.settings.navHintDismissed) return;
+    var dontAsk = false;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          title: const Text('欢迎使用音素音乐'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('配置 Navidrome 服务器后即可获得完整功能体验：个人歌单、NAS 同步与完整播放。现在可以先浏览榜单、歌单广场和搜索。'),
+              const SizedBox(height: 4),
+              CheckboxListTile(
+                value: dontAsk,
+                onChanged: (v) => setDlgState(() => dontAsk = v ?? false),
+                title: const Text('下次不再提醒'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('我知道了'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('前往配置'),
+            ),
+          ],
+        ),
+      ),
+    ).then((go) async {
+      if (!mounted) return;
+      if (dontAsk) await widget.settings.setNavHintDismissed(true);
+      if (go == true) switchToTab(3);
+    });
+  }
+
   @override
   void dispose() {
     _tabRequest.removeListener(_onTabRequest);
+    _tabPing.removeListener(_onTabRequest);
     super.dispose();
   }
 
   void _onTabRequest() {
     if (!mounted) return;
-    // _tabRequest 只服务于"回首页"：无论当前值如何，收到通知即切到首页 tab。
-    setState(() => _tab = 0);
+    // 收到 tab 请求即切到目标 tab（播放页"主页"=0；"前往配置"=3）。
+    setState(() => _tab = _tabRequest.value);
   }
 
   @override
