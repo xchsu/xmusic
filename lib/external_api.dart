@@ -755,7 +755,7 @@ class ExternalApi {
       final maps = <Map<String, dynamic>>[];
       final seen = <String>{};
       for (final raw in items.cast<Map>()) {
-        final Map<String, dynamic> basic;
+        final Map basic;
         if (categoryId == 0) {
           final p = (raw['Playlist'] as Map?) ?? const {};
           basic = (p['basic'] as Map?) ?? const {};
