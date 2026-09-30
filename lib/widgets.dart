@@ -9,7 +9,31 @@ import 'subsonic.dart';
 /// 车机上文字等比放大，避免"手机上正常、车机上显小"。
 bool isCarScreen(BuildContext context) {
   final s = MediaQuery.of(context).size;
-  return s.width > s.height && s.shortestSide >= 480;
+  // 大屏（横竖）都按车机处理：比亚迪车机横屏/竖屏均为大屏，竖屏也走车机 UI
+  return s.shortestSide >= 480;
+}
+
+/// 大屏字体放大系数：车机横屏大屏 1.35x；竖屏大屏(最短边>=480dp，如车机竖屏/平板) 1.25x；手机 1.0x。
+double bigScreenTextScale(BuildContext context) {
+  final s = MediaQuery.sizeOf(context);
+  if (s.shortestSide >= 480) return 1.35;
+  return 1.0;
+}
+
+/// 大屏字体放大包装：车机横屏1.35x / 竖屏大屏1.25x，手机原样。
+class BigScreenText extends StatelessWidget {
+  const BigScreenText({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final scale = bigScreenTextScale(context);
+    if (scale <= 1.0) return child;
+    // 外层（main.dart 全局大屏放大）已放大则不重复，避免双重放大
+    final cur = mq.textScaler.scale(14) / 14;
+    if (cur >= 1.15) return child;
+    return MediaQuery(data: mq.copyWith(textScaler: TextScaler.linear(scale)), child: child);
+  }
 }
 
 /// Cover art loaded from the server (or a direct URL), with a neutral
@@ -26,7 +50,7 @@ class CoverImage extends StatelessWidget {
     this.requestSize = 600,
   });
 
-  final SubsonicClient? client; // 未配置 Navidrome 时为 null（仅外源封面可用）
+  final SubsonicClient? client;
   final String? coverId;
   final String? coverUrl;
   final double? size;
@@ -127,8 +151,24 @@ class AlbumCard extends StatelessWidget {
   }
 }
 
+/// Song 不可变，收藏状态变化后用它重建一首歌。
+Song withStarred(Song s, bool v) => Song(
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      albumId: s.albumId,
+      durationSec: s.durationSec,
+      coverArt: s.coverArt,
+      starred: v,
+      coverUrl: s.coverUrl,
+      streamUrl: s.streamUrl,
+      fromExternal: s.fromExternal,
+      externalSource: s.externalSource,
+    );
+
 /// A tappable song row with cover, title, artist, duration and a play button.
-class SongTile extends StatelessWidget {
+class SongTile extends StatefulWidget {
   const SongTile({
     super.key,
     required this.song,
@@ -137,6 +177,10 @@ class SongTile extends StatelessWidget {
     this.trailing,
     this.showAlbum = false,
     this.leading,
+    this.onFavorite,
+    this.onBlacklist,
+    this.blacklisted = false,
+    this.onDelete,
   });
 
   final Song song;
@@ -145,36 +189,56 @@ class SongTile extends StatelessWidget {
   final Widget? trailing;
   final bool showAlbum;
   final Widget? leading;
+  /// 收藏回调（提供则左滑露出收藏按钮）
+  final VoidCallback? onFavorite;
+  /// 黑名单回调（提供则左滑露出黑名单按钮）
+  final VoidCallback? onBlacklist;
+  /// 当前是否已加入黑名单（黑名单按钮高亮）
+  final bool blacklisted;
+  /// 删除回调（提供则左滑露出删除按钮）
+  final VoidCallback? onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  State<SongTile> createState() => _SongTileState();
+}
+
+class _SongTileState extends State<SongTile> {
+  double _dx = 0;
+  static const double _minDx = -144;
+
+  bool get _enabled =>
+      widget.onFavorite != null ||
+      widget.onBlacklist != null ||
+      widget.onDelete != null;
+
+  Widget _content(BuildContext context) {
     final theme = Theme.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      leading: leading ??
+      leading: widget.leading ??
           CoverImage(
-            client: client,
-            coverId: song.coverArt,
-            coverUrl: song.coverUrl,
+            client: widget.client,
+            coverId: widget.song.coverArt,
+            coverUrl: widget.song.coverUrl,
             size: 44,
             radius: 8,
             requestSize: 120,
           ),
-      // 空安全：任何字段为 null 都不抛异常（异常会让整页渲染空白）
-      title: Text(song.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(widget.song.title ?? '',
+          maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        showAlbum
-            ? '${song.artist ?? ''} · ${song.album ?? ''}'
-            : (song.artist ?? '未知'),
+        widget.showAlbum
+            ? '${widget.song.artist ?? ''} · ${widget.song.album ?? ''}'
+            : (widget.song.artist ?? '未知'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: trailing ??
+      trailing: widget.trailing ??
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (song.durationSec != null)
-                Text(formatDuration(Duration(seconds: song.durationSec!)),
+              if (widget.song.durationSec != null)
+                Text(formatDuration(Duration(seconds: widget.song.durationSec!)),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               const SizedBox(width: 8),
@@ -182,7 +246,81 @@ class SongTile extends StatelessWidget {
                   color: theme.colorScheme.primary),
             ],
           ),
-      onTap: onTap,
+      onTap: () {
+        if (_dx < -20) {
+          _close();
+        } else {
+          widget.onTap();
+        }
+      },
+    );
+  }
+
+  void _close() => setState(() => _dx = 0);
+
+  Widget _swipeBtn(IconData icon, Color color, VoidCallback onTap,
+      {bool active = false}) {
+    return GestureDetector(
+      onTap: () {
+        onTap();
+        _close();
+      },
+      child: Container(
+        width: 48,
+        color: color.withValues(alpha: active ? 0.85 : 0.65),
+        alignment: Alignment.center,
+        child: Icon(icon, color: Colors.white, size: 24),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_enabled) return _content(context);
+    final theme = Theme.of(context);
+    return Stack(
+      children: [
+        Positioned(
+          top: 0,
+          bottom: 0,
+          right: 0,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onFavorite != null)
+                _swipeBtn(
+                    widget.song.starred
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    Colors.redAccent,
+                    widget.onFavorite!,
+                    active: widget.song.starred),
+              if (widget.onBlacklist != null)
+                _swipeBtn(Icons.heart_broken_rounded, Colors.orange,
+                    widget.onBlacklist!,
+                    active: widget.blacklisted),
+              if (widget.onDelete != null)
+                _swipeBtn(Icons.delete_outline_rounded, Colors.blueGrey,
+                    widget.onDelete!),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onHorizontalDragUpdate: (d) {
+            setState(() => _dx = (_dx + d.delta.dx).clamp(_minDx, 0.0));
+          },
+          onHorizontalDragEnd: (_) {
+            setState(() => _dx = _dx < -48 ? _minDx : 0);
+          },
+          child: Transform.translate(
+            offset: Offset(_dx, 0),
+            child: Container(
+              color: theme.colorScheme.surface,
+              child: _content(context),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

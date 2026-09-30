@@ -103,7 +103,7 @@ class _HomeShellState extends State<HomeShell> {
     ).then((go) async {
       if (!mounted) return;
       if (dontAsk) await widget.settings.setNavHintDismissed(true);
-      if (go == true) switchToTab(3);
+      if (go == true) HomeShell.switchToTab(3);
     });
   }
 

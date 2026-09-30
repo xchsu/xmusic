@@ -35,7 +35,7 @@ class CoverGlassBackground extends StatelessWidget {
             coverUrl = song.coverUrl;
           } else if (song.coverArt != null && song.coverArt!.isNotEmpty) {
             coverUrl = controller.client
-                .coverUrl(song.coverArt, size: 600)
+                ?.coverUrl(song.coverArt, size: 600)
                 ?.toString();
           }
         }

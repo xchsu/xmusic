@@ -5,6 +5,7 @@ import '../settings.dart';
 import '../subsonic.dart';
 import '../toast.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'album_page.dart';
 import 'player_page.dart';
 import 'mini_player.dart';
@@ -43,8 +44,7 @@ class _ArtistPageState extends State<ArtistPage> {
     final c = _client;
     if (c == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未配置 Navidrome，请到 设置-源 中配置服务器')));
+      showTopToast(context, '未配置 Navidrome，请到 设置-源 中配置服务器');
       return;
     }
     try {
@@ -54,12 +54,7 @@ class _ArtistPageState extends State<ArtistPage> {
       await widget.controller.playQueue(songs, 0);
       if (mounted) setState(() {});
       if (context.mounted) {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => PlayerPage(
-            settings: widget.settings,
-            controller: widget.controller,
-          ),
-        ));
+        await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
       }
     } catch (e) {
       if (!mounted) return;
@@ -79,11 +74,16 @@ class _ArtistPageState extends State<ArtistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BigScreenText(
+      child: Scaffold(
       // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(widget.artist.name)),
-      body: Column(
+      body: PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        child: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Album>>(
@@ -190,7 +190,7 @@ class _ArtistPageState extends State<ArtistPage> {
             controller: widget.controller,
           ),
         ],
-      ),
-    );
+      )),
+    ));
   }
 }
