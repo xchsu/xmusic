@@ -724,13 +724,31 @@ class ExternalApi {
       }
       maps.shuffle();
       // [xmusic] 2026-09-30 去掉逐歌单预检（40 个并行 qzone 请求慢且易被限流导致整版空白），
-      // 直接按收听数降序固定返回，保证首页歌单广场立即有卡片。
+      // 直接按收听数降序固定返回；接口无数据/异常时回退到内置 QQ 歌单，保证首页歌单广场不空白。
       maps.sort((a, b) =>
           ((b['listennum'] ?? 0) as num).compareTo((a['listennum'] ?? 0) as num));
-      return maps.take(take).toList();
+      final out = maps.take(take).toList();
+      if (out.isNotEmpty) return out;
+      return _qqFallbackPlaylists(take);
     } catch (_) {
-      return const [];
+      return _qqFallbackPlaylists(take);
     }
+  }
+
+  /// 内置 QQ 歌单兜底（用户微信账号常用歌单），接口不可用时保证首页有卡。
+  List<Map<String, dynamic>> _qqFallbackPlaylists(int take) {
+    const fallback = [
+      {'dissid': '1175961954', 'name': '我喜欢'},
+      {'dissid': '9683093831', 'name': '300首华语金曲'},
+      {'dissid': '9683093651', 'name': '华语精选'},
+      {'dissid': '9683093123', 'name': '神仙打架'},
+      {'dissid': '9683092862', 'name': '华语流行KTV必点'},
+      {'dissid': '9683091761', 'name': '听过'},
+    ];
+    return fallback
+        .take(take)
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   /// QQ 歌单歌曲（qzone 匿名接口）
