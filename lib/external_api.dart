@@ -632,16 +632,29 @@ class ExternalApi {
     {'id': '2250011882', 'name': '抖音热门', 'coverUrl': 'https://api.injahow.cn/meting/?server=netease&type=pic&id=109951165647093663'},
   ];  /// 每日30首（填了 QQ cookie 时）：QQ 热歌榜（topid=4）前 30，匿名老接口即可。
   Future<List<Song>> daily30FromQq({String cookie = '', int count = 30}) async {
-    // 每日30首：填了有效 QQ cookie 优先走账号个性化推荐（按爱听）；否则兜底 QQ 热歌榜/酷狗。
+    // 每日30首：填了有效 QQ cookie 优先走账号个性化推荐（按爱听）；否则兜底。
     if (cookie.trim().isNotEmpty) {
       try {
         final rec = await qqDailyRecommend(cookie, count: count);
         if (rec.isNotEmpty) return rec;
       } catch (_) {}
     }
-    final songs = await qqToplistCp('4', limit: count);
-    if (songs.isEmpty) return daily30FromKugou(count: count); // 榜单接口异常时兜底
-    return songs;
+    // FM 接口对多数 cookie 会 500003（登录态受限），静默回退到固定热歌榜导致"每天不变"。
+    // 改为：合并多个 QQ 榜单，按日期种子随机取 count 首，保证每天变化且是真实歌曲。
+    final byId = <String, Song>{};
+    for (final id in const ['27', '62', '4', '26']) {
+      // 27=新歌榜 62=飙升榜 4=流行指数榜 26=热歌榜
+      try {
+        for (final s in await qqToplistCp(id, limit: count)) {
+          byId[s.id] = s;
+        }
+      } catch (_) {}
+    }
+    final list = byId.values.toList();
+    if (list.isEmpty) return daily30FromKugou(count: count);
+    final days = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
+    list.shuffle(Random(days));
+    return list.take(count).toList();
   }
 
   /// QQ 每日推荐（账号个性化，GetRecommendSong）：依赖登录 cookie，按账号爱听推荐。
