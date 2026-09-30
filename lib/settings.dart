@@ -190,6 +190,7 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     await _prefs.setStringList(
         _kImportedQq, importedQqPlaylists.map((e) => jsonEncode(e)).toList());
+    unawaited(syncBlacklistPush()); // 同步导入歌单到 NAS
   }
 
   /// 删除导入的 QQ 歌单。
@@ -198,6 +199,7 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     await _prefs.setStringList(
         _kImportedQq, importedQqPlaylists.map((e) => jsonEncode(e)).toList());
+    unawaited(syncBlacklistPush());
   }
 
   Future<void> setLyricScale(double v) async {
@@ -304,6 +306,18 @@ class AppSettings extends ChangeNotifier {
     unawaited(syncBlacklistPush());
   }
 
+  /// 黑名单条目（歌手/歌名），供设置界面查看
+  List<String> get blacklistItems => _blacklist.toList();
+
+  /// 按 key 删除黑名单条目
+  Future<void> removeBlacklistKey(String key) async {
+    _blacklist.remove(key);
+    _blacklistRev++;
+    notifyListeners();
+    await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+    unawaited(syncBlacklistPush());
+  }
+
   // ---- 黑名单 NAS(WebDAV) 同步：收藏在 Navidrome 服务器端自动互通，黑名单本机存储需云同步 ----
   String _nasUrl(String file) {
     final base = webdavUrl.replaceAll(RegExp(r'/+$'), '');
@@ -318,19 +332,22 @@ class AppSettings extends ChangeNotifier {
       'Content-Type': 'application/json',
     };
   }
-  /// 上传黑名单到 NAS（不抛错，失败静默）
+  /// 上传黑名单 + 导入歌单到 NAS（不抛错，失败静默）
   Future<void> syncBlacklistPush() async {
     if (!_syncNas || !webdavConfigured) return;
     try {
       final resp = await http.put(
         Uri.parse(_nasUrl('xmusic_blacklist.json')),
         headers: _davHeaders(),
-        body: jsonEncode(_blacklist.toList()),
+        body: jsonEncode({
+          'blacklist': _blacklist.toList(),
+          'qqplaylists': importedQqPlaylists,
+        }),
       );
       if (resp.statusCode < 300) {}
     } catch (_) {}
   }
-  /// 从 NAS 拉取黑名单并合并（本机已有 + 远端，取并集）
+  /// 从 NAS 拉取黑名单 + 导入歌单并合并
   Future<void> syncBlacklistPull() async {
     if (!_syncNas || !webdavConfigured) return;
     try {
@@ -339,14 +356,43 @@ class AppSettings extends ChangeNotifier {
         headers: {'Authorization': _davHeaders()['Authorization']!},
       );
       if (resp.statusCode == 200) {
-        final remote = (jsonDecode(utf8.decode(resp.bodyBytes)) as List)
-            .cast<String>()
-            .toSet();
-        final merged = {..._blacklist, ...remote};
-        if (merged.length != _blacklist.length) {
-          _blacklist = merged;
-          await _prefs.setStringList(_kBlacklist, _blacklist.toList());
-          notifyListeners();
+        final decoded = jsonDecode(utf8.decode(resp.bodyBytes));
+        if (decoded is List) {
+          // 旧格式：只有黑名单
+          final merged = {..._blacklist, ...decoded.cast<String>().toSet()};
+          if (merged.length != _blacklist.length) {
+            _blacklist = merged;
+            await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+            notifyListeners();
+          }
+        } else if (decoded is Map) {
+          final merged =
+              {..._blacklist, ...((decoded['blacklist'] as List?) ?? const []).cast<String>().toSet()};
+          if (merged.length != _blacklist.length) {
+            _blacklist = merged;
+            await _prefs.setStringList(_kBlacklist, _blacklist.toList());
+            notifyListeners();
+          }
+          final remotePl = ((decoded['qqplaylists'] as List?) ?? const [])
+              .cast<Map>()
+              .map((m) => {
+                    'id': (m['id'] ?? '').toString(),
+                    'name': (m['name'] ?? '').toString(),
+                  })
+              .toList();
+          var plChanged = false;
+          for (final rp in remotePl) {
+            if (rp['id']!.isEmpty) continue;
+            if (!importedQqPlaylists.any((e) => e['id'] == rp['id'])) {
+              importedQqPlaylists.add(rp);
+              plChanged = true;
+            }
+          }
+          if (plChanged) {
+            await _prefs.setStringList(_kImportedQq,
+                importedQqPlaylists.map((e) => jsonEncode(e)).toList());
+            notifyListeners();
+          }
         }
       }
     } catch (_) {}
