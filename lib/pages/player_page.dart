@@ -438,12 +438,12 @@ class _PlayerPageState extends State<PlayerPage> {
                         }),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              _MarqueeText(song.title, textAlign: TextAlign.left,
+                              _MarqueeText(song.title, textAlign: TextAlign.center,
                                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 18 : 24)),
                               SizedBox(height: car ? 10 : 6),
-                              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.left,
+                              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 12 : 15)),
                             ],
                           ),
@@ -582,9 +582,11 @@ class _PlayerPageState extends State<PlayerPage> {
 
   void _openQueue(BuildContext context) {
     final mq = MediaQuery.of(context);
-    final carLand = isCarScreen(context) && mq.size.width > mq.size.height;
-    if (carLand) {
-      // 车机/手机横屏：右下角收窄小窗浮层。showGeneralDialog 的 pageBuilder 直接
+    // 横屏判定直接用宽>高（手机横屏最短边可能 <480，isCarScreen 会返回 false，
+    // 必须只按方向判，车机横屏同样宽>高，两者都走右下浮窗）。
+    final land = mq.size.width > mq.size.height;
+    if (land) {
+      // 横屏：右下角收窄小窗浮层。showGeneralDialog 的 pageBuilder 直接
       // 放 overlay（无 Dialog 包裹/Center 居中），Align(bottomRight) 真正贴右下。
       // barrier 透明只露出面板（面板本身实心不透明），pop 用 panel 的 ctx 正确关闭。
       showGeneralDialog(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -27,6 +28,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Song>> _daily30;
+  /// 最近一次加载每日30首在线的日期（yyyyMMdd），跨天自动重新拉取账号每日推荐。
+  String _daily30Date = '';
   late Future<List<Song>> _localRec;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
 
@@ -93,10 +96,17 @@ class _HomePageState extends State<HomePage> {
           .toList();
 
   Future<List<Song>> _loadDaily30() async {
+    _daily30Date = _dateStr();
     // 每日30首：统一走 QQ（热歌榜，填了 cookie 时账号相关更贴合；接口异常内部兜底酷狗）
     final ext = widget.controller.external;
     final qq = await ext.daily30FromQq(cookie: widget.settings.qqCookie);
     return _filterBlacklist(_filterOld(qq));
+  }
+
+  /// 今日日期串 yyyyMMdd，用于每日30首在线跨天刷新。
+  String _dateStr() {
+    final n = DateTime.now();
+    return '${n.year}${n.month.toString().padLeft(2, '0')}${n.day.toString().padLeft(2, '0')}';
   }
 
   /// 本地推荐：类似"每日30首"——按日期播种 + 当天缓存，每天变化（同日内稳定）。
@@ -133,15 +143,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
+    // 先触发跳播放界面（不阻塞），再并行设置队列并播放。
+    // 避免 playQueue 偶发解析卡住时 await 阻塞导致"点了歌不跳转"。
+    if (context.mounted) {
+      unawaited(openPlayerPage(
+          context, settings: widget.settings, controller: widget.controller));
+    }
     try {
       await widget.controller.playQueue(songs, index);
     } catch (_) {
       // 播放失败也继续进播放界面，避免卡在列表页
     }
     if (mounted) setState(() {});
-    if (context.mounted) {
-      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
-    }
   }
 
   Future<void> _openPlaylist(String name, String playlistId,
@@ -256,6 +269,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // 跨天自动刷新每日30首在线（QQ 账号每日推荐每天变；home 常驻不重建也检查）
+    if (_daily30Date != _dateStr()) {
+      _daily30Date = _dateStr();
+      _daily30 = _loadDaily30();
+    }
     return Builder(builder: (context) {
       final mq = MediaQuery.of(context);
       final car = isCarScreen(context);
