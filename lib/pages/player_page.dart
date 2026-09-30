@@ -586,29 +586,45 @@ class _PlayerPageState extends State<PlayerPage> {
     // 必须只按方向判，车机横屏同样宽>高，两者都走右下浮窗）。
     final land = mq.size.width > mq.size.height;
     if (land) {
-      // 横屏：右下角收窄小窗浮层。showModalBottomSheet(isScrollControlled:true)
-      // 提供全屏有界约束（竖屏已验证 FractionallySizedBox 可靠填充，Expanded 不会高度为 0），
-      // Align 贴右下 + 固定宽度收窄。
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        barrierColor: Colors.transparent,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => Align(
-          alignment: Alignment.bottomRight,
-          child: Container(
-            width: 340,
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: FractionallySizedBox(
-              heightFactor: 0.6,
-              child: _queuePanel(ctx),
-            ),
-          ),
+      // 横屏：右下角收窄小窗浮层。Navigator.push 全屏透明路由 + Stack + Positioned
+      // 绝对定位右下（right/bottom 16），位置确定贴右下、不会居中；Container 显式高度
+      // 让 _queuePanel 的 Column+Expanded 可靠填充列表；点面板外关闭。
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          opaque: false,
+          barrierColor: Colors.transparent,
+          transitionDuration: const Duration(milliseconds: 150),
+          pageBuilder: (ctx, _, __) {
+            final h = MediaQuery.sizeOf(ctx).height;
+            return Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Stack(
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => Navigator.of(ctx).pop(),
+                    ),
+                  ),
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: Container(
+                      width: 340,
+                      height: h * 0.6,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _queuePanel(ctx),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       );
       return;
