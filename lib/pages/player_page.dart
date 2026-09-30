@@ -586,6 +586,7 @@ class _PlayerPageState extends State<PlayerPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: carLand ? Colors.transparent : null,
       builder: (ctx) {
         if (carLand) {
           // 车机横屏：靠右下角小窗，不覆盖整个底部（统一用 ctx，pop 正确关闭面板）

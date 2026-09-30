@@ -133,7 +133,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
-    await widget.controller.playQueue(songs, index);
+    try {
+      await widget.controller.playQueue(songs, index);
+    } catch (_) {
+      // 播放失败也继续进播放界面，避免卡在列表页
+    }
     if (mounted) setState(() {});
     if (context.mounted) {
       await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
