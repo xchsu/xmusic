@@ -438,11 +438,12 @@ class _PlayerPageState extends State<PlayerPage> {
                         }),
                         Expanded(
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _MarqueeText(song.title, textAlign: TextAlign.center,
+                              _MarqueeText(song.title, textAlign: TextAlign.left,
                                 style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 18 : 24)),
                               SizedBox(height: car ? 10 : 6),
-                              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                              Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.left,
                                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 12 : 15)),
                             ],
                           ),
@@ -585,7 +586,6 @@ class _PlayerPageState extends State<PlayerPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (ctx) {
         if (carLand) {
           // 车机横屏：靠右下角小窗，不覆盖整个底部（统一用 ctx，pop 正确关闭面板）
