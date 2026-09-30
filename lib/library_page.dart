@@ -13,6 +13,7 @@ import '../widgets.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
 import 'playlist_page.dart';import 'player_page.dart';
+import '../mini_player.dart';
 
 
 /// Library page with tabs: 歌单 / 专辑 / 歌手 / 本地(真本地扫描).
@@ -41,7 +42,7 @@ class _LibraryPageState extends State<LibraryPage>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 4, vsync: this, initialIndex: widget.initialTab);
+    _tab = TabController(length: 5, vsync: this, initialIndex: widget.initialTab);
   }
 
   @override
@@ -63,16 +64,20 @@ class _LibraryPageState extends State<LibraryPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BigScreenText(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('音乐库'),
         bottom: TabBar(
           controller: _tab,
+          isScrollable: true,
+          tabAlignment: TabAlignment.center,
           tabs: const [
             Tab(text: '歌单'),
+            Tab(text: 'ID歌单'),
+            Tab(text: '本地'),
             Tab(text: '收藏'),
             Tab(text: '歌手'),
-            Tab(text: '本地'),
           ],
         ),
       ),
@@ -84,9 +89,7 @@ class _LibraryPageState extends State<LibraryPage>
             settings: widget.settings,
             controller: widget.controller,
           ),
-          _FavoriteTab(settings: widget.settings, controller: widget.controller),
-          _ArtistTab(
-            client: _client,
+          _ImportTab(
             settings: widget.settings,
             controller: widget.controller,
           ),
@@ -94,9 +97,15 @@ class _LibraryPageState extends State<LibraryPage>
             settings: widget.settings,
             controller: widget.controller,
           ),
+          _FavoriteTab(settings: widget.settings, controller: widget.controller),
+          _ArtistTab(
+            client: _client,
+            settings: widget.settings,
+            controller: widget.controller,
+          ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -125,12 +134,7 @@ class _FavoriteTabState extends State<_FavoriteTab> {
     await widget.controller.playQueue(songs, i);
     if (mounted) setState(() {});
     if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PlayerPage(
-          settings: widget.settings,
-          controller: widget.controller,
-        ),
-      ));
+      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     }
   }
 
@@ -356,10 +360,14 @@ class _ArtistTabState extends State<_ArtistTab> {
     _future = widget.client.artists();
   }
 
-  /// 按歌手名搜封面当头像：网易云歌手搜索接口 2026 起失效（返回 400），
-  /// 改用酷狗搜索该歌手的热门歌曲封面（union_cover）代替，保证列表"有图"。
+  /// 按歌手名取歌手头像：优先网易云 type=100 歌手搜索的真实头像（用户要的是"歌手图片"），
+  /// 网易云失败/无图时回退酷狗热门歌曲封面；都失败显示首字圆标。
   Future<String?> _artistImage(String name) {
     return _imgCache.putIfAbsent(name, () async {
+      try {
+        final avatar = await widget.controller.external.neteaseArtistAvatar(name);
+        if (avatar != null && avatar.isNotEmpty) return avatar;
+      } catch (_) {}
       try {
         return await widget.controller.external.kugouSearchCover(name);
       } catch (_) {
@@ -368,8 +376,9 @@ class _ArtistTabState extends State<_ArtistTab> {
     });
   }
 
-  /// 歌手头像：统一走酷狗搜索图（Navidrome artist coverArt 字段常有但对应图
-  /// 缺失/404，酷狗兜底触发不了 → 列表无图）。酷狗失败时显示首字圆标。
+  /// 歌手头像：网易云真实头像优先（用户要求"歌手图片"），失败回退酷狗歌曲封面，
+  /// 再失败用服务器 coverArt（Navidrome artist 的 coverArt 常是专辑图且可能缺失），
+  /// 全失败显示首字圆标。
   Widget _artistLeading(BuildContext context, Artist ar) {
     final theme = Theme.of(context);
     return FutureBuilder<String?>(
@@ -383,11 +392,23 @@ class _ArtistTabState extends State<_ArtistTab> {
               imageUrl: url,
               width: 44, height: 44,
               fit: BoxFit.cover,
-              // [xmusic] 酷狗图床用通用 UA，不带网易云 Referer（防防盗链拒绝）
-              httpHeaders: const {'User-Agent': 'Mozilla/5.0'},
+              // [xmusic] 网易云图需带 Referer 防防盗链；酷狗图床用通用 UA
+              httpHeaders: url.contains('music.126.net')
+                  ? const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'}
+                  : const {'User-Agent': 'Mozilla/5.0'},
               errorWidget: (_, __, ___) => _initialCircle(theme, ar.name),
               placeholder: (_, __) => _initialCircle(theme, ar.name),
             ),
+          );
+        }
+        // 网易云/酷狗都没图：服务器 coverArt 兜底（可能缺失，显示失败则圆标）
+        if (ar.coverArt != null && ar.coverArt!.isNotEmpty) {
+          return CoverImage(
+            client: widget.client,
+            coverId: ar.coverArt,
+            size: 44,
+            radius: 8,
+            requestSize: 120,
           );
         }
         return _initialCircle(theme, ar.name);
@@ -664,12 +685,7 @@ class _LocalTabState extends State<_LocalTab> {
     await widget.controller.playQueue(_songs, i);
     if (mounted) setState(() {});
     if (context.mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PlayerPage(
-          settings: widget.settings,
-          controller: widget.controller,
-        ),
-      ));
+      await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
     }
   }
 
@@ -752,6 +768,396 @@ class _LocalTabState extends State<_LocalTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------- 导入歌单 tab（QQ 歌单 ID 导入） ----------------
+class _ImportTab extends StatefulWidget {
+  const _ImportTab({required this.settings, required this.controller});
+
+  final AppSettings settings;
+  final PlayerController controller;
+
+  @override
+  State<_ImportTab> createState() => _ImportTabState();
+}
+
+class _ImportTabState extends State<_ImportTab> {
+  bool _busy = false;
+
+  List<Map<String, String>> get _list => widget.settings.importedQqPlaylists;
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  /// 长按 ID 歌单弹出操作菜单：重命名 / 删除。
+  Future<void> _showIdPlaylistMenu(Map<String, String> e) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(e['name'] ?? '歌单',
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text('ID: ${e['id']}', maxLines: 1),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('重命名'),
+              onTap: () => Navigator.pop(ctx, 'rename'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('删除'),
+              onTap: () => Navigator.pop(ctx, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    if (action == 'rename') {
+      final name = await _promptRename(e['name'] ?? '歌单');
+      if (name != null && name.trim().isNotEmpty) {
+        await widget.settings
+            .renameImportedQqPlaylist(e['id']!, name.trim());
+        if (mounted) setState(() {});
+      }
+    } else if (action == 'delete') {
+      await widget.settings.removeImportedQqPlaylist(e['id']!);
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<String?> _promptRename(String current) {
+    final ctrl = TextEditingController(text: current);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('重命名歌单'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLength: 30,
+          decoration: const InputDecoration(labelText: '歌单名称'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: const Text('确定')),
+        ],
+      ),
+    );
+  }
+
+  /// 从粘贴的链接/纯数字里提取歌单 ID（y.qq.com/n/ryqq_v2/playlist/9683093831）。
+  static String _extractId(String raw) {
+    final m = RegExp(r'(\d{5,})').firstMatch(raw);
+    return m?.group(1) ?? raw.trim();
+  }
+
+  Future<void> _showImportDialog() async {
+    final ctrl = TextEditingController();
+    final raw = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('导入 QQ 歌单'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: '歌单 ID 或歌单链接',
+            isDense: true,
+          ),
+          onSubmitted: (_) => Navigator.of(ctx).pop(ctrl.text),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+              child: const Text('导入')),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    final dissid = _extractId(raw ?? '');
+    if (dissid.isEmpty || !mounted) return;
+    setState(() => _busy = true);
+    final (name, songs) =
+        await widget.controller.external.qqPlaylistDetail(dissid);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (songs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('导入失败：未找到该歌单，请检查 ID')));
+      return;
+    }
+    await widget.settings.addImportedQqPlaylist(
+        dissid, name.isEmpty ? '歌单 $dissid' : name);
+    if (!mounted) return;
+    setState(() {});
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _ImportedSongsPage(
+        name: name.isEmpty ? '歌单 $dissid' : name,
+        songs: songs,
+        settings: widget.settings,
+        controller: widget.controller,
+      ),
+    ));
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _open(String id, String name) async {
+    setState(() => _busy = true);
+    final (_, songs) = await widget.controller.external.qqPlaylistDetail(id);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (songs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('拉取失败：歌单可能已失效')));
+      return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _ImportedSongsPage(
+        name: name,
+        songs: songs,
+        settings: widget.settings,
+        controller: widget.controller,
+      ),
+    ));
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _list.isEmpty
+                      ? '输入 QQ 歌单 ID 导入，跟"歌单"一样管理'
+                      : '已导入 ${_list.length} 个歌单，点右上"+"导入',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+              IconButton.filledTonal(
+                tooltip: '导入歌单',
+                onPressed: _busy ? null : _showImportDialog,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.add_rounded),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 8),
+        Expanded(
+          child: _list.isEmpty
+              ? Center(
+                  child: Text(
+                    '还没有导入歌单\n点右上角"+"，粘贴歌单链接或填歌单 ID\n'
+                    '例：y.qq.com/.../9683093831 → 9683093831',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                )
+              : ListenableBuilder(
+                  listenable: widget.settings,
+                  builder: (context, _) => GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  gridDelegate: isCarScreen(context) &&
+                          MediaQuery.sizeOf(context).width <
+                              MediaQuery.sizeOf(context).height
+                      ? const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.86)
+                      : SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: isCarScreen(context) ? 176 : 118,
+                          mainAxisSpacing: isCarScreen(context) ? 12 : 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: isCarScreen(context) ? 0.7 : 0.72),
+                  itemCount: _list.length,
+                  itemBuilder: (context, i) {
+                    final e = _list[i];
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _open(e['id']!, e['name'] ?? '歌单'),
+                      onLongPress: () => _showIdPlaylistMenu(e),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AspectRatio(
+                            aspectRatio: 1,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF3A6DF0),
+                                      Color(0xFF5B8CFA),
+                                    ],
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                    Icons.queue_music_rounded,
+                                    color: Colors.white,
+                                    size: 34),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(e['name'] ?? '歌单',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.25)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+// 导入歌单的歌曲列表页（点歌直接播放）
+class _ImportedSongsPage extends StatefulWidget {
+  const _ImportedSongsPage({
+    required this.name,
+    required this.songs,
+    required this.settings,
+    required this.controller,
+  });
+
+  final String name;
+  final List<Song> songs;
+  final AppSettings settings;
+  final PlayerController controller;
+
+  @override
+  State<_ImportedSongsPage> createState() => _ImportedSongsPageState();
+}
+
+class _ImportedSongsPageState extends State<_ImportedSongsPage> {
+  late List<Song> _songs;
+
+  @override
+  void initState() {
+    super.initState();
+    // 跟黑名单同步：导入歌单加载时过滤黑名单歌曲（与其他榜单/歌单一致）
+    _songs = widget.songs
+        .where((s) => !widget.settings.isBlacklisted(s))
+        .toList();
+  }
+
+  Future<void> _play(int i) async {
+    await widget.controller.playQueue(_songs, i);
+    if (mounted) setState(() {});
+    if (context.mounted) {
+      await openPlayerPage(context,
+          settings: widget.settings, controller: widget.controller);
+    }
+  }
+
+  Future<void> _playRandom() async {
+    final songs = List.of(_songs)..shuffle();
+    await widget.controller.playQueue(songs, 0);
+    if (mounted) setState(() {});
+    if (context.mounted) {
+      await openPlayerPage(context,
+          settings: widget.settings, controller: widget.controller);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return BigScreenText(
+      child: Scaffold(
+        appBar: AppBar(title: Text(widget.name)),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  FilledButton.icon(
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text('全部播放'),
+                    onPressed: widget.songs.isEmpty ? null : () => _play(0),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.shuffle_rounded),
+                    label: const Text('随机播放'),
+                    onPressed: widget.songs.isEmpty ? null : _playRandom,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: widget.songs.length,
+                itemBuilder: (context, i) {
+                  final s = widget.songs[i];
+                  return ListTile(
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: CachedNetworkImage(
+                  imageUrl: s.coverUrl ?? '',
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                  httpHeaders: const {'User-Agent': 'Mozilla/5.0'},
+                  errorWidget: (_, __, ___) => Icon(Icons.music_note,
+                      color: theme.colorScheme.onSurfaceVariant),
+                  placeholder: (_, __) => Icon(Icons.music_note,
+                      color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+              title: Text(s.title,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text('${s.artist} · ${s.album}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              onTap: () => _play(i),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
