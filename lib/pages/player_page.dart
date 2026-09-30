@@ -615,13 +615,11 @@ class _PlayerPageState extends State<PlayerPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.4,
-        expand: false,
-        builder: (ctx, scrollController) =>
-            _queuePanel(ctx, scrollController: scrollController),
+      // 固定 60% 屏高的内容区，_queuePanel 的 Column+Expanded 可靠填充列表
+      // （DraggableScrollableSheet 在某些设备 Expanded 高度为 0，列表变空白）。
+      builder: (ctx) => FractionallySizedBox(
+        heightFactor: 0.6,
+        child: _queuePanel(ctx),
       ),
     );
   }
