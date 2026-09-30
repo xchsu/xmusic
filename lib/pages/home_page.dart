@@ -736,9 +736,9 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (carP)
+          if (isCarScreen(context))
             SizedBox(
-              height: 116,
+              height: carP ? 116 : 132,
               width: double.infinity,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
@@ -799,9 +799,9 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (carP)
+          if (isCarScreen(context))
             SizedBox(
-              height: 116,
+              height: carP ? 116 : 132,
               width: double.infinity,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
