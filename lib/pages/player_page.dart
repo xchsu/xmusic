@@ -441,10 +441,10 @@ class _PlayerPageState extends State<PlayerPage> {
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               _MarqueeText(song.title, textAlign: TextAlign.center,
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 18 : 24)),
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: car ? 26 : 24)),
                               SizedBox(height: car ? 10 : 6),
                               Text('${song.artist} - ${song.album}', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 12 : 15)),
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 15)),
                             ],
                           ),
                         ),
@@ -646,7 +646,7 @@ class _PlayerPageState extends State<PlayerPage> {
     return Column(
       children: [
         const Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
           child: Text('播放列表',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
         ),
@@ -1586,6 +1586,14 @@ class _MarqueeTextState extends State<_MarqueeText> with SingleTickerProviderSta
               ? cons.maxWidth
               : (MediaQuery.sizeOf(ctx).width * 0.86));
       if (boxW <= 0) return const SizedBox.shrink();
+      // 短文本（能完整显示）：不滚动，按 textAlign 对齐（居中则真正居中），完整展示
+      if (tp.width <= boxW) {
+        return Align(
+          alignment: widget.textAlign == TextAlign.center ? Alignment.center : Alignment.centerLeft,
+          child: Text(widget.text, style: widget.style, maxLines: 1,
+              overflow: TextOverflow.ellipsis, softWrap: false, textAlign: widget.textAlign),
+        );
+      }
       return ClipRect(
         child: SizedBox(
           width: boxW,
