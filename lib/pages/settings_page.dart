@@ -360,6 +360,12 @@ class SettingsPage extends StatelessWidget {
                       : err)));
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.cloud_download_outlined),
+            title: const Text('NAS'),
+            subtitle: Text(settings.webdavConfigured ? settings.webdavUrl : '未配置'),
+            onTap: () => _showWebdavDialog(context),
+          ),
           const Divider(),
 
           // ===== 源 =====
@@ -411,12 +417,6 @@ class SettingsPage extends StatelessWidget {
             title: const Text('本地下载路径'),
             subtitle: Text(settings.downloadPath.isEmpty ? '/storage/emulated/0/Music（默认）' : settings.downloadPath),
             onTap: () => _pickDownloadDirectory(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.cloud_download_outlined),
-            title: const Text('NAS'),
-            subtitle: Text(settings.webdavConfigured ? settings.webdavUrl : '未配置'),
-            onTap: () => _showWebdavDialog(context),
           ),
           const Divider(),
 
