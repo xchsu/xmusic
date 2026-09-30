@@ -646,7 +646,7 @@ class _PlayerPageState extends State<PlayerPage> {
     return Column(
       children: [
         const Padding(
-          padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+          padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
           child: Text('播放列表',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
         ),
