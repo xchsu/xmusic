@@ -791,6 +791,48 @@ class ExternalApi {
     }
   }
 
+  /// QQ 歌单详情：歌单名 + 歌曲列表（qzone 匿名接口，song_num 上限约 1000）。
+  /// 用于音乐库"导入歌单"：输入歌单 ID 拉取歌曲（不足 1000 首的歌单可拉全）。
+  Future<(String, List<Song>)> qqPlaylistDetail(String dissid,
+      {int limit = 1000}) async {
+    try {
+      final u = Uri.parse('https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg')
+          .replace(queryParameters: {
+        'type': '1', 'utf8': '1', 'disstid': dissid, 'format': 'json',
+        'inCharset': 'utf-8', 'outCharset': 'utf-8', 'notice': '0',
+        'platform': 'y.json', 'needNewCode': '0', 'loginUin': '0',
+        'hostUin': '0', 'song_num': '$limit', 'song_begin': '0',
+      });
+      final resp = await http.get(u, headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://y.qq.com/',
+      });
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final list = (j['cdlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (list.isEmpty) return ('', const []);
+      final name = (list.first['dissname'] ?? '').toString();
+      final songs = (list.first['songlist'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      return (name, songs.map((m) {
+        final mid = (m['songmid'] ?? '').toString();
+        final title = (m['songname'] ?? '').toString();
+        final artist =
+            (m['singer'] as List?)?.cast<Map>().map((s) => s['name']).join(' / ') ?? '';
+        final albummid = (m['albummid'] ?? '').toString();
+        return Song(
+          id: mid,
+          title: title,
+          artist: artist,
+          album: (m['albumname'] ?? '').toString(),
+          coverUrl: 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albummid.jpg',
+          fromExternal: true,
+          externalSource: 'qq',
+        );
+      }).where((s) => s.id.isNotEmpty).take(limit).toList());
+    } catch (_) {
+      return ('', const []);
+    }
+  }
+
   // ==================== 酷狗榜单（mobilecdn 公开接口，无签名） ====================
 
   /// 酷狗榜单原始数据（rankid: 8888=TOP500, 6666=飙升榜 等）。

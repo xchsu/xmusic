@@ -40,6 +40,7 @@ class AppSettings extends ChangeNotifier {
   static const _kOldYear = 'old_year';
   static const _kBlacklist = 'blacklist';
   static const _kSyncNas = 'sync_nas';
+  static const _kImportedQq = 'imported_qq_playlists';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
   /// [xmusic] 2026-09-27 修复：未设置或选"跟随默认"时当前走 onSurface（浅色=黑）。
   static const int lyricActiveDefault = 0xfffdd475; // 暖黄（当前行）
@@ -74,6 +75,8 @@ class AppSettings extends ChangeNotifier {
   int _oldYear = 1995;
   String downloadPath = '';
   String qqCookie = '';
+  /// 导入的 QQ 歌单列表（id + 歌单名），音乐库"导入歌单"门类使用。
+  List<Map<String, String>> importedQqPlaylists = [];
   AppThemeMode _themeMode = AppThemeMode.system;
 
   double get lyricScale => _lyricScalePortrait;
@@ -131,6 +134,9 @@ class AppSettings extends ChangeNotifier {
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';
     qqCookie = _prefs.getString(_kQqCookie) ?? '';
+    importedQqPlaylists = ((_prefs.getStringList(_kImportedQq) ?? const [])
+        .map((e) => (jsonDecode(e) as Map).cast<String, String>())
+        .toList());
   }
 
   SubsonicClient buildClient() {
@@ -175,6 +181,23 @@ class AppSettings extends ChangeNotifier {
     } else {
       await _prefs.setString(_kQqCookie, qqCookie);
     }
+  }
+
+  /// 添加导入的 QQ 歌单（同 id 去重并置顶）。
+  Future<void> addImportedQqPlaylist(String id, String name) async {
+    importedQqPlaylists.removeWhere((e) => e['id'] == id);
+    importedQqPlaylists.insert(0, {'id': id, 'name': name});
+    notifyListeners();
+    await _prefs.setStringList(
+        _kImportedQq, importedQqPlaylists.map((e) => jsonEncode(e)).toList());
+  }
+
+  /// 删除导入的 QQ 歌单。
+  Future<void> removeImportedQqPlaylist(String id) async {
+    importedQqPlaylists.removeWhere((e) => e['id'] == id);
+    notifyListeners();
+    await _prefs.setStringList(
+        _kImportedQq, importedQqPlaylists.map((e) => jsonEncode(e)).toList());
   }
 
   Future<void> setLyricScale(double v) async {
