@@ -256,7 +256,7 @@ class _HomePageState extends State<HomePage> {
       final mq = MediaQuery.of(context);
       final car = isCarScreen(context);
       final carP = car && mq.size.width < mq.size.height;
-      final scale = carP ? 1.25 : mq.textScaler.scale(14) / 14;
+      final scale = carP ? 1.6 : mq.textScaler.scale(14) / 14;
       return MediaQuery(
         data: mq.copyWith(textScaler: TextScaler.linear(scale)),
         child: BigScreenText(
