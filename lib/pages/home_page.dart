@@ -333,9 +333,27 @@ class _HomePageState extends State<HomePage> {
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _qqPlaylists,
               builder: (context, snap) {
+                // [xmusic] 2026-09-30 接口失败时显示原因（便于定位网络/风控/解析问题），
+                // 无数据时显示占位提示，绝不回退到用户个人歌单。
+                if (snap.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded,
+                            size: 18, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('歌单广场加载失败：${snap.error}',
+                              maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.orange, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
                 final list = snap.data ?? const [];
-                // [xmusic] 2026-09-30 去掉内置兜底（曾把用户微信歌单当占位显示在首页）：
-                // 接口无数据时显示占位提示，绝不回退到用户个人歌单。
                 if (list.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
