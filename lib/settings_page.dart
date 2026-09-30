@@ -8,7 +8,6 @@ import 'package:permission_handler/permission_handler.dart';
 import '../app_version.dart';
 import '../permissions.dart';
 import '../player_controller.dart';
-import '../lyric_overlay.dart';
 import '../settings.dart';
 import '../widgets.dart';
 
@@ -64,6 +63,47 @@ class SettingsPage extends StatelessWidget {
   /// 取色弹窗文字细描边：弹窗内白字在浅色/自定义背景上可读（不压字）
   static TextStyle _stroke(TextStyle? base) => (base ?? const TextStyle());
 
+  void _showBlacklistEditor(BuildContext context, AppSettings settings) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('黑名单管理'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 360,
+            child: StatefulBuilder(
+              builder: (ctx, setState) {
+                final cur = settings.blacklistItems;
+                if (cur.isEmpty) {
+                  return const Center(child: Text('暂无黑名单'));
+                }
+                return ListView.builder(
+                  itemCount: cur.length,
+                  itemBuilder: (_, i) => ListTile(
+                    dense: true,
+                    title: Text(cur[i]),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await settings.removeBlacklistKey(cur[i]);
+                        if (ctx.mounted) setState(() {});
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(), child: const Text('关闭')),
+          ],
+        );
+      },
+    );
+  }
+
   void _showColorPicker(BuildContext context, String title, int currentColor, ValueChanged<int> onPick, {bool isTheme = false}) {
     double alpha = currentColor != 0 ? (currentColor >> 24) / 255.0 : 1.0;
     HSVColor hsv = currentColor != 0 ? HSVColor.fromColor(Color(currentColor)) : HSVColor.fromColor(Colors.amber);
@@ -109,19 +149,6 @@ class SettingsPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isTheme) ...[
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('用当前歌曲封面主色透出背景'),
-                      subtitle: const Text('跟随系统/深浅主题，背景透出当前封面颜色'),
-                      value: settings.coverColorBg,
-                      onChanged: (v) {
-                        setD(() {});
-                        settings.setCoverColorBg(v);
-                      },
-                    ),
-                    const Divider(height: 8),
-                  ],
                   // 十六进制
                   Row(children: [
                     Container(width: 40, height: 40, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
@@ -219,15 +246,19 @@ class SettingsPage extends StatelessWidget {
     final theme = Theme.of(context);
     final _mq = MediaQuery.of(context);
     final _car = isCarScreen(context);
+    // 车机（横/竖）设置页字号再加大一档，列表文字更清晰
+    final _scale = _car ? (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height ? 1.6 : 1.5) : bigScreenTextScale(context);
     return MediaQuery(
-      data: _car ? _mq.copyWith(textScaler: const TextScaler.linear(1.35)) : _mq,
+      data: _scale > 1.0 ? _mq.copyWith(textScaler: TextScaler.linear(_scale)) : _mq,
       child: Builder(
         builder: (ctx) {
           return IconTheme(
         // [xmusic] 2026-09-24 车机图标适配：设置页列表图标整体放大
         data: IconThemeData(size: _car ? 28 : 24),
         child: Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+          // [xmusic] 2026-09-28 设置页透明：透出全局封面玻璃背景（之前是初始底色）
+          backgroundColor: Colors.transparent,
+      appBar: AppBar(),
       body: ListView(
         children: [
           // ===== 个性化（主题 + 歌词） =====
@@ -238,22 +269,40 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text(_themeName(settings.themeMode)),
             onTap: () => _showThemeModeDialog(context),
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.wallpaper_rounded),
+            title: const Text('用当前歌曲封面透出背景'),
+            subtitle: const Text('跟随系统/深浅主题，全App背景透出当前封面图片（玻璃质感）'),
+            value: settings.coverColorBg,
+            onChanged: (v) => settings.setCoverColorBg(v),
+          ),
           ListTile(
             leading: const Icon(Icons.color_lens_outlined),
             title: const Text('自定义背景色'),
-            subtitle: Text(settings.coverColorBg
-                ? '封面颜色：跟随系统/深浅主题，透出当前封面主色'
-                : (settings.bgColor != 0 ? '手动背景色（玻璃透出壁纸）' : '默认玻璃背景')),
-            trailing: (!settings.coverColorBg && settings.bgColor != 0)
+            trailing: settings.bgColor != 0
                 ? Container(width: 24, height: 24, decoration: BoxDecoration(color: Color(settings.bgColor), borderRadius: BorderRadius.circular(4)))
                 : const Icon(Icons.chevron_right),
-            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: true),
+            onTap: () => _showColorPicker(context, '背景色', settings.bgColor, (c) => settings.setBgColor(c), isTheme: false),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.play_circle_outline_rounded),
             title: const Text('启动时自动播放'),
             value: settings.autoPlay,
             onChanged: (v) => settings.setAutoPlay(v),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.sync_rounded),
+            title: const Text('同步黑名单到 NAS'),
+            subtitle: const Text('收藏走服务器自动互通；黑名单用 NAS(WebDAV) 同步手机/车机'),
+            value: settings.syncNas,
+            onChanged: (v) => settings.setSyncNas(v),
+          ),
+          ListTile(
+            leading: const Icon(Icons.playlist_remove_rounded),
+            title: const Text('黑名单管理'),
+            subtitle: Text('${settings.blacklistItems.length} 条（歌手/歌名），点开查看和删减'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _showBlacklistEditor(context, settings),
           ),
           ListTile(
             leading: const Icon(Icons.format_size_rounded),
@@ -293,64 +342,6 @@ class SettingsPage extends StatelessWidget {
           ),
           const Divider(),
 
-          // ===== 歌词悬浮窗（车机桌面） =====
-          _sectionTitle(theme, '歌词悬浮窗'),
-          SwitchListTile(
-            secondary: const Icon(Icons.language_rounded),
-            title: const Text('歌词悬浮窗'),
-            subtitle: const Text('开启后，播放时歌词只浮在车机桌面（迪友）上\n其它应用/小窗不浮；需先授予下方三项权限'),
-            value: settings.lyricOverlay,
-            onChanged: (v) async {
-              await settings.setLyricOverlay(v);
-              if (v) {
-                await LyricOverlay.enable();
-              } else {
-                await LyricOverlay.disable();
-              }
-            },
-          ),
-          FutureBuilder<Map<dynamic, dynamic>?>(
-            future: LyricOverlay.checkPermissions(),
-            builder: (context, snap) {
-              final p = snap.data ?? const <dynamic, dynamic>{};
-              final overlay = (p['overlay'] ?? false) == true;
-              final usage = (p['usageStats'] ?? false) == true;
-              final acc = (p['accessibility'] ?? false) == true;
-              return Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.ondemand_video_rounded),
-                    title: const Text('悬浮窗权限'),
-                    subtitle: Text(overlay ? '已授予' : '未授予'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestOverlay(),
-                      child: Text(overlay ? '已开启' : '去开启'),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.insert_chart_outlined_rounded),
-                    title: const Text('使用情况访问权限'),
-                    subtitle: Text(usage ? '已授予' : '未授予'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestUsageStats(),
-                      child: Text(usage ? '已开启' : '去开启'),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.accessible_rounded),
-                    title: const Text('无障碍服务'),
-                    subtitle: Text(acc ? '已开启' : '未开启'),
-                    trailing: TextButton(
-                      onPressed: () => LyricOverlay.requestAccessibility(),
-                      child: Text(acc ? '已开启' : '去开启'),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          const Divider(),
-
           // ===== 源 =====
           _sectionTitle(theme, '源'),
           ListTile(
@@ -378,17 +369,6 @@ class SettingsPage extends StatelessWidget {
             isThreeLine: true,
             onTap: () => _showSourcesInfo(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.music_note_rounded, color: Colors.orange),
-            title: const Text('QQ音乐 Cookie'),
-            subtitle: Text(settings.qqCookie.trim().isEmpty
-                ? '未设置：QQ 榜单/每日30首已匿名可用\n填 Cookie 解锁会员/付费的 QQ 直连播放（点击查看）'
-                : '已设置：解锁会员/付费 QQ 直连播放\n点击可修改（Cookie 含登录态，勿外泄）'),
-            isThreeLine: true,
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showQqCookieDialog(context),
-          ),
-
           const Divider(),
 
           // ===== 下载 =====
