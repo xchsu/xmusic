@@ -1107,7 +1107,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                 ElevatedButton.icon(
                   onPressed: _visibleIndices.isEmpty || error != null ? null : () => onPlay(0),
                   icon: const Icon(Icons.play_arrow_rounded),
-                  label: const Text('播放全部'),
+                  label: const Text('顺序'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
@@ -1117,14 +1117,6 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                   },
                   icon: const Icon(Icons.shuffle_rounded),
                   label: const Text('随机'),
-                ),
-                const SizedBox(width: 12),
-                IconButton.filledTonal(
-                  onPressed: _visibleIndices.isEmpty || error != null
-                      ? null
-                      : _downloadAllToNas,
-                  icon: const Icon(Icons.download_rounded),
-                  tooltip: '下载整个歌单到 NAS',
                 ),
               ],
             ),

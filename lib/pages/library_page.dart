@@ -1218,20 +1218,14 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
                 children: [
                   FilledButton.icon(
                     icon: const Icon(Icons.play_arrow_rounded),
-                    label: const Text('全部播放'),
+                    label: const Text('顺序'),
                     onPressed: widget.songs.isEmpty ? null : () => _play(0),
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.shuffle_rounded),
-                    label: const Text('随机播放'),
+                    label: const Text('随机'),
                     onPressed: widget.songs.isEmpty ? null : _playRandom,
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton.filledTonal(
-                    icon: const Icon(Icons.download_rounded),
-                    tooltip: '下载整个歌单到 NAS',
-                    onPressed: widget.songs.isEmpty ? null : _downloadAllToNas,
                   ),
                 ],
               ),
