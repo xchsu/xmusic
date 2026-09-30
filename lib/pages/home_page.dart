@@ -28,6 +28,15 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
+  int _qqCategoryId = 10000000; // QQ歌单分类：10000000全部/165国语/166粤语/167英语/168韩语/169日语
+  static const List<Map<String, dynamic>> _qqCategories = [
+    {'id': 10000000, 'name': '全部'},
+    {'id': 165, 'name': '国语'},
+    {'id': 166, 'name': '粤语'},
+    {'id': 167, 'name': '英语'},
+    {'id': 168, 'name': '韩语'},
+    {'id': 169, 'name': '日语'},
+  ];
   late Future<List<Song>> _localRec;
 
   SubsonicClient get _client => widget.controller.client;
@@ -296,10 +305,43 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
+            // QQ歌单分类切换（歌单广场）
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  for (final c in _qqCategories)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(c['name']),
+                        selected: _qqCategoryId == c['id'],
+                        onSelected: (_) => setState(() {
+                          _qqCategoryId = c['id'] as int;
+                          _qqPlaylists = widget.controller.external
+                              .qqPlaylists(categoryId: c['id'] as int);
+                        }),
+                      ),
+                    ),
+                ],
+              ),
+            ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _qqPlaylists,
               builder: (context, snap) {
                 final list = snap.data ?? const [];
+                final cards = list.isEmpty
+                    ? const <Map<String, dynamic>>[
+                        {'name': '我喜欢', 'dissid': '1175961954'},
+                        {'name': '300首华语金曲', 'dissid': '9683093831'},
+                        {'name': '华语精选', 'dissid': '9683093651'},
+                        {'name': '神仙打架', 'dissid': '9683093123'},
+                        {'name': '华语流行KTV必点', 'dissid': '9683092862'},
+                        {'name': '听过', 'dissid': '9683091761'},
+                      ]
+                    : list;
                 final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
                 return GridView(
                   shrinkWrap: true,
@@ -308,7 +350,7 @@ class _HomePageState extends State<HomePage> {
                   gridDelegate: _carP
                       ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
                       : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.7 : 0.72),
-                  children: list.map((p) => _qqPlaylistCard(
+                  children: cards.map((p) => _qqPlaylistCard(
                     p['name'] as String,
                     p['dissid'] as String,
                     p['coverImgUrl'] as String?,

@@ -305,6 +305,22 @@ class SettingsPage extends StatelessWidget {
             onTap: () => _showBlacklistEditor(context, settings),
           ),
           ListTile(
+            leading: const Icon(Icons.cloud_sync_rounded),
+            title: const Text('立即同步到 NAS'),
+            subtitle: const Text('把黑名单和 ID 歌单立即上传；失败会显示原因'),
+            trailing: const Icon(Icons.sync_rounded),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.showSnackBar(const SnackBar(content: Text('同步中…')));
+              final err = await settings.syncBlacklistPush();
+              if (!context.mounted) return;
+              messenger.showSnackBar(SnackBar(
+                  content: Text(err == null
+                      ? '同步成功（黑名单 + ID 歌单已上传）'
+                      : err)));
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.format_size_rounded),
             title: const Text('歌词大小'),
             subtitle: Text('${(settings.lyricScale * 100).round()}%'),

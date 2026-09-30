@@ -979,7 +979,9 @@ class _ImportTabState extends State<_ImportTab> {
                     style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 )
-              : GridView.builder(
+              : ListenableBuilder(
+                  listenable: widget.settings,
+                  builder: (context, _) => GridView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   gridDelegate: isCarScreen(context) &&
                           MediaQuery.sizeOf(context).width <
@@ -1042,8 +1044,8 @@ class _ImportTabState extends State<_ImportTab> {
                     );
                   },
                 ),
+              ),
         ),
-        MiniPlayer(settings: widget.settings, controller: widget.controller),
       ],
     );
   }
