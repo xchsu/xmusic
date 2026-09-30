@@ -343,20 +343,36 @@ class AppSettings extends ChangeNotifier {
       'Content-Type': 'application/json',
     };
   }
-  /// 上传黑名单 + 导入歌单到 NAS（不抛错，失败静默）
-  Future<void> syncBlacklistPush() async {
-    if (!_syncNas || !webdavConfigured) return;
+  /// 上传黑名单 + 导入歌单到 NAS；返回 null=成功，否则为可展示的失败原因。
+  Future<String?> syncBlacklistPush() async {
+    if (!_syncNas) return '未开启"同步到 NAS"开关';
+    if (!webdavConfigured) return '未配置 WebDAV 地址';
     try {
-      final resp = await http.put(
-        Uri.parse(_nasUrl('xmusic_blacklist.json')),
-        headers: _davHeaders(),
-        body: jsonEncode({
-          'blacklist': _blacklist.toList(),
-          'qqplaylists': importedQqPlaylists,
-        }),
-      );
-      if (resp.statusCode < 300) {}
-    } catch (_) {}
+      final url = Uri.parse(_nasUrl('xmusic_blacklist.json'));
+      // 尝试用 MKCOL 自动创建目录（失败忽略，PUT 仍会执行并返回真实错误）
+      try {
+        final dir = Uri.parse(_nasUrl(''));
+        final mk = http.Request('MKCOL', dir);
+        mk.headers['Authorization'] = _davHeaders()['Authorization']!;
+        await mk.send().timeout(const Duration(seconds: 8));
+      } catch (_) {}
+      final resp = await http
+          .put(url, headers: _davHeaders(), body: jsonEncode({
+            'blacklist': _blacklist.toList(),
+            'qqplaylists': importedQqPlaylists,
+          }))
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode < 300) return null;
+      if (resp.statusCode == 401 || resp.statusCode == 403) {
+        return 'NAS 拒绝访问(${resp.statusCode})：检查 WebDAV 账号密码';
+      }
+      if (resp.statusCode == 404 || resp.statusCode == 409) {
+        return 'NAS 返回 ${resp.statusCode}：检查 WebDAV 地址路径和 Music/xmusic 目录';
+      }
+      return 'NAS 返回 ${resp.statusCode}';
+    } catch (e) {
+      return '连接失败：${e.runtimeType}（检查地址/端口/frpc 转发）';
+    }
   }
   /// 从 NAS 拉取黑名单 + 导入歌单并合并
   Future<void> syncBlacklistPull() async {
