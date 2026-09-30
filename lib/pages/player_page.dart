@@ -583,37 +583,41 @@ class _PlayerPageState extends State<PlayerPage> {
   void _openQueue(BuildContext context) {
     final mq = MediaQuery.of(context);
     final carLand = isCarScreen(context) && mq.size.width > mq.size.height;
+    if (carLand) {
+      // 车机/手机横屏：右下角收窄小窗浮层。showDialog + Align 真正贴右下（不用
+      // showModalBottomSheet——其 sheet 有最大宽度限制，大屏会居中）。
+      // barrier 透明只露出面板（面板本身实心不透明），pop 用 dialog 的 ctx 正确关闭。
+      showDialog(
+        context: context,
+        barrierColor: Colors.transparent,
+        builder: (ctx) => Align(
+          alignment: Alignment.bottomRight,
+          child: Container(
+            width: 340,
+            height: mq.size.height * 0.5,
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _queuePanel(ctx),
+          ),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: carLand ? Colors.transparent : null,
-      builder: (ctx) {
-        if (carLand) {
-          // 车机横屏：靠右下角小窗，不覆盖整个底部（统一用 ctx，pop 正确关闭面板）
-          return Align(
-            alignment: Alignment.bottomRight,
-            child: Container(
-              width: 380,
-              height: mq.size.height * 0.55,
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: _queuePanel(ctx),
-            ),
-          );
-        }
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          maxChildSize: 0.9,
-          minChildSize: 0.4,
-          expand: false,
-          builder: (ctx, scrollController) =>
-              _queuePanel(ctx, scrollController: scrollController),
-        );
-      },
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (ctx, scrollController) =>
+            _queuePanel(ctx, scrollController: scrollController),
+      ),
     );
   }
 

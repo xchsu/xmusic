@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../external_api.dart';
 import '../local_library.dart';
@@ -33,9 +34,93 @@ class _SearchPageState extends State<SearchPage> {
   bool _loading = false;
   String? _error;
   int _mode = 0; // 0 = 本地(本地下载), 1 = NAS(Subsonic服务器), 2 = 在线(外网)
+  List<String> _history = [];
 
   SubsonicClient get _client => widget.controller.client;
   ExternalApi get _externalApi => ExternalApi(widget.settings.externalApiUrl);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  static const _kHistory = 'search_history';
+
+  Future<void> _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kHistory) ?? const <String>[];
+    if (mounted) setState(() => _history = list);
+  }
+
+  Future<void> _recordHistory(String q) async {
+    if (q.trim().isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kHistory) ?? <String>[];
+    list.remove(q);
+    list.insert(0, q);
+    if (list.length > 20) list.removeRange(20, list.length);
+    await prefs.setStringList(_kHistory, list);
+    if (mounted) setState(() => _history = List.of(list));
+  }
+
+  Future<void> _removeHistory(String q) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_kHistory) ?? <String>[];
+    list.remove(q);
+    await prefs.setStringList(_kHistory, list);
+    if (mounted) setState(() => _history = list);
+  }
+
+  Widget _historyBody(BuildContext context) {
+    if (_history.isEmpty) {
+      return Center(
+        child: Text('输入关键词搜索',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(top: 8, bottom: 96),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              Text('历史搜索',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              IconButton(
+                tooltip: '清空历史',
+                icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove(_kHistory);
+                  if (mounted) setState(() => _history = []);
+                },
+              ),
+            ],
+          ),
+        ),
+        ..._history.map((kw) => ListTile(
+              dense: true,
+              leading: const Icon(Icons.history, size: 20),
+              title: Text(kw, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onTap: () {
+                _query.text = kw;
+                _search();
+              },
+              trailing: IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: () => _removeHistory(kw),
+              ),
+            )),
+      ],
+    );
+  }
 
   @override
   void dispose() {
@@ -64,6 +149,7 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _search() async {
     final q = _query.text.trim();
     if (q.isEmpty) return;
+    _recordHistory(q);
     if (_mode == 0) {
       await _searchLocalDownloads(q);
     } else if (_mode == 1) {
@@ -306,33 +392,6 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(
-                  value: 0,
-                  label: Text('本地'),
-                  icon: Icon(Icons.folder_rounded),
-                ),
-                ButtonSegment(
-                  value: 1,
-                  label: Text('NAS'),
-                  icon: Icon(Icons.dns_outlined),
-                ),
-                ButtonSegment(
-                  value: 2,
-                  label: Text('在线'),
-                  icon: Icon(Icons.public_rounded),
-                ),
-              ],
-              selected: {_mode},
-              onSelectionChanged: (s) {
-                setState(() => _mode = s.first);
-                _search();
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 8, 0),
             child: Row(
               children: [
                 Expanded(
@@ -363,6 +422,33 @@ class _SearchPageState extends State<SearchPage> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+            child: SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(
+                  value: 0,
+                  label: Text('本地'),
+                  icon: Icon(Icons.folder_rounded),
+                ),
+                ButtonSegment(
+                  value: 1,
+                  label: Text('NAS'),
+                  icon: Icon(Icons.dns_outlined),
+                ),
+                ButtonSegment(
+                  value: 2,
+                  label: Text('在线'),
+                  icon: Icon(Icons.public_rounded),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (s) {
+                setState(() => _mode = s.first);
+                _search();
+              },
+            ),
+          ),
           Expanded(
             child: PageBackground(
               controller: widget.controller,
@@ -379,11 +465,7 @@ class _SearchPageState extends State<SearchPage> {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text(_error!));
     if (r == null) {
-      return Center(
-        child: Text('输入关键词搜索',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
+      return _historyBody(context);
     }
     return ListView(
       padding: EdgeInsets.only(
@@ -480,11 +562,7 @@ class _SearchPageState extends State<SearchPage> {
     }
     final songs = _external;
     if (songs == null) {
-      return Center(
-        child: Text('搜索外网歌曲',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      );
+      return _historyBody(context);
     }
     if (songs.isEmpty) {
       return const Padding(
