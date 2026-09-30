@@ -198,6 +198,24 @@ class AppSettings extends ChangeNotifier {
     unawaited(syncBlacklistPush()); // 同步导入歌单到 NAS
   }
 
+  /// 补写导入歌单的封面（旧版导入的数据无 cover 字段，进 ID 歌单页时懒加载回写）。
+  Future<void> updateImportedQqCover(String id, {String? cover}) async {
+    if (cover == null || cover.trim().isEmpty) return;
+    final i = importedQqPlaylists.indexWhere((e) => e['id'] == id);
+    if (i < 0) return;
+    final old = importedQqPlaylists[i];
+    if ((old['cover'] ?? '').toString() == cover.trim()) return;
+    importedQqPlaylists[i] = {
+      'id': id,
+      'name': old['name'] ?? '',
+      'cover': cover.trim(),
+    };
+    notifyListeners();
+    await _prefs.setStringList(
+        _kImportedQq, importedQqPlaylists.map((e) => jsonEncode(e)).toList());
+    // 不主动 push NAS（批量补封面避免刷屏），下次同步时自动带上 cover。
+  }
+
   /// 删除导入的 QQ 歌单。
   Future<void> removeImportedQqPlaylist(String id) async {
     importedQqPlaylists.removeWhere((e) => e['id'] == id);
