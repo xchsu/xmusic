@@ -206,7 +206,7 @@ class SettingsPage extends StatelessWidget {
     final _mq = MediaQuery.of(context);
     final _car = isCarScreen(context);
     // 车机（横/竖）设置页字号再加大一档，列表文字更清晰
-    final _scale = _car ? 1.5 : bigScreenTextScale(context);
+    final _scale = _car ? (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height ? 1.6 : 1.5) : bigScreenTextScale(context);
     return MediaQuery(
       data: _scale > 1.0 ? _mq.copyWith(textScaler: TextScaler.linear(_scale)) : _mq,
       child: Builder(

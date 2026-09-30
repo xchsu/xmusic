@@ -211,7 +211,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 18 : 22,
                     height: 1.2)),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 10 : 4),
               // 歌手+专辑也滚动（完整显示后半段，避免省略号截断）
               SizedBox(
                 width: double.infinity,
@@ -1399,8 +1399,9 @@ class _Controls extends StatelessWidget {
     final gap = compact ? 20.0 : 20.0;
     // [xmusic] 2026-09-24 车机图标统一：左上角/右侧栏/控制栏图标尺寸全部一致（车机48/手机40）
     final car = isCarScreen(context);
-    final playSize = car ? 72.0 : 40.0;
-    final navSize = car ? 72.0 : 40.0;
+    final land = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final playSize = car ? (land ? 76.0 : 82.0) : 40.0;
+    final navSize = car ? (land ? 76.0 : 82.0) : 40.0;
     final sideIcon = car ? 72.0 : 40.0;
     final cs = Theme.of(context).colorScheme;
     return Row(
