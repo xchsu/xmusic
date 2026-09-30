@@ -708,15 +708,22 @@ class ExternalApi {
         'inCharset': 'utf8', 'outCharset': 'utf-8',
       });
       final resp = await http.get(uri, headers: {
-        'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'});
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36',
+        'Referer': 'https://y.qq.com/',
+        'Origin': 'https://y.qq.com',
+        'Accept': '*/*',
+      }).timeout(const Duration(seconds: 12));
       final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-      final list = (((j['data'] as Map?)?['list']) as List?) ?? const [];
+      // 接口结构：新版 data.list / 旧版 disslist，两种都兼容
+      final list = (((j['data'] as Map?)?['list']) as List?) ??
+          (j['disslist'] as List?) ??
+          const [];
       final maps = <Map<String, dynamic>>[];
       final seen = <String>{};
       for (final it in list.cast<Map>()) {
         final id = it['dissid']?.toString() ?? '';
         if (id.isEmpty || !seen.add(id)) continue;
-        var img = it['imgurl']?.toString() ?? '';
+        var img = it['pic_url']?.toString() ?? it['imgurl']?.toString() ?? '';
         if (img.startsWith('http://')) img = 'https://' + img.substring(7);
         maps.add({
           'dissid': id,
