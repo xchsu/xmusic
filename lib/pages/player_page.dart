@@ -580,6 +580,29 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   void _openQueue(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final carLand = isCarScreen(context) && mq.size.width > mq.size.height;
+    if (carLand) {
+      // 车机横屏：播放列表面板靠右下角小窗显示
+      showDialog(
+        context: context,
+        builder: (ctx) => Align(
+          alignment: Alignment.bottomRight,
+          child: Container(
+            width: 400,
+            height: mq.size.height * 0.72,
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _queuePanel(context),
+          ),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -588,103 +611,108 @@ class _PlayerPageState extends State<PlayerPage> {
         maxChildSize: 0.9,
         minChildSize: 0.4,
         expand: false,
-        builder: (ctx, scrollController) => Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('播放列表',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-            ),
-            Expanded(
-              child: ListenableBuilder(
-                listenable: widget.controller,
-                builder: (context, _) {
-                  final q = widget.controller.queue;
-                  final idx = widget.controller.index;
-                  return ListView.builder(
-                    controller: scrollController,
-                    itemCount: q.length,
-                    itemBuilder: (context, i) {
-                      final active = i == idx;
-                      final sn = q[i];
-                      final cs = Theme.of(context).colorScheme;
-                      final bl = widget.settings.isBlacklisted(sn);
-                      return ListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                        leading: Text('${i + 1}',
-                            style: TextStyle(
-                                color: active
-                                    ? cs.primary
-                                    : cs.onSurfaceVariant)),
-                        // 歌名 + 歌手同一行
-                        title: Text.rich(
-                          TextSpan(children: [
-                            TextSpan(text: sn.title ?? ''),
-                            if ((sn.artist ?? '').isNotEmpty)
-                              TextSpan(
-                                text: ' · ${sn.artist}',
-                                style: TextStyle(
-                                    color: cs.onSurfaceVariant, fontSize: 12),
-                              ),
-                          ]),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        // 收藏 / 黑名单 / 删除 三图标
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              visualDensity: VisualDensity.compact,
-                              iconSize: 20,
-                              icon: Icon(
-                                  sn.starred
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  color: sn.starred ? cs.primary : null),
-                              onPressed: () => widget.controller.toggleStarAt(i),
-                            ),
-                            IconButton(
-                              visualDensity: VisualDensity.compact,
-                              iconSize: 20,
-                              icon: Icon(Icons.heart_broken_rounded,
-                                  color: bl
-                                      ? Colors.orange
-                                      : cs.onSurfaceVariant),
-                              onPressed: () async {
-                                if (bl) {
-                                  await widget.settings.removeBlacklist(sn);
-                                } else {
-                                  await widget.settings.addBlacklist(sn);
-                                }
-                              },
-                            ),
-                            IconButton(
-                              visualDensity: VisualDensity.compact,
-                              iconSize: 20,
-                              icon: Icon(Icons.delete_outline_rounded,
-                                  color: cs.onSurfaceVariant),
-                              onPressed: () =>
-                                  widget.controller.removeFromQueue(i),
-                            ),
-                          ],
-                        ),
-                        onTap: () {
-                          widget.controller.playAt(i);
-                          Navigator.of(ctx).pop();
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+        builder: (ctx, scrollController) =>
+            _queuePanel(context, scrollController: scrollController),
       ),
     );
   }
+
+  Widget _queuePanel(BuildContext context,
+      {ScrollController? scrollController}) {
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('播放列表',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        ),
+        Expanded(
+          child: ListenableBuilder(
+            listenable: widget.controller,
+            builder: (context, _) {
+              final q = widget.controller.queue;
+              final idx = widget.controller.index;
+              return ListView.builder(
+                controller: scrollController,
+                itemCount: q.length,
+                itemBuilder: (context, i) {
+                  final active = i == idx;
+                  final sn = q[i];
+                  final cs = Theme.of(context).colorScheme;
+                  final bl = widget.settings.isBlacklisted(sn);
+                  return ListTile(
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12),
+                    leading: Text('${i + 1}',
+                        style: TextStyle(
+                            color: active ? cs.primary : cs.onSurfaceVariant)),
+                    // 歌名 + 歌手同一行，短横线连接
+                    title: Text.rich(
+                      TextSpan(children: [
+                        TextSpan(text: sn.title ?? ''),
+                        if ((sn.artist ?? '').isNotEmpty)
+                          TextSpan(
+                            text: ' - ${sn.artist}',
+                            style: TextStyle(
+                                color: cs.onSurfaceVariant, fontSize: 12),
+                          ),
+                      ]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // 收藏 / 黑名单 / 删除 三图标
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 20,
+                          icon: Icon(
+                              sn.starred
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: sn.starred ? cs.primary : null),
+                          onPressed: () =>
+                              widget.controller.toggleStarAt(i),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 20,
+                          icon: Icon(Icons.heart_broken_rounded,
+                              color: bl ? Colors.orange : cs.onSurfaceVariant),
+                          onPressed: () async {
+                            if (bl) {
+                              await widget.settings.removeBlacklist(sn);
+                            } else {
+                              await widget.settings.addBlacklist(sn);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 20,
+                          icon: Icon(Icons.delete_outline_rounded,
+                              color: cs.onSurfaceVariant),
+                          onPressed: () =>
+                              widget.controller.removeFromQueue(i),
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      widget.controller.playAt(i);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
 }
 
 /// Big single line that tracks the currently-active lyric (portrait).
