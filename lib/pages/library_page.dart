@@ -792,6 +792,70 @@ class _ImportTabState extends State<_ImportTab> {
     super.dispose();
   }
 
+  /// 长按 ID 歌单弹出操作菜单：重命名 / 删除。
+  Future<void> _showIdPlaylistMenu(Map<String, String> e) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(e['name'] ?? '歌单',
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text('ID: ${e['id']}', maxLines: 1),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('重命名'),
+              onTap: () => Navigator.pop(ctx, 'rename'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('删除'),
+              onTap: () => Navigator.pop(ctx, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    if (action == 'rename') {
+      final name = await _promptRename(e['name'] ?? '歌单');
+      if (name != null && name.trim().isNotEmpty) {
+        await widget.settings
+            .renameImportedQqPlaylist(e['id']!, name.trim());
+        if (mounted) setState(() {});
+      }
+    } else if (action == 'delete') {
+      await widget.settings.removeImportedQqPlaylist(e['id']!);
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<String?> _promptRename(String current) {
+    final ctrl = TextEditingController(text: current);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('重命名歌单'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLength: 30,
+          decoration: const InputDecoration(labelText: '歌单名称'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: const Text('确定')),
+        ],
+      ),
+    );
+  }
+
   /// 从粘贴的链接/纯数字里提取歌单 ID（y.qq.com/n/ryqq_v2/playlist/9683093831）。
   static String _extractId(String raw) {
     final m = RegExp(r'(\d{5,})').firstMatch(raw);
@@ -919,20 +983,27 @@ class _ImportTabState extends State<_ImportTab> {
                   itemBuilder: (context, i) {
                     final e = _list[i];
                     return ListTile(
-                      leading: const Icon(Icons.queue_music_rounded),
+                      leading: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: const [Color(0xFF3A6DF0), Color(0xFF5B8CFA)],
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.queue_music_rounded,
+                            color: Colors.white, size: 26),
+                      ),
                       title: Text(e['name'] ?? '歌单',
                           maxLines: 1, overflow: TextOverflow.ellipsis),
                       subtitle: Text('ID: ${e['id']}',
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () async {
-                          await widget.settings
-                              .removeImportedQqPlaylist(e['id']!);
-                          if (mounted) setState(() {});
-                        },
-                      ),
                       onTap: () => _open(e['id']!, e['name'] ?? '歌单'),
+                      onLongPress: () => _showIdPlaylistMenu(e),
                     );
                   },
                 ),
