@@ -13,6 +13,7 @@ import '../widgets.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
 import 'playlist_page.dart';import 'player_page.dart';
+import '../mini_player.dart';
 
 
 /// Library page with tabs: 歌单 / 专辑 / 歌手 / 本地(真本地扫描).
@@ -978,36 +979,71 @@ class _ImportTabState extends State<_ImportTab> {
                     style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 )
-              : ListView.builder(
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  gridDelegate: isCarScreen(context) &&
+                          MediaQuery.sizeOf(context).width <
+                              MediaQuery.sizeOf(context).height
+                      ? const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.86)
+                      : SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: isCarScreen(context) ? 176 : 118,
+                          mainAxisSpacing: isCarScreen(context) ? 12 : 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: isCarScreen(context) ? 0.7 : 0.72),
                   itemCount: _list.length,
                   itemBuilder: (context, i) {
                     final e = _list[i];
-                    return ListTile(
-                      leading: Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: const [Color(0xFF3A6DF0), Color(0xFF5B8CFA)],
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.queue_music_rounded,
-                            color: Colors.white, size: 26),
-                      ),
-                      title: Text(e['name'] ?? '歌单',
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text('ID: ${e['id']}',
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
                       onTap: () => _open(e['id']!, e['name'] ?? '歌单'),
                       onLongPress: () => _showIdPlaylistMenu(e),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AspectRatio(
+                            aspectRatio: 1,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF3A6DF0),
+                                      Color(0xFF5B8CFA),
+                                    ],
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                    Icons.queue_music_rounded,
+                                    color: Colors.white,
+                                    size: 34),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(e['name'] ?? '歌单',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.25)),
+                        ],
+                      ),
                     );
                   },
                 ),
         ),
+        MiniPlayer(settings: widget.settings, controller: widget.controller),
       ],
     );
   }
