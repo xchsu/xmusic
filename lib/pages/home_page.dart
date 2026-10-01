@@ -260,7 +260,7 @@ class _HomePageState extends State<HomePage> {
       songs = _filterBlacklist(await ext.qqRadioSongs(radioId).timeout(const Duration(seconds: 20)));
     } catch (e) {
       songs = const [];
-      error = '加载失败（$e）';
+      error = '电台歌曲加载失败（QQ需登录态，已限制匿名拉取）';
     }
     if (songs.isEmpty && error == null) error = '没有歌曲数据';
     if (!mounted) return;
@@ -485,8 +485,13 @@ class _HomePageState extends State<HomePage> {
                           padding: const EdgeInsets.only(right: 10),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
-                            onTap: () => _openQqRadio(r['name'] as String,
-                                (r['id'] as num).toInt()),
+                            onTap: () {
+                              final rid =
+                                  int.tryParse(r['id'].toString()) ?? 0;
+                              if (rid > 0) {
+                                _openQqRadio(r['name'] as String, rid);
+                              }
+                            },
                             child: SizedBox(
                               width: 86,
                               child: Column(
