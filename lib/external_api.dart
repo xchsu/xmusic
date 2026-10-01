@@ -827,6 +827,80 @@ class ExternalApi {
     }
   }
 
+  /// QQ 电台列表（fcg_v8_radiolist 匿名接口）：返回 [{id, name, coverUrl, listenNum}]
+  Future<List<Map<String, dynamic>>> qqRadios() async {
+    final uri = Uri.parse('https://c.y.qq.com/v8/fcg-bin/fcg_v8_radiolist.fcg')
+        .replace(queryParameters: {
+      'channel': 'radio', 'page': 'index', 'tpl': 'wk', 'new': '1',
+      'p': '1', 'format': 'json', 'outCharset': 'utf-8',
+    });
+    final resp = await http.get(uri, headers: {
+      'User-Agent': 'Mozilla/5.0',
+      'Referer': 'https://y.qq.com/',
+    }).timeout(const Duration(seconds: 15));
+    final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+    final groupList = (j['data']?['data']?['groupList'] as List?) ?? const [];
+    final out = <Map<String, dynamic>>[];
+    for (final g in groupList.cast<Map>()) {
+      final radios = (g['radioList'] as List?) ?? const [];
+      for (final r in radios.cast<Map>()) {
+        final id = r['radioId'];
+        final name = (r['radioName'] ?? '').toString();
+        if (id == null || name.isEmpty) continue;
+        final img = (r['radioImg'] ?? '').toString();
+        out.add({
+          'id': id,
+          'name': name,
+          'coverUrl': img.startsWith('http')
+              ? img.replaceFirst('http://', 'https://')
+              : null,
+          'listenNum': (r['listenNum'] ?? 0),
+        });
+      }
+    }
+    return out;
+  }
+
+  /// QQ 电台歌曲（musicu get_radio_track，匿名可用）：每电台固定返回 5 首推荐。
+  Future<List<Song>> qqRadioSongs(int radioId) async {
+    final body = {
+      'comm': {'ct': 24, 'cv': 0},
+      'songlist': {
+        'module': 'mb_track_radio_svr',
+        'method': 'get_radio_track',
+        'param': {'id': radioId, 'firstplay': 1, 'num': 5},
+      },
+    };
+    final uri = Uri.parse('https://t.y.qq.com/cgi-bin/musicu.fcg')
+        .replace(queryParameters: {'format': 'json', 'data': jsonEncode(body)});
+    final resp = await http.get(uri, headers: {
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
+      'Referer': 'https://y.qq.com/',
+    }).timeout(const Duration(seconds: 15));
+    final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+    final tracks = (j['songlist']?['data']?['tracks'] as List?) ?? const [];
+    return tracks.cast<Map>().map((t) {
+      final album = (t['album'] as Map?) ?? const {};
+      final albumMid = (album['mid'] ?? '').toString();
+      final singers = ((t['singer'] as List?) ?? const [])
+          .map((x) => ((x as Map?) ?? const {})['name']?.toString() ?? '')
+          .where((x) => x.isNotEmpty)
+          .join(' / ');
+      return Song(
+        id: (t['mid'] ?? '').toString(),
+        title: (t['name'] ?? t['title'] ?? '').toString(),
+        artist: singers.isEmpty ? '未知' : singers,
+        album: (album['name'] ?? '').toString(),
+        coverUrl: albumMid.isEmpty
+            ? null
+            : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
+        durationSec: (t['interval'] as num?)?.toInt(),
+        fromExternal: true,
+        externalSource: 'qq',
+      );
+    }).where((s) => s.id.isNotEmpty).toList();
+  }
+
   /// QQ 歌单详情：歌单名 + 歌曲列表（qzone 匿名接口，song_num 上限约 1000）。
   /// 用于音乐库"导入歌单"：输入歌单 ID 拉取歌曲（不足 1000 首的歌单可拉全）。
   Future<(String, List<Song>, String)> qqPlaylistDetail(String dissid,

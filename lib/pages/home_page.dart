@@ -28,6 +28,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
+  late Future<List<Map<String, dynamic>>> _qqRadios;
   int _qqCategoryId = 0; // QQ歌单分类：0全部(推荐)/3152流行/41摇滚/48民谣/45电子/42说唱/61古风/49纯音乐(轻音乐)
   static const List<Map<String, dynamic>> _qqCategories = [
     {'id': 0, 'name': '全部'},
@@ -59,6 +60,8 @@ class _HomePageState extends State<HomePage> {
     _toplists = _loadToplists();
     // QQ 精选歌单（硬编码 dissid，本地列表零网络请求；点进去才拉歌曲）
     _qqPlaylists = ext.qqPlaylists();
+    // QQ 电台列表（匿名接口）
+    _qqRadios = ext.qqRadios();
     // 本地推荐
     _localRec = _dailyLocalRec();
   }
@@ -133,7 +136,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _reload() async {
     _load();
-    await Future.wait([_toplists, _qqPlaylists]);
+    await Future.wait([_toplists, _qqPlaylists, _qqRadios]);
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
@@ -240,6 +243,35 @@ class _HomePageState extends State<HomePage> {
         controller: widget.controller,
         error: error,
         onRetry: () => _openQqPlaylist(name, dissid),
+        onPlay: (i) => _playSongs(songs, i),
+      ),
+    ));
+  }
+
+  /// QQ 电台：拉电台推荐歌曲（匿名接口，每电台固定5首），进列表页播放。
+  Future<void> _openQqRadio(String name, int radioId) async {
+    final ext = widget.controller.external;
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    List<Song> songs;
+    String? error;
+    try {
+      songs = _filterBlacklist(await ext.qqRadioSongs(radioId).timeout(const Duration(seconds: 20)));
+    } catch (e) {
+      songs = const [];
+      error = '加载失败（$e）';
+    }
+    if (songs.isEmpty && error == null) error = '没有歌曲数据';
+    if (!mounted) return;
+    Navigator.pop(context);
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _PlaylistDetail(
+        title: name,
+        songs: songs,
+        client: _client,
+        settings: widget.settings,
+        controller: widget.controller,
+        error: error,
+        onRetry: () => _openQqRadio(name, radioId),
         onPlay: (i) => _playSongs(songs, i),
       ),
     ));
@@ -386,6 +418,136 @@ class _HomePageState extends State<HomePage> {
                     p['dissid'] as String,
                     p['coverImgUrl'] as String?,
                   )).toList(),
+                );
+              },
+            ),
+
+            // QQ 电台（匿名接口：电台列表 → 点进拉 5 首推荐歌曲）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('QQ电台',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  IconButton(
+                    tooltip: '刷新电台',
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    onPressed: () {
+                      setState(() => _qqRadios =
+                          widget.controller.external.qqRadios());
+                    },
+                  ),
+                ],
+              ),
+            ),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _qqRadios,
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded,
+                            size: 18, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('电台加载失败：${snap.error}',
+                              maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.orange, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                final list = snap.data ?? const [];
+                if (list.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text('电台暂无数据',
+                        style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  );
+                }
+                return SizedBox(
+                  height: 116,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      for (final r in list)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _openQqRadio(r['name'] as String,
+                                (r['id'] as num).toInt()),
+                            child: SizedBox(
+                              width: 86,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: (r['coverUrl'] is String &&
+                                            (r['coverUrl'] as String).isNotEmpty)
+                                        ? CachedNetworkImage(
+                                            imageUrl: r['coverUrl'] as String,
+                                            height: 86,
+                                            fit: BoxFit.cover,
+                                            httpHeaders: const {
+                                              'User-Agent': 'Mozilla/5.0',
+                                              'Referer': 'https://y.qq.com/',
+                                            },
+                                            placeholder: (_, __) => Container(
+                                                height: 86,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest),
+                                            errorWidget: (_, __, ___) =>
+                                                Container(
+                                              height: 86,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainerHighest,
+                                              alignment: Alignment.center,
+                                              child: Icon(
+                                                  Icons.radio_rounded,
+                                                  size: 28,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant),
+                                            ),
+                                          )
+                                        : Container(
+                                            height: 86,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                            alignment: Alignment.center,
+                                            child: Icon(
+                                                Icons.radio_rounded,
+                                                size: 28,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant),
+                                          ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(r['name'] as String,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
