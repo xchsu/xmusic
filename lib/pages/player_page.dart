@@ -322,13 +322,12 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             const SizedBox(height: 12),
+            _MiniCornerButton(icon: Icons.equalizer_rounded, onTap: () => _openEq(context)),
+            const SizedBox(height: 12),
             ListenableBuilder(
               listenable: widget.controller,
               builder: (context, _) {
                 final sg = widget.controller.current;
-            const SizedBox(height: 12),
-            _MiniCornerButton(icon: Icons.equalizer_rounded, onTap: () => _openEq(context)),
-            const SizedBox(height: 12),
                 final blocked = sg != null && widget.settings.isBlacklisted(sg);
                 return _MiniCornerButton(
                   icon: Icons.heart_broken_rounded,
