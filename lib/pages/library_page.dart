@@ -1291,7 +1291,8 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
                   );
                 },
               ),
-            ),
+            ),,
+          MiniPlayer(settings: widget.settings, controller: widget.controller),
           ],
         )),
       )),
