@@ -144,9 +144,14 @@ class _PlaylistPageState extends State<PlaylistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: (Theme.of(context).brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark)
+          .copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text(widget.playlist.name)),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.playlist.name)),
       body: PageBackground(
             controller: widget.controller,
             settings: widget.settings,
@@ -270,6 +275,6 @@ class _PlaylistPageState extends State<PlaylistPage> {
           MiniPlayer(settings: widget.settings, controller: widget.controller),
         ],
       )),
-    );
+    ));
   }
 }

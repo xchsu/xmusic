@@ -1237,10 +1237,16 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     return PageBackground(
         controller: widget.controller,
         settings: widget.settings,
+        fallbackCoverUrl: songs.isNotEmpty ? songs.first.coverUrl : null,
         child: BigScreenText(
-        child: Scaffold(
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: (Theme.of(context).brightness == Brightness.dark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark)
+              .copyWith(statusBarColor: Colors.transparent),
+          child: Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(title)),
       body: Column(
         children: [
           Expanded(
@@ -1373,7 +1379,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         // 避免个别设备上 bottomNavigationBar 槽位把迷你条撑满全屏、挤没列表（0.2.x 修复回归）
         MiniPlayer(settings: settings, controller: controller),
       ],
-      )),
+      ))),
     ));
   }
 }

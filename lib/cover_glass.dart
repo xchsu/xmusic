@@ -11,10 +11,11 @@ import 'settings.dart';
 /// 页面背景透出**当前播放歌曲的封面图片**（玻璃质感、随切歌自动更新）；
 /// 未开启时回退手动背景色或主题表面，外观与原先一致。
 class CoverGlassBackground extends StatelessWidget {
-  const CoverGlassBackground({super.key, required this.controller, required this.settings});
+  const CoverGlassBackground({super.key, required this.controller, required this.settings, this.fallbackCoverUrl});
 
   final PlayerController controller;
   final AppSettings settings;
+  final String? fallbackCoverUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +40,8 @@ class CoverGlassBackground extends StatelessWidget {
                 ?.toString();
           }
         }
+        // 无当前播放封面时，用页面传入的兜底封面（列表首曲等），保证封面透出背景始终有内容
+        coverUrl ??= fallbackCoverUrl;
         final useCover = isCover && (coverUrl != null && coverUrl.isNotEmpty);
         return Stack(
           fit: StackFit.expand,
@@ -107,17 +110,19 @@ class PageBackground extends StatelessWidget {
     required this.controller,
     required this.settings,
     required this.child,
+    this.fallbackCoverUrl,
   });
   final PlayerController controller;
   final AppSettings settings;
   final Widget child;
+  final String? fallbackCoverUrl;
   @override
   Widget build(BuildContext context) {
     return Stack(
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: CoverGlassBackground(controller: controller, settings: settings),
+          child: CoverGlassBackground(controller: controller, settings: settings, fallbackCoverUrl: fallbackCoverUrl),
         ),
         Positioned.fill(child: child),
       ],

@@ -1209,12 +1209,18 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return BigScreenText(
-      child: Scaffold(
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: (Theme.of(context).brightness == Brightness.dark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark)
+              .copyWith(statusBarColor: Colors.transparent),
+          child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: Text(widget.name)),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.name)),
         body: PageBackground(
             controller: widget.controller,
             settings: widget.settings,
+            fallbackCoverUrl: widget.songs.isNotEmpty ? widget.songs.first.coverUrl : null,
             child: Column(
           children: [
             Padding(
@@ -1281,7 +1287,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
             ),
           ],
         )),
-      ),
+      )),
     );
   }
 }
