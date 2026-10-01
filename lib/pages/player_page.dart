@@ -150,6 +150,20 @@ class _PlayerPageState extends State<PlayerPage> {
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  if ((widget.controller.queueSource ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16, bottom: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          widget.controller.queueSource!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                        ),
+                      ),
+                    ),
                   Center(
                     child: StreamBuilder<bool>(
                       stream: widget.controller.player.playingStream,
@@ -180,6 +194,7 @@ class _PlayerPageState extends State<PlayerPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _actionSidebarLeft(context),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 16),
@@ -223,18 +238,6 @@ class _PlayerPageState extends State<PlayerPage> {
                     color: theme.colorScheme.onSurfaceVariant,
                     fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14)),
               ),
-              // 当前队列来源（歌单/榜单/电台/专辑），展示播放路径
-              if ((widget.controller.queueSource ?? '').isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  widget.controller.queueSource!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
-                ),
-              ],
 
               // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
               if (widget.controller.loadingUrl) ...[
@@ -289,6 +292,55 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   // 右侧竖排按钮：歌词缩放、收藏、下载、上传NAS、黑名单。放在歌词板块右边，不占歌名行。
+  /// 左侧动作栏（手机）：歌词缩放 + 收藏 + 黑名单；车机无需下载按钮，左侧为空。
+  Widget _actionSidebarLeft(BuildContext context) {
+    final car = _carUI(context);
+    final bool _landP = MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final double side = _landP ? 18 : 30;
+    final double _gap = _landP ? 2.0 : 6.0;
+    if (car) return const SizedBox.shrink();
+    final Widget bar = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: LyricSizeControls(settings: widget.settings, land: _landP),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: _FavoriteButton(controller: widget.controller),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: ListenableBuilder(
+            listenable: widget.controller,
+            builder: (context, _) {
+              final sg = widget.controller.current;
+              final blocked = sg != null && widget.settings.isBlacklisted(sg);
+              return IconButton(
+                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
+                icon: Icon(Icons.heart_broken_rounded,
+                    color: blocked ? Theme.of(context).colorScheme.error : null),
+                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+    return Container(
+      width: _landP ? 40 : 44,
+      margin: const EdgeInsets.only(left: 8),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: bar,
+      ),
+    );
+  }
+
   Widget _actionSidebar(BuildContext context) {
     // [xmusic] 2026-09-28 车机端右侧5按钮与主页&返回一致(_MiniCornerButton 64/48毛玻璃圆钮)；手机保持小图标 30
     final car = _carUI(context);
@@ -347,33 +399,6 @@ class _PlayerPageState extends State<PlayerPage> {
       children: [
         IconTheme(
           data: IconThemeData(size: side),
-          child: LyricSizeControls(settings: widget.settings, land: _landP),
-        ),
-        SizedBox(height: _gap),
-        IconTheme(
-          data: IconThemeData(size: side),
-          child: _FavoriteButton(controller: widget.controller),
-        ),
-        SizedBox(height: _gap),
-        IconTheme(
-          data: IconThemeData(size: side),
-          child: ListenableBuilder(
-            listenable: widget.controller,
-            builder: (context, _) {
-              final sg = widget.controller.current;
-              final blocked = sg != null && widget.settings.isBlacklisted(sg);
-              return IconButton(
-                tooltip: blocked ? '移出黑名单' : '加入黑名单（榜单/歌单不再显示）',
-                icon: Icon(Icons.heart_broken_rounded,
-                    color: blocked ? Theme.of(context).colorScheme.error : null),
-                onPressed: sg == null ? null : () => _toggleBlacklist(sg),
-              );
-            },
-          ),
-        ),
-        SizedBox(height: _gap),
-        IconTheme(
-          data: IconThemeData(size: side),
           child: IconButton(
             tooltip: '均衡器',
             icon: Icon(Icons.equalizer_rounded),
@@ -430,6 +455,20 @@ class _PlayerPageState extends State<PlayerPage> {
               final s = math.min(box.maxWidth * (car ? 0.72 : 0.62), box.maxHeight * (car ? 0.78 : 0.62));
               return Column(
                 children: [
+                  if ((widget.controller.queueSource ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16, bottom: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          widget.controller.queueSource!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                        ),
+                      ),
+                    ),
                   // 封面：自适应占满上方空间（车机横屏加大）
                   Expanded(
                     child: Center(
@@ -492,6 +531,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _actionSidebarLeft(context),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(0, 14, 0, 4),

@@ -194,16 +194,6 @@ class _PlaylistPageState extends State<PlaylistPage> {
                           ),
                           const SizedBox(width: 8),
                           TextButton.icon(
-                            icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                            label: const Text('顺序'),
-                            style: TextButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 10)),
-                            onPressed: () => _playSongs(songs, vis[0]),
-                          ),
-                          const SizedBox(width: 4),
-                          TextButton.icon(
                             icon: const Icon(Icons.shuffle_rounded, size: 20),
                             label: const Text('随机'),
                             style: TextButton.styleFrom(
@@ -214,6 +204,16 @@ class _PlaylistPageState extends State<PlaylistPage> {
                               final s = vis.map((i) => songs[i]).toList()..shuffle();
                               _playSongs(s, 0);
                             },
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                            label: const Text('顺序'),
+                            style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10)),
+                            onPressed: () => _playSongs(songs, vis[0]),
                           ),
                           const SizedBox(width: 4),
                           TextButton.icon(

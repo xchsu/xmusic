@@ -1217,21 +1217,21 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
               child: Row(
                 children: [
                   TextButton.icon(
-                    icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                    label: const Text('顺序'),
-                    style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 10)),
-                    onPressed: widget.songs.isEmpty ? null : () => _play(0),
-                  ),
-                  const SizedBox(width: 4),
-                  TextButton.icon(
                     icon: const Icon(Icons.shuffle_rounded, size: 20),
                     label: const Text('随机'),
                     style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(horizontal: 10)),
                     onPressed: widget.songs.isEmpty ? null : _playRandom,
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                    label: const Text('顺序'),
+                    style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10)),
+                    onPressed: widget.songs.isEmpty ? null : () => _play(0),
                   ),
                   const SizedBox(width: 4),
                   TextButton.icon(
