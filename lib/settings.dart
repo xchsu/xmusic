@@ -65,7 +65,7 @@ class AppSettings extends ChangeNotifier {
   double _lyricScalePortrait = 1.0;
   double _lyricScaleLandscape = 1.0;
   int _bgColor = 0;
-  bool _coverColorBg = false;
+  bool _coverColorBg = true;
   int _lyricActive = lyricActiveDefault;
   int _lyricPast = lyricPastDefault;
   int _lyricFuture = lyricFutureDefault;
@@ -150,7 +150,7 @@ class AppSettings extends ChangeNotifier {
     _lyricScaleLandscape = (_prefs.getDouble(_kScaleL) ?? _lyricScalePortrait).clamp(minScale, maxScale);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;
-    _coverColorBg = _prefs.getBool(_kCoverColorBg) ?? false;
+    _coverColorBg = _prefs.getBool(_kCoverColorBg) ?? true;
     _lyricActive = _prefs.getInt(_kLyricActive) ?? lyricActiveDefault;
     _lyricPast = _prefs.getInt(_kLyricPast) ?? lyricPastDefault;
     _lyricFuture = _prefs.getInt(_kLyricFuture) ?? lyricFutureDefault;
