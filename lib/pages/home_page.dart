@@ -35,12 +35,17 @@ class _HomePageState extends State<HomePage> {
     {'id': 41, 'name': '摇滚'},
     {'id': 48, 'name': '民谣'},
     {'id': 45, 'name': '电子'},
-    {'id': 42, 'name': '说唱'},
     {'id': 61, 'name': '古风'},
-    {'id': 49, 'name': '纯音乐'},
+    {'id': 49, 'name': '轻音乐'},
     {'id': 46, 'name': '爵士'},
     {'id': 43, 'name': 'R&B'},
     {'id': 47, 'name': '古典'},
+    {'id': 68, 'name': '中国风'},
+    {'id': 59, 'name': '经典'},
+    {'id': 44, 'name': '乡村'},
+    {'id': 51, 'name': '蓝调'},
+    {'id': 53, 'name': '新世纪'},
+    {'id': 64, 'name': 'KTV热歌'},
   ];
   late Future<List<Song>> _localRec;
 
@@ -260,7 +265,7 @@ class _HomePageState extends State<HomePage> {
       songs = _filterBlacklist(await ext.qqRadioSongs(radioId).timeout(const Duration(seconds: 20)));
     } catch (e) {
       songs = const [];
-      error = '电台歌曲加载失败（QQ需登录态，已限制匿名拉取）';
+      error = '电台歌曲加载失败：$e';
     }
     if (songs.isEmpty && error == null) error = '没有歌曲数据';
     if (!mounted) return;

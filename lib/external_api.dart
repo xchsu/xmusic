@@ -916,6 +916,11 @@ class ExternalApi {
         ));
       }
     }
+    if (songs.isEmpty) {
+      // 循环结束仍无歌曲：QQ 已封死匿名拉取电台（含"个性电台"需登录态），
+      // 明确抛错（带实际 code 便于定位），避免上层显示"没有歌曲数据"误导。
+      throw StateError('QQ电台接口无歌曲（code=$code，需登录态，已限制匿名拉取）');
+    }
     return songs;
   }
 
