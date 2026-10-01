@@ -1211,7 +1211,10 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(title: Text(widget.name)),
-        body: Column(
+        body: PageBackground(
+            controller: widget.controller,
+            settings: widget.settings,
+            child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -1276,7 +1279,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
               ),
             ),
           ],
-        ),
+        )),
       ),
     );
   }

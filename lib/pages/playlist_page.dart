@@ -146,7 +146,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(widget.playlist.name)),
-      body: Column(
+      body: PageBackground(
+            controller: widget.controller,
+            settings: widget.settings,
+            child: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Song>>(
@@ -265,7 +268,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
           ),
           MiniPlayer(settings: widget.settings, controller: widget.controller),
         ],
-      ),
+      )),
     );
   }
 }
