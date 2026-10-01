@@ -1131,8 +1131,8 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
         .toList();
   }
 
-  Future<void> _play(int i) async {
-    await widget.controller.playQueue(_songs, i, source: widget.name);
+  void _play(int i) {
+    widget.controller.playQueue(_songs, i, source: widget.name);
     if (mounted) setState(() {});
     if (context.mounted) {
       await openPlayerPage(context,
@@ -1140,9 +1140,9 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
     }
   }
 
-  Future<void> _playRandom() async {
+  void _playRandom() {
     final songs = List.of(_songs)..shuffle();
-    await widget.controller.playQueue(songs, 0, source: widget.name);
+    widget.controller.playQueue(songs, 0, source: widget.name);
     if (mounted) setState(() {});
     if (context.mounted) {
       await openPlayerPage(context,
