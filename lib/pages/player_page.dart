@@ -326,6 +326,9 @@ class _PlayerPageState extends State<PlayerPage> {
               listenable: widget.controller,
               builder: (context, _) {
                 final sg = widget.controller.current;
+            const SizedBox(height: 12),
+            _MiniCornerButton(icon: Icons.equalizer_rounded, onTap: () => _openEq(context)),
+            const SizedBox(height: 12),
                 final blocked = sg != null && widget.settings.isBlacklisted(sg);
                 return _MiniCornerButton(
                   icon: Icons.heart_broken_rounded,
@@ -367,6 +370,15 @@ class _PlayerPageState extends State<PlayerPage> {
                 onPressed: sg == null ? null : () => _toggleBlacklist(sg),
               );
             },
+          ),
+        ),
+        SizedBox(height: _gap),
+        IconTheme(
+          data: IconThemeData(size: side),
+          child: IconButton(
+            tooltip: '均衡器',
+            icon: Icon(Icons.equalizer_rounded),
+            onPressed: () => _openEq(context),
           ),
         ),
         SizedBox(height: _gap),
@@ -1711,12 +1723,6 @@ class _Controls extends StatelessWidget {
           ),
           icon: const Icon(Icons.skip_next_rounded),
           onPressed: controller.hasNext ? controller.next : null,
-        ),
-        IconButton(
-          iconSize: sideIcon,
-          tooltip: '均衡器',
-          icon: const Icon(Icons.equalizer_rounded),
-          onPressed: onShowEq,
         ),
         IconButton(
           iconSize: sideIcon,

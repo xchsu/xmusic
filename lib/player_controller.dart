@@ -424,6 +424,7 @@ class PlayerController extends ChangeNotifier {
   Future<void> playQueue(List<Song> songs, int startIndex,
       {String? source}) async {
     queue = List.of(songs);
+    queueSource = source;
     index = startIndex;
     notifyListeners();
     unawaited(refreshCoverTint());
