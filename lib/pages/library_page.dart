@@ -1135,7 +1135,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
     widget.controller.playQueue(_songs, i, source: widget.name);
     if (mounted) setState(() {});
     if (context.mounted) {
-      await openPlayerPage(context,
+      openPlayerPage(context,
           settings: widget.settings, controller: widget.controller);
     }
   }
@@ -1145,7 +1145,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
     widget.controller.playQueue(songs, 0, source: widget.name);
     if (mounted) setState(() {});
     if (context.mounted) {
-      await openPlayerPage(context,
+      openPlayerPage(context,
           settings: widget.settings, controller: widget.controller);
     }
   }
