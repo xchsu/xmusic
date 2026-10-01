@@ -119,7 +119,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
     );
     for (final s in list) {
       try {
-        final msg = await widget.controller.uploadSongToNas(s);
+        final msg = await widget.controller.uploadSongToNas(s, folder: widget.playlist.name);
         if (msg.startsWith('已上传')) {
           ok++;
         } else {

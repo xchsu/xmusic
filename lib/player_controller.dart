@@ -655,7 +655,7 @@ class PlayerController extends ChangeNotifier {
     } catch (_) {
       return '无法创建目录 $base，请在系统设置中授予存储权限';
     }
-    final safe = _safeName('${s.artist} - ${s.title}');
+    final safe = _safeName('${s.title} - ${s.artist}');
     final file = File('${dir.path}/$safe.mp3');
     try {
       await file.writeAsBytes(bytes.bodyBytes);
@@ -665,7 +665,7 @@ class PlayerController extends ChangeNotifier {
     return '已保存到 ${file.path}';
   }
 
-  Future<String> uploadSongToNas(Song s) async {
+  Future<String> uploadSongToNas(Song s, {String? folder}) async {
     if (!settings.webdavConfigured) return '未配置 NAS (WebDAV) 地址';
     final url = await _mediaUrlForSong(s);
     if (url.isEmpty) return '无法获取下载地址';
@@ -673,7 +673,11 @@ class PlayerController extends ChangeNotifier {
     if (media.statusCode != 200) return '获取歌曲失败 HTTP ${media.statusCode}';
     final base = settings.webdavUrl.replaceAll(RegExp(r'/+$'), '');
     final sub = (settings.webdavPath.trim().isEmpty ? 'Music/xmusic' : settings.webdavPath.trim()).replaceAll(RegExp(r'^/|/$'), '');
-    final path = '$base/$sub/${_safeName("${s.artist} - ${s.title}")}.mp3';
+    // 文件命名：歌曲-歌手；下载整个歌单时外层加歌单名文件夹
+    final dir = (folder == null || folder.trim().isEmpty)
+        ? ''
+        : '${_safeName(folder.trim())}/';
+    final path = '$base/$sub/$dir${_safeName('${s.title} - ${s.artist}')}.mp3';
     final auth = '${settings.webdavUser}:${settings.webdavPass}';
     final encoded = base64Encode(utf8.encode(auth));
     final resp = await http.put(

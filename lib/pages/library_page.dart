@@ -1185,7 +1185,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
       ),
     );
     for (final s in songs) {
-      final r = await widget.controller.uploadSongToNas(s);
+      final r = await widget.controller.uploadSongToNas(s, folder: widget.name);
       done++;
       if (r.startsWith('已上传')) {
         ok++;

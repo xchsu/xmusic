@@ -1199,7 +1199,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
       ),
     );
     for (final s in songs) {
-      final r = await widget.controller.uploadSongToNas(s);
+      final r = await widget.controller.uploadSongToNas(s, folder: widget.title);
       done++;
       if (r.startsWith('已上传')) {
         ok++;
