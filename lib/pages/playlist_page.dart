@@ -5,6 +5,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'mini_player.dart';
 import 'player_page.dart';
 

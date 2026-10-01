@@ -10,6 +10,7 @@ import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
 import '../widgets.dart';
+import '../cover_glass.dart';
 import 'album_page.dart';
 import 'artist_page.dart';
 import 'playlist_page.dart';import 'player_page.dart';
