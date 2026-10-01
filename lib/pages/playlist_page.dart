@@ -69,7 +69,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
-    await widget.controller.playQueue(songs, index);
+    await widget.controller.playQueue(songs, index, source: '歌单 · ${widget.playlist.name}');
     if (mounted) setState(() {});
     if (context.mounted) {
       Navigator.of(context).push(MaterialPageRoute(

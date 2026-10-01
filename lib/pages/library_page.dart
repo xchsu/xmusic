@@ -132,7 +132,7 @@ class _FavoriteTabState extends State<_FavoriteTab> {
 
   Future<void> _play(List<Song> songs, int i) async {
     // 点歌即跳转播放页；底部全局迷你播放条仍会出现
-    await widget.controller.playQueue(songs, i);
+    await widget.controller.playQueue(songs, i, source: '收藏');
     if (mounted) setState(() {});
     if (context.mounted) {
       await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
@@ -698,7 +698,7 @@ class _LocalTabState extends State<_LocalTab> {
 
   Future<void> _play(int i) async {
     // 点歌即跳转播放页；底部全局迷你播放条仍会出现
-    await widget.controller.playQueue(_songs, i);
+    await widget.controller.playQueue(_songs, i, source: '本地音乐');
     if (mounted) setState(() {});
     if (context.mounted) {
       await openPlayerPage(context, settings: widget.settings, controller: widget.controller);
@@ -1130,7 +1130,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
   }
 
   Future<void> _play(int i) async {
-    await widget.controller.playQueue(_songs, i);
+    await widget.controller.playQueue(_songs, i, source: widget.name);
     if (mounted) setState(() {});
     if (context.mounted) {
       await openPlayerPage(context,
@@ -1140,7 +1140,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
 
   Future<void> _playRandom() async {
     final songs = List.of(_songs)..shuffle();
-    await widget.controller.playQueue(songs, 0);
+    await widget.controller.playQueue(songs, 0, source: widget.name);
     if (mounted) setState(() {});
     if (context.mounted) {
       await openPlayerPage(context,

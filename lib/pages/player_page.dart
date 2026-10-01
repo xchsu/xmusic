@@ -14,7 +14,8 @@ import '../lyrics.dart';
 import '../player_controller.dart';
 import '../settings.dart';
 import '../subsonic.dart';
-import '../widgets.dart';
+import '../widgets.dart';
+import '../audio_handler.dart';
 
 /// Full-screen player.
 ///
@@ -221,6 +222,19 @@ class _PlayerPageState extends State<PlayerPage> {
                     color: theme.colorScheme.onSurfaceVariant,
                     fontSize: (isCarScreen(context) && MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height) ? 12 : 14)),
               ),
+              // 当前队列来源（歌单/榜单/电台/专辑），展示播放路径
+              if ((widget.controller.queueSource ?? '').isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  widget.controller.queueSource!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                ),
+              ],
+
               // 外源歌正在解析播放地址时的加载反馈（并行兜底最多约15s，先告诉用户正在加载）
               if (widget.controller.loadingUrl) ...[
                 const SizedBox(height: 6),
@@ -253,7 +267,7 @@ class _PlayerPageState extends State<PlayerPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _SeekBar(player: widget.controller.player),
-              _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
+              _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context), onShowEq: () => _openEq(context)),
             ],
           ),
         ),
@@ -484,7 +498,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _SeekBar(player: widget.controller.player),
-                    _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context)),
+                    _Controls(controller: widget.controller, compact: false, onShowQueue: () => _openQueue(context), onShowEq: () => _openEq(context)),
                   ],
                 ),
               ),
@@ -580,6 +594,104 @@ class _PlayerPageState extends State<PlayerPage> {
     showTopToast(context, msg, duration: const Duration(seconds: 2));
   }
 
+  Future<void> _openEq(BuildContext context) async {
+    final s = widget.settings;
+    final presets = <String, String>{
+      'off': '关闭', 'pop': '流行', 'rock': '摇滚', 'electronic': '电子',
+      'classical': '古典', 'bass': '低音增强', 'vocal': '人声', 'custom': '自定义',
+    };
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          var gains = <double>[0, 0, 0, 0, 0];
+          if (s.eqCustom.isNotEmpty) {
+            gains = s.eqCustom
+                .split(',')
+                .map((e) => double.tryParse(e.trim()) ?? 0.0)
+                .toList();
+            while (gains.length < 5) {
+              gains.add(0);
+            }
+          }
+          final theme = Theme.of(ctx);
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('均衡器',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final e in presets.entries)
+                        ChoiceChip(
+                          label: Text(e.value),
+                          selected: s.eqPreset == e.key,
+                          onSelected: (_) async {
+                            await s.setEqPreset(e.key);
+                            await applyEqualizer(s.eqPreset, s.eqCustom);
+                            setSheet(() {});
+                          },
+                        ),
+                    ],
+                  ),
+                  if (s.eqPreset == 'custom') ...[
+                    const SizedBox(height: 16),
+                    for (var i = 0; i < 5; i++) ...[
+                      Row(
+                        children: [
+                          SizedBox(
+                              width: 42,
+                              child: Text(_bandName(i),
+                                  style: theme.textTheme.bodySmall)),
+                          Expanded(
+                            child: Slider(
+                              min: -6,
+                              max: 6,
+                              divisions: 24,
+                              value: gains[i].clamp(-6.0, 6.0).toDouble(),
+                              onChanged: (v) {
+                                gains[i] = v;
+                                setSheet(() {});
+                              },
+                              onChangeEnd: (v) async {
+                                gains[i] = v;
+                                await s.setEqCustom(gains
+                                    .map((g) => g.toStringAsFixed(1))
+                                    .join(','));
+                                await applyEqualizer('custom', s.eqCustom);
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                              width: 42,
+                              child: Text('${gains[i].toStringAsFixed(1)}',
+                                  style: theme.textTheme.bodySmall,
+                                  textAlign: TextAlign.right)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _bandName(int i) => const ['低音', '中低音', '中音', '中高音', '高音'][i];
+
   void _openQueue(BuildContext context) {
     final mq = MediaQuery.of(context);
     // 横屏判定直接用宽>高（手机横屏最短边可能 <480，isCarScreen 会返回 false，
@@ -1431,12 +1543,14 @@ class _Controls extends StatelessWidget {
   const _Controls({
     required this.controller,
     required this.compact,
-    this.onShowQueue,
+    this.onShowQueue,
+    this.onShowEq,
   });
 
   final PlayerController controller;
   final bool compact;
-  final VoidCallback? onShowQueue;
+  final VoidCallback? onShowQueue;
+  final VoidCallback? onShowEq;
 
   @override
   Widget build(BuildContext context) {
@@ -1497,7 +1611,13 @@ class _Controls extends StatelessWidget {
         ),
         IconButton(
           iconSize: sideIcon,
-          tooltip: '播放列表',
+                          IconButton(
+                  iconSize: sideIcon,
+                  tooltip: '均衡器',
+                  icon: const Icon(Icons.equalizer_rounded),
+                  onPressed: onShowEq,
+                ),
+tooltip: '播放列表',
           icon: const Icon(Icons.queue_music_rounded),
           onPressed: onShowQueue,
         ),

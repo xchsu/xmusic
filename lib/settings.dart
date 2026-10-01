@@ -40,6 +40,8 @@ class AppSettings extends ChangeNotifier {
   static const _kOldYear = 'old_year';
   static const _kBlacklist = 'blacklist';
   static const _kSyncNas = 'sync_nas';
+  static const _kEqPreset = 'eq_preset';
+  static const _kEqCustom = 'eq_custom';
   static const _kImportedQq = 'imported_qq_playlists';
   static const _kNavHintDismissed = 'nav_hint_dismissed';
   /// 歌词默认色（"跟随默认"/从未设置时使用；避免 0 值在浅色主题被当成黑色）。
@@ -73,6 +75,10 @@ class AppSettings extends ChangeNotifier {
   bool _syncNas = false;
   int _blacklistRev = 0;
   int get blacklistRev => _blacklistRev;
+  /// EQ 预设：off/pop/rock/electronic/classical/bass/vocal/custom。
+  String eqPreset = 'off';
+  /// 自定义 EQ 增益（逗号分隔 dB，如 "3,1,-1,1,3"）。
+  String eqCustom = '';
   int _oldYear = 1995;
   bool _navHintDismissed = false;
   /// 未配置 Navidrome 时的"前往配置"提醒是否已勾选"下次不再提醒"。
@@ -104,6 +110,18 @@ class AppSettings extends ChangeNotifier {
     _syncNas = v;
     await _prefs.setBool(_kSyncNas, v);
     notifyListeners();
+  }
+
+  Future<void> setEqPreset(String v) async {
+    eqPreset = v;
+    notifyListeners();
+    await _prefs.setString(_kEqPreset, v);
+  }
+
+  Future<void> setEqCustom(String v) async {
+    eqCustom = v;
+    notifyListeners();
+    await _prefs.setString(_kEqCustom, v);
   }
 
   Future<void> setNavHintDismissed(bool v) async {
@@ -141,6 +159,8 @@ class AppSettings extends ChangeNotifier {
     _oldYear = _prefs.getInt(_kOldYear) ?? 1995;
     _blacklist = (_prefs.getStringList(_kBlacklist) ?? const []).toSet();
     _syncNas = _prefs.getBool(_kSyncNas) ?? false;
+    eqPreset = _prefs.getString(_kEqPreset) ?? 'off';
+    eqCustom = _prefs.getString(_kEqCustom) ?? '';
     _navHintDismissed = _prefs.getBool(_kNavHintDismissed) ?? false;
     unawaited(syncBlacklistPull()); // 启动时从 NAS 拉取合并黑名单
     downloadPath = _prefs.getString(_kDownloadPath) ?? '';

@@ -146,7 +146,7 @@ class _HomePageState extends State<HomePage> {
     await Future.wait([_toplists, _qqPlaylists, _qqRadios]);
   }
 
-  Future<void> _playSongs(List<Song> songs, int index) async {
+  Future<void> _playSongs(List<Song> songs, int index, {String? source}) async {
     // 先触发跳播放界面（不阻塞），再并行设置队列并播放。
     // 避免 playQueue 偶发解析卡住时 await 阻塞导致"点了歌不跳转"。
     if (context.mounted) {
@@ -154,7 +154,7 @@ class _HomePageState extends State<HomePage> {
           context, settings: widget.settings, controller: widget.controller));
     }
     try {
-      await widget.controller.playQueue(songs, index);
+      await widget.controller.playQueue(songs, index, source: source ?? 'QQ音乐');
     } catch (_) {
       // 播放失败也继续进播放界面，避免卡在列表页
     }
@@ -173,7 +173,7 @@ class _HomePageState extends State<HomePage> {
           settings: widget.settings,
           controller: widget.controller,
           coverUrl: coverUrl,
-          onPlay: (i) => _playSongs(songs, i),
+          onPlay: (i) => _playSongs(songs, i, source: name),
         ),
       ));
       return;
@@ -202,7 +202,7 @@ class _HomePageState extends State<HomePage> {
         coverUrl: coverUrl,
         error: error,
         onRetry: () => _openPlaylist(name, playlistId, coverUrl: coverUrl),
-        onPlay: (i) => _playSongs(fetched, i),
+        onPlay: (i) => _playSongs(fetched, i, source: name),
       ),
     ));
   }
@@ -221,7 +221,7 @@ class _HomePageState extends State<HomePage> {
         settings: widget.settings,
         controller: widget.controller,
         coverUrl: coverUrl,
-        onPlay: (i) => _playSongs(songs, i),
+        onPlay: (i) => _playSongs(songs, i, source: name),
       ),
     ));
   }
@@ -250,7 +250,7 @@ class _HomePageState extends State<HomePage> {
         controller: widget.controller,
         error: error,
         onRetry: () => _openQqPlaylist(name, dissid),
-        onPlay: (i) => _playSongs(songs, i),
+        onPlay: (i) => _playSongs(songs, i, source: name),
       ),
     ));
   }
@@ -279,7 +279,7 @@ class _HomePageState extends State<HomePage> {
         controller: widget.controller,
         error: error,
         onRetry: () => _openQqRadio(name, radioId, replace: true),
-        onPlay: (i) => _playSongs(songs, i),
+        onPlay: (i) => _playSongs(songs, i, source: 'QQ电台 · $name'),
       ),
     );
     // 重试时替换当前失败页，避免叠加页面导致返回两次
@@ -301,7 +301,7 @@ class _HomePageState extends State<HomePage> {
         client: _client,
         settings: widget.settings,
         controller: widget.controller,
-        onPlay: (i) => _playSongs(songs, i),
+        onPlay: (i) => _playSongs(songs, i, source: '每日30首·本地'),
       ),
     ));
   }
@@ -1092,7 +1092,7 @@ class _HomePageState extends State<HomePage> {
         controller: widget.controller,
         error: error,
         onRetry: () => _openLxPlaylist(name, id),
-        onPlay: (i) => _playSongs(songs, i),
+        onPlay: (i) => _playSongs(songs, i, source: name),
       ),
     ));
   }

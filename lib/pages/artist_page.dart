@@ -52,7 +52,7 @@ class _ArtistPageState extends State<ArtistPage> {
       final songs = await c.artistSongs(widget.artist.name);
       if (!mounted) return;
       if (shuffle) songs.shuffle();
-      await widget.controller.playQueue(songs, 0);
+      await widget.controller.playQueue(songs, 0, source: '歌手 · ${widget.artist.name}');
       if (mounted) setState(() {});
       if (context.mounted) {
         await openPlayerPage(context, settings: widget.settings, controller: widget.controller);

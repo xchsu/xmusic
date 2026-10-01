@@ -37,7 +37,7 @@ class _AlbumPageState extends State<AlbumPage> {
 
   Future<void> _playSongs(List<Song> songs, int index) async {
     // 只播放不跳转：底部全局迷你播放条立即出现（车机/列表场景）
-    await widget.controller.playQueue(songs, index);
+    await widget.controller.playQueue(songs, index, source: '专辑 · ${widget.album.name}');
     if (mounted) setState(() {});
   }
 

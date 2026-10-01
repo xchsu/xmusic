@@ -276,7 +276,7 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _playSongs(List<Song> songs, int index) async {
-    await widget.controller.playQueue(songs, index);
+    await widget.controller.playQueue(songs, index, source: (_query.text.trim().isEmpty ? '搜索' : '搜索 · ' + _query.text.trim()));
     if (widget.controller.lastError != null) {
       _showSnack('播放失败: ${widget.controller.lastError}');
     }
