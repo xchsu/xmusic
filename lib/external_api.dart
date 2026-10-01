@@ -883,7 +883,7 @@ class ExternalApi {
           .replace(queryParameters: {'format': 'json', 'data': jsonEncode(body)});
       final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
       final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-      final code = j['songlist']?['code'];
+      final code = j['code'] ?? j['songlist']?['code'];
       // QQ 封死匿名拉取（代理/个别网络下）：明确抛错，避免显示"没有歌曲数据"误导。
       if (code == 500001) {
         throw StateError('QQ需登录态');

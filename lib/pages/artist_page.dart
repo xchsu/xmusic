@@ -75,19 +75,17 @@ class _ArtistPageState extends State<ArtistPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return BigScreenText(
-      child: Scaffold(
-      // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
-      // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: Text(widget.artist.name),
-        // 状态栏透明+图标颜色跟随主题：避免深色主题下状态栏变黑
-        systemOverlayStyle: (Theme.of(context).brightness == Brightness.dark
-                ? SystemUiOverlayStyle.light
-                : SystemUiOverlayStyle.dark)
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        // 状态栏透明+图标颜色跟随主题：避免深色主题下状态栏变黑（AnnotatedRegion 双保险）
+        value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
             .copyWith(statusBarColor: Colors.transparent),
-      ),
+        child: Scaffold(
+        // 不透明背景：避免半透明主题透出下层页面导致列表视觉混乱（0.2.x 修复回归）
+        // [xmusic] 2026-09-28 透明背景：透出全局封面玻璃背景（与首页歌单详情等统一）
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: Text(widget.artist.name)),
       body: PageBackground(
         controller: widget.controller,
         settings: widget.settings,
@@ -199,6 +197,7 @@ class _ArtistPageState extends State<ArtistPage> {
           ),
         ],
       )),
+      ),
     ));
   }
 }
