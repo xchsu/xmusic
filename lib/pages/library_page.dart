@@ -1209,7 +1209,17 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return BigScreenText(
+    return PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        fallbackCoverUrl: widget.songs.isNotEmpty
+            ? (widget.songs.first.coverUrl != null && widget.songs.first.coverUrl!.isNotEmpty
+                ? widget.songs.first.coverUrl
+                : (widget.songs.first.coverArt != null && widget.songs.first.coverArt!.isNotEmpty
+                    ? widget.controller.client?.coverUrl(widget.songs.first.coverArt!, size: 600)?.toString()
+                    : null))
+            : null,
+        child: BigScreenText(
       child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: (Theme.of(context).brightness == Brightness.dark
               ? SystemUiOverlayStyle.light
@@ -1218,11 +1228,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
           child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.name)),
-        body: PageBackground(
-            controller: widget.controller,
-            settings: widget.settings,
-            fallbackCoverUrl: widget.songs.isNotEmpty ? widget.songs.first.coverUrl : null,
-            child: Column(
+        body: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),

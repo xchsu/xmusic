@@ -1238,7 +1238,13 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     return PageBackground(
         controller: widget.controller,
         settings: widget.settings,
-        fallbackCoverUrl: songs.isNotEmpty ? songs.first.coverUrl : null,
+        fallbackCoverUrl: songs.isNotEmpty
+            ? (songs.first.coverUrl != null && songs.first.coverUrl!.isNotEmpty
+                ? songs.first.coverUrl
+                : (songs.first.coverArt != null && songs.first.coverArt!.isNotEmpty
+                    ? client?.coverUrl(songs.first.coverArt!, size: 600)?.toString()
+                    : null))
+            : null,
         child: BigScreenText(
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: (Theme.of(context).brightness == Brightness.dark

@@ -145,7 +145,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    return PageBackground(
+        controller: widget.controller,
+        settings: widget.settings,
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
       value: (Theme.of(context).brightness == Brightness.dark
           ? SystemUiOverlayStyle.light
           : SystemUiOverlayStyle.dark)
@@ -153,10 +156,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.playlist.name)),
-      body: PageBackground(
-            controller: widget.controller,
-            settings: widget.settings,
-            child: Column(
+      body: Column(
         children: [
           Expanded(
             child: FutureBuilder<List<Song>>(
