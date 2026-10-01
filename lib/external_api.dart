@@ -868,7 +868,7 @@ class ExternalApi {
       'songlist': {
         'module': 'mb_track_radio_svr',
         'method': 'get_radio_track',
-        'param': {'id': radioId, 'firstplay': 1, 'num': 5},
+        'param': {'id': radioId, 'firstplay': 1, 'num': 30},
       },
     };
     final uri = Uri.parse('https://t.y.qq.com/cgi-bin/musicu.fcg')
@@ -878,6 +878,10 @@ class ExternalApi {
       'Referer': 'https://y.qq.com/',
     }).timeout(const Duration(seconds: 15));
     final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+    // QQ 已限制匿名拉取电台歌曲（实测全部返回 500001）：明确抛错，避免显示"没有歌曲数据"误导。
+    if ((j['songlist']?['code']) == 500001) {
+      throw StateError('QQ需登录态');
+    }
     final tracks = (j['songlist']?['data']?['tracks'] as List?) ?? const [];
     return tracks.cast<Map>().map((t) {
       final album = (t['album'] as Map?) ?? const {};

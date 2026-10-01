@@ -251,7 +251,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// QQ 电台：拉电台推荐歌曲（匿名接口，每电台固定5首），进列表页播放。
-  Future<void> _openQqRadio(String name, int radioId) async {
+  Future<void> _openQqRadio(String name, int radioId, {bool replace = false}) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
     List<Song> songs;
@@ -265,7 +265,7 @@ class _HomePageState extends State<HomePage> {
     if (songs.isEmpty && error == null) error = '没有歌曲数据';
     if (!mounted) return;
     Navigator.pop(context);
-    await Navigator.of(context).push(MaterialPageRoute(
+    final route = MaterialPageRoute(
       builder: (_) => _PlaylistDetail(
         title: name,
         songs: songs,
@@ -273,10 +273,16 @@ class _HomePageState extends State<HomePage> {
         settings: widget.settings,
         controller: widget.controller,
         error: error,
-        onRetry: () => _openQqRadio(name, radioId),
+        onRetry: () => _openQqRadio(name, radioId, replace: true),
         onPlay: (i) => _playSongs(songs, i),
       ),
-    ));
+    );
+    // 重试时替换当前失败页，避免叠加页面导致返回两次
+    if (replace) {
+      Navigator.of(context).pushReplacement(route);
+    } else {
+      Navigator.of(context).push(route);
+    }
   }
 
   /// 每日30首·本地：每天随机30首本地歌，点卡先进歌单列表页。
@@ -332,14 +338,6 @@ class _HomePageState extends State<HomePage> {
                     child: Text('QQ歌单',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700)),
-                  ),
-                  IconButton(
-                    tooltip: '换一批',
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                    onPressed: () {
-                      setState(() => _qqPlaylists = widget.controller.external
-                          .qqPlaylists(categoryId: _qqCategoryId));
-                    },
                   ),
                 ],
               ),
