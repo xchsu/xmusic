@@ -209,7 +209,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                           ),
                           const SizedBox(width: 8),
                           IconButton.filledTonal(
-                            icon: const Icon(Icons.download_rounded),
+                            icon: const Icon(Icons.cloud_download_rounded),
                             tooltip: '下载整个歌单到NAS',
                             onPressed: vis.isEmpty ? null : () => _downloadAllToNas(songs),
                           ),

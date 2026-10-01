@@ -368,7 +368,7 @@ class _PlayerPageState extends State<PlayerPage> {
           data: IconThemeData(size: side),
           child: IconButton(
             tooltip: '下载当前歌曲到NAS',
-            icon: Icon(Icons.download_rounded),
+            icon: Icon(Icons.cloud_download_rounded),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
@@ -614,7 +614,8 @@ class _PlayerPageState extends State<PlayerPage> {
                       width: 340,
                       height: h * 0.6,
                       decoration: BoxDecoration(
-                        color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(ctx).colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -632,6 +633,8 @@ class _PlayerPageState extends State<PlayerPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor:
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
       // 固定 60% 屏高的内容区，_queuePanel 的 Column+Expanded 可靠填充列表
       // （DraggableScrollableSheet 在某些设备 Expanded 高度为 0，列表变空白）。
       builder: (ctx) => FractionallySizedBox(
@@ -646,7 +649,7 @@ class _PlayerPageState extends State<PlayerPage> {
     return Column(
       children: [
         const Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 2),
           child: Text('播放列表',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, height: 1.0)),
         ),
@@ -666,15 +669,20 @@ class _PlayerPageState extends State<PlayerPage> {
                   final bl = widget.settings.isBlacklisted(sn);
                   return ListTile(
                     dense: true,
+                    visualDensity: VisualDensity.compact,
+                    minVerticalPadding: 0,
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12),
                     leading: Text('${i + 1}',
                         style: TextStyle(
                             color: active ? cs.primary : cs.onSurfaceVariant)),
-                    // 歌名 + 歌手同一行，短横线连接
-                    title: Text.rich(
-                      TextSpan(children: [
-                        TextSpan(text: sn.title ?? ''),
+                    // 歌名 + 歌手同一行，短横线连接；超长时跑马灯滚动展示完整
+                    title: _MarqueeText(
+                      span: TextSpan(children: [
+                        TextSpan(
+                            text: sn.title ?? '',
+                            style: TextStyle(
+                                color: active ? cs.primary : null)),
                         if ((sn.artist ?? '').isNotEmpty)
                           TextSpan(
                             text: ' - ${sn.artist}',
@@ -682,24 +690,11 @@ class _PlayerPageState extends State<PlayerPage> {
                                 color: cs.onSurfaceVariant, fontSize: 12),
                           ),
                       ]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    // 收藏 / 黑名单 / 删除 三图标
+                    // 黑名单 / 删除 两图标
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          iconSize: 20,
-                          icon: Icon(
-                              sn.starred
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: sn.starred ? cs.primary : null),
-                          onPressed: () =>
-                              widget.controller.toggleStarAt(i),
-                        ),
                         IconButton(
                           visualDensity: VisualDensity.compact,
                           iconSize: 20,
@@ -737,6 +732,73 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
+}
+
+/// 跑马灯文本：内容超出可用宽度时自动左右往返滚动展示完整内容。
+class _MarqueeText extends StatefulWidget {
+  const _MarqueeText({required this.span});
+  final InlineSpan span;
+
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 5000));
+  bool _running = false;
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, cons) {
+      final tp = TextPainter(
+        text: widget.span,
+        maxLines: 1,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final overflow = tp.width > cons.maxWidth - 1;
+      if (overflow && !_running) {
+        _running = true;
+        _c.repeat(reverse: true);
+      } else if (!overflow && _running) {
+        _running = false;
+        _c.stop();
+        _c.value = 0;
+      }
+      if (!overflow) {
+        return RichText(
+          text: widget.span,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+        );
+      }
+      final travel = (tp.width - cons.maxWidth + 12).clamp(0.0, double.infinity);
+      return ClipRect(
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) {
+            return Transform.translate(
+              offset: Offset(-_c.value * travel, 0),
+              child: RichText(
+                text: widget.span,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
 }
 
 /// Big single line that tracks the currently-active lyric (portrait).

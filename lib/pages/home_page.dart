@@ -1124,7 +1124,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                   onPressed: _visibleIndices.isEmpty || error != null
                       ? null
                       : _downloadAllToNas,
-                  icon: const Icon(Icons.download_rounded),
+                  icon: const Icon(Icons.cloud_download_rounded),
                   tooltip: '下载整个歌单到NAS',
                 ),
               ],
