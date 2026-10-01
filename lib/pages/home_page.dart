@@ -1300,7 +1300,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                       ? null
                       : _downloadAllToNas,
                   icon: const Icon(Icons.cloud_download_rounded, size: 20),
-                  label: const Text('下载'),
+                  label: const Text('全部下载'),
                   style: TextButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(horizontal: 10)),

@@ -615,7 +615,7 @@ class _PlayerPageState extends State<PlayerPage> {
                       height: h * 0.6,
                       decoration: BoxDecoration(
                         color: Theme.of(ctx).colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.6),
+                            .withValues(alpha: 0.72),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -634,7 +634,7 @@ class _PlayerPageState extends State<PlayerPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor:
-          Theme.of(context).colorScheme.surface.withValues(alpha: 0.66),
+          Theme.of(context).colorScheme.surface.withValues(alpha: 0.78),
       // 固定 60% 屏高的内容区，_queuePanel 的 Column+Expanded 可靠填充列表
       // （DraggableScrollableSheet 在某些设备 Expanded 高度为 0，列表变空白）。
       builder: (ctx) => FractionallySizedBox(

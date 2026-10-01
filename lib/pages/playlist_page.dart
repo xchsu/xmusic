@@ -219,7 +219,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                           TextButton.icon(
                             icon:
                                 const Icon(Icons.cloud_download_rounded, size: 20),
-                            label: const Text('下载'),
+                            label: const Text('全部下载'),
                             style: TextButton.styleFrom(
                                 visualDensity: VisualDensity.compact,
                                 padding:
