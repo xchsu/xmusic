@@ -16,8 +16,9 @@ const Map<String, List<double>> _kEqPresets = {
   'rock': [3.0, 1.5, -1.0, 1.5, 3.0], // 摇滚
   'electronic': [2.0, 0.5, 1.5, 0.5, 2.0], // 电子
   'classical': [2.0, 1.0, 0.0, 1.0, 2.0], // 古典
-  'bass': [4.0, 2.0, 0.0, -1.0, 0.0], // 低音增强
-  'vocal': [-1.0, 1.0, 3.0, 1.0, -1.0], // 人声
+  'bass': [6.0, 4.0, 1.0, -2.0, -1.0], // 低音增强
+  'vocal': [-1.5, 1.5, 4.0, 1.5, -1.5], // 人声
+  'stereo': [4.0, 1.0, -2.0, 1.0, 4.0], // 立体声
 };
 
 /// 应用 EQ：preset = off/pop/rock/electronic/classical/bass/vocal/custom；
