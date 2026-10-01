@@ -678,18 +678,14 @@ class _PlayerPageState extends State<PlayerPage> {
                             color: active ? cs.primary : cs.onSurfaceVariant)),
                     // 歌名 + 歌手同一行，短横线连接；超长时跑马灯滚动展示完整
                     title: _MarqueeText(
-                      span: TextSpan(children: [
-                        TextSpan(
-                            text: sn.title ?? '',
-                            style: TextStyle(
-                                color: active ? cs.primary : null)),
-                        if ((sn.artist ?? '').isNotEmpty)
-                          TextSpan(
-                            text: ' - ${sn.artist}',
-                            style: TextStyle(
-                                color: cs.onSurfaceVariant, fontSize: 12),
-                          ),
-                      ]),
+                      (sn.title ?? '') +
+                          ((sn.artist ?? '').isNotEmpty
+                              ? ' - ${sn.artist}'
+                              : ''),
+                      style: TextStyle(
+                          color: active
+                              ? cs.primary
+                              : cs.onSurface),
                     ),
                     // 黑名单 / 删除 两图标
                     trailing: Row(
@@ -732,73 +728,6 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-}
-
-/// 跑马灯文本：内容超出可用宽度时自动左右往返滚动展示完整内容。
-class _MarqueeText extends StatefulWidget {
-  const _MarqueeText({required this.span});
-  final InlineSpan span;
-
-  @override
-  State<_MarqueeText> createState() => _MarqueeTextState();
-}
-
-class _MarqueeTextState extends State<_MarqueeText>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 5000));
-  bool _running = false;
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, cons) {
-      final tp = TextPainter(
-        text: widget.span,
-        maxLines: 1,
-        textDirection: TextDirection.ltr,
-      )..layout();
-      final overflow = tp.width > cons.maxWidth - 1;
-      if (overflow && !_running) {
-        _running = true;
-        _c.repeat(reverse: true);
-      } else if (!overflow && _running) {
-        _running = false;
-        _c.stop();
-        _c.value = 0;
-      }
-      if (!overflow) {
-        return RichText(
-          text: widget.span,
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.ellipsis,
-        );
-      }
-      final travel = (tp.width - cons.maxWidth + 12).clamp(0.0, double.infinity);
-      return ClipRect(
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) {
-            return Transform.translate(
-              offset: Offset(-_c.value * travel, 0),
-              child: RichText(
-                text: widget.span,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.visible,
-              ),
-            );
-          },
-        ),
-      );
-    });
-  }
 }
 
 /// Big single line that tracks the currently-active lyric (portrait).
