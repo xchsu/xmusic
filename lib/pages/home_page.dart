@@ -1278,21 +1278,21 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
             child: Row(
               children: [
                 TextButton.icon(
-                  onPressed: _visibleIndices.isEmpty || error != null ? null : () => onPlay(0),
-                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                  label: const Text('顺序'),
-                  style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 10)),
-                ),
-                const SizedBox(width: 4),
-                TextButton.icon(
                   onPressed: _visibleIndices.isEmpty || error != null ? null : () {
                     songs.shuffle();
                     onPlay(0);
                   },
                   icon: const Icon(Icons.shuffle_rounded, size: 20),
                   label: const Text('随机'),
+                  style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10)),
+                ),
+                const SizedBox(width: 4),
+                TextButton.icon(
+                  onPressed: _visibleIndices.isEmpty || error != null ? null : () => onPlay(0),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  label: const Text('顺序'),
                   style: TextButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(horizontal: 10)),

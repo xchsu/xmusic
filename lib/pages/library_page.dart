@@ -1209,6 +1209,7 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
     final theme = Theme.of(context);
     return BigScreenText(
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         appBar: AppBar(title: Text(widget.name)),
         body: Column(
           children: [
