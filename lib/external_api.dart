@@ -861,48 +861,62 @@ class ExternalApi {
     return out;
   }
 
-  /// QQ 电台歌曲（musicu get_radio_track，匿名可用）：每电台固定返回 5 首推荐。
+  /// QQ 电台歌曲（musicu get_radio_track，匿名可用）：单次固定返回 5 首，
+  /// 循环拉取按 mid 去重凑 ~30 首；个性电台（code 1000）需登录态，明确抛错。
   Future<List<Song>> qqRadioSongs(int radioId) async {
-    final body = {
-      'comm': {'ct': 24, 'cv': 0},
-      'songlist': {
-        'module': 'mb_track_radio_svr',
-        'method': 'get_radio_track',
-        'param': {'id': radioId, 'firstplay': 1, 'num': 30},
-      },
-    };
-    final uri = Uri.parse('https://t.y.qq.com/cgi-bin/musicu.fcg')
-        .replace(queryParameters: {'format': 'json', 'data': jsonEncode(body)});
-    final resp = await http.get(uri, headers: {
+    final headers = {
       'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0 Mobile Safari/537.36',
       'Referer': 'https://y.qq.com/',
-    }).timeout(const Duration(seconds: 15));
-    final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-    // QQ 已限制匿名拉取电台歌曲（实测全部返回 500001）：明确抛错，避免显示"没有歌曲数据"误导。
-    if ((j['songlist']?['code']) == 500001) {
-      throw StateError('QQ需登录态');
+    };
+    final seen = <String>{};
+    final songs = <Song>[];
+    for (var i = 0; i < 6 && songs.length < 30; i++) {
+      final body = {
+        'comm': {'ct': 24, 'cv': 0},
+        'songlist': {
+          'module': 'mb_track_radio_svr',
+          'method': 'get_radio_track',
+          'param': {'id': radioId, 'firstplay': 1, 'num': 30},
+        },
+      };
+      final uri = Uri.parse('https://t.y.qq.com/cgi-bin/musicu.fcg')
+          .replace(queryParameters: {'format': 'json', 'data': jsonEncode(body)});
+      final resp = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+      final j = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      final code = j['songlist']?['code'];
+      // QQ 封死匿名拉取（代理/个别网络下）：明确抛错，避免显示"没有歌曲数据"误导。
+      if (code == 500001) {
+        throw StateError('QQ需登录态');
+      }
+      final tracks = (j['songlist']?['data']?['tracks'] as List?) ?? const [];
+      // 个性电台（id=99 等）匿名返回 code 1000 且 tracks 为空：需登录态个性化推荐
+      if (tracks.isEmpty && code == 1000) {
+        throw StateError('个性电台需登录态');
+      }
+      for (final t in tracks.cast<Map>()) {
+        final mid = (t['mid'] ?? '').toString();
+        if (mid.isEmpty || !seen.add(mid)) continue;
+        final album = (t['album'] as Map?) ?? const {};
+        final albumMid = (album['mid'] ?? '').toString();
+        final singers = ((t['singer'] as List?) ?? const [])
+            .map((x) => ((x as Map?) ?? const {})['name']?.toString() ?? '')
+            .where((x) => x.isNotEmpty)
+            .join(' / ');
+        songs.add(Song(
+          id: mid,
+          title: (t['name'] ?? t['title'] ?? '').toString(),
+          artist: singers.isEmpty ? '未知' : singers,
+          album: (album['name'] ?? '').toString(),
+          coverUrl: albumMid.isEmpty
+              ? null
+              : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
+          durationSec: (t['interval'] as num?)?.toInt(),
+          fromExternal: true,
+          externalSource: 'qq',
+        ));
+      }
     }
-    final tracks = (j['songlist']?['data']?['tracks'] as List?) ?? const [];
-    return tracks.cast<Map>().map((t) {
-      final album = (t['album'] as Map?) ?? const {};
-      final albumMid = (album['mid'] ?? '').toString();
-      final singers = ((t['singer'] as List?) ?? const [])
-          .map((x) => ((x as Map?) ?? const {})['name']?.toString() ?? '')
-          .where((x) => x.isNotEmpty)
-          .join(' / ');
-      return Song(
-        id: (t['mid'] ?? '').toString(),
-        title: (t['name'] ?? t['title'] ?? '').toString(),
-        artist: singers.isEmpty ? '未知' : singers,
-        album: (album['name'] ?? '').toString(),
-        coverUrl: albumMid.isEmpty
-            ? null
-            : 'https://y.gtimg.cn/music/photo_new/T002R500x500M000$albumMid.jpg',
-        durationSec: (t['interval'] as num?)?.toInt(),
-        fromExternal: true,
-        externalSource: 'qq',
-      );
-    }).where((s) => s.id.isNotEmpty).toList();
+    return songs;
   }
 
   /// QQ 歌单详情：歌单名 + 歌曲列表（qzone 匿名接口，song_num 上限约 1000）。
