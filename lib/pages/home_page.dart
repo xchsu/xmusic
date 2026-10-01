@@ -886,7 +886,7 @@ class _HomePageState extends State<HomePage> {
                 CachedNetworkImage(
                   imageUrl: coverUrl,
                   fit: BoxFit.cover,
-                  httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                  httpHeaders: _imgHeaders(coverUrl!),
                   placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
                   errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
                 )
@@ -1424,4 +1424,15 @@ class _Card extends StatelessWidget {
       ),
     );
   }
+}
+
+Map<String, String> _imgHeaders(String u) {
+  final host = Uri.parse(u).host.toLowerCase();
+  if (host.contains('qq.com') || host.contains('gtimg.cn')) {
+    return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'};
+  }
+  if (host.contains('163') || host.contains('126.net')) {
+    return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'};
+  }
+  return const {'User-Agent': 'Mozilla/5.0'};
 }

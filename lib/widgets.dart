@@ -91,7 +91,7 @@ class CoverImage extends StatelessWidget {
                     fit: BoxFit.cover,
                     fadeInDuration: const Duration(milliseconds: 200),
                     fadeOutDuration: const Duration(milliseconds: 200),
-                    httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                    httpHeaders: _imgHeaders(url.toString()),
                     errorWidget: (_, __, ___) => placeholder,
                     placeholder: (_, __) => placeholder,
                   )),
@@ -360,4 +360,15 @@ String formatDuration(Duration d) {
   final m = d.inMinutes.remainder(100).toString().padLeft(2, '0');
   final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   return '$m:$s';
+}
+
+Map<String, String> _imgHeaders(String u) {
+  final host = Uri.parse(u).host.toLowerCase();
+  if (host.contains('qq.com') || host.contains('gtimg.cn')) {
+    return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'};
+  }
+  if (host.contains('163') || host.contains('126.net')) {
+    return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'};
+  }
+  return const {'User-Agent': 'Mozilla/5.0'};
 }

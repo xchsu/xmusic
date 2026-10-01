@@ -89,10 +89,7 @@ class CoverGlassBackground extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
-      httpHeaders: const {
-        'User-Agent': 'Mozilla/5.0',
-        'Referer': 'https://music.163.com/',
-      },
+      httpHeaders: _imgHeaders(url),
       fadeInDuration: const Duration(milliseconds: 300),
       fadeOutDuration: const Duration(milliseconds: 200),
       placeholder: (_, __) => ColoredBox(color: cs.surfaceContainerHighest),
@@ -128,4 +125,15 @@ class PageBackground extends StatelessWidget {
       ],
     );
   }
+}
+
+Map<String, String> _imgHeaders(String u) {
+  final host = Uri.parse(u).host.toLowerCase();
+  if (host.contains('qq.com') || host.contains('gtimg.cn')) {
+    return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'};
+  }
+  if (host.contains('163') || host.contains('126.net')) {
+    return const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'};
+  }
+  return const {'User-Agent': 'Mozilla/5.0'};
 }
