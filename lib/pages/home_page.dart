@@ -29,9 +29,8 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _toplists;
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
   late Future<List<Map<String, dynamic>>> _qqRadios;
-  int _qqCategoryId = 0; // QQ歌单分类：0全部(推荐)/3152流行/41摇滚/48民谣/45电子/42说唱/61古风/49纯音乐(轻音乐)
+  int _qqCategoryId = 3152; // QQ歌单分类：3152流行/41摇滚/48民谣/45电子/42说唱/61古风/49纯音乐/46爵士/43R&B/47古典
   static const List<Map<String, dynamic>> _qqCategories = [
-    {'id': 0, 'name': '全部'},
     {'id': 3152, 'name': '流行'},
     {'id': 41, 'name': '摇滚'},
     {'id': 48, 'name': '民谣'},
@@ -39,6 +38,9 @@ class _HomePageState extends State<HomePage> {
     {'id': 42, 'name': '说唱'},
     {'id': 61, 'name': '古风'},
     {'id': 49, 'name': '纯音乐'},
+    {'id': 46, 'name': '爵士'},
+    {'id': 43, 'name': 'R&B'},
+    {'id': 47, 'name': '古典'},
   ];
   late Future<List<Song>> _localRec;
 
@@ -58,8 +60,8 @@ class _HomePageState extends State<HomePage> {
     final ext = widget.controller.external;
     // 真实排行榜：网易云 + （有QQ cookie时）QQ 榜单
     _toplists = _loadToplists();
-    // QQ 精选歌单（硬编码 dissid，本地列表零网络请求；点进去才拉歌曲）
-    _qqPlaylists = ext.qqPlaylists();
+    // QQ 歌单广场（按当前分类加载，默认流行）
+    _qqPlaylists = ext.qqPlaylists(categoryId: _qqCategoryId);
     // QQ 电台列表（匿名接口）
     _qqRadios = ext.qqRadios();
     // 本地推荐
@@ -1267,27 +1269,36 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
-                ElevatedButton.icon(
+                TextButton.icon(
                   onPressed: _visibleIndices.isEmpty || error != null ? null : () => onPlay(0),
-                  icon: const Icon(Icons.play_arrow_rounded),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
                   label: const Text('顺序'),
+                  style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10)),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
+                const SizedBox(width: 4),
+                TextButton.icon(
                   onPressed: _visibleIndices.isEmpty || error != null ? null : () {
                     songs.shuffle();
                     onPlay(0);
                   },
-                  icon: const Icon(Icons.shuffle_rounded),
+                  icon: const Icon(Icons.shuffle_rounded, size: 20),
                   label: const Text('随机'),
+                  style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10)),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
+                const SizedBox(width: 4),
+                TextButton.icon(
                   onPressed: _visibleIndices.isEmpty || error != null
                       ? null
                       : _downloadAllToNas,
-                  icon: const Icon(Icons.cloud_download_rounded),
-                  tooltip: '下载整个歌单到NAS',
+                  icon: const Icon(Icons.cloud_download_rounded, size: 20),
+                  label: const Text('下载'),
+                  style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10)),
                 ),
               ],
             ),

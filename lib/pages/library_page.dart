@@ -1216,21 +1216,30 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Row(
                 children: [
-                  FilledButton.icon(
-                    icon: const Icon(Icons.play_arrow_rounded),
+                  TextButton.icon(
+                    icon: const Icon(Icons.play_arrow_rounded, size: 20),
                     label: const Text('顺序'),
+                    style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10)),
                     onPressed: widget.songs.isEmpty ? null : () => _play(0),
                   ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.shuffle_rounded),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    icon: const Icon(Icons.shuffle_rounded, size: 20),
                     label: const Text('随机'),
+                    style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10)),
                     onPressed: widget.songs.isEmpty ? null : _playRandom,
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    icon: const Icon(Icons.cloud_download_rounded),
-                    tooltip: '下载整个歌单到NAS',
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    icon: const Icon(Icons.cloud_download_rounded, size: 20),
+                    label: const Text('下载'),
+                    style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10)),
                     onPressed: widget.songs.isEmpty ? null : _downloadAllToNas,
                   ),
                 ],

@@ -193,25 +193,40 @@ class _PlaylistPageState extends State<PlaylistPage> {
                                     color: Theme.of(context).colorScheme.onSurfaceVariant)),
                           ),
                           const SizedBox(width: 8),
-                          FilledButton.tonalIcon(
-                            icon: const Icon(Icons.play_arrow_rounded),
+                          TextButton.icon(
+                            icon: const Icon(Icons.play_arrow_rounded, size: 20),
                             label: const Text('顺序'),
+                            style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10)),
                             onPressed: () => _playSongs(songs, vis[0]),
                           ),
-                          const SizedBox(width: 8),
-                          FilledButton.icon(
-                            icon: const Icon(Icons.shuffle_rounded),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            icon: const Icon(Icons.shuffle_rounded, size: 20),
                             label: const Text('随机'),
+                            style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10)),
                             onPressed: () {
                               final s = vis.map((i) => songs[i]).toList()..shuffle();
                               _playSongs(s, 0);
                             },
                           ),
-                          const SizedBox(width: 8),
-                          IconButton.filledTonal(
-                            icon: const Icon(Icons.cloud_download_rounded),
-                            tooltip: '下载整个歌单到NAS',
-                            onPressed: vis.isEmpty ? null : () => _downloadAllToNas(songs),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            icon:
+                                const Icon(Icons.cloud_download_rounded, size: 20),
+                            label: const Text('下载'),
+                            style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10)),
+                            onPressed: vis.isEmpty
+                                ? null
+                                : () => _downloadAllToNas(songs),
                           ),
                         ],
                       ),
