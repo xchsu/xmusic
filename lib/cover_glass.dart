@@ -51,7 +51,7 @@ class CoverGlassBackground extends StatelessWidget {
               // 上方只叠加一层很淡（15% 透明）的模糊封面，透一点即可，随切歌自动更新。
               Positioned.fill(
                 child: ColoredBox(
-                  color: customBg ?? cs.surface,
+                  color: customBg ?? cs.surfaceContainerHighest,
                   child: Opacity(
                     opacity: 0.38,
                     child: ImageFiltered(
@@ -64,7 +64,7 @@ class CoverGlassBackground extends StatelessWidget {
             else
               // 未开启封面：保持原有自定义色或系统主题表面底
               ColoredBox(
-                color: customBg ?? cs.surface,
+                color: customBg ?? cs.surfaceContainerHighest,
               ),
             // 仅未开启封面时可选叠加自定义颜色（开启封面后不加任何颜色）
             if (!useCover && customBg != null)
@@ -78,12 +78,12 @@ class CoverGlassBackground extends StatelessWidget {
 
   Widget _coverImage(String url, ColorScheme cs) {
     final uri = Uri.tryParse(url);
-    if (uri == null) return ColoredBox(color: cs.surface);
+    if (uri == null) return ColoredBox(color: cs.surfaceContainerHighest);
     if (uri.scheme == 'file') {
       return Image.file(
         File(uri.toFilePath()),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => ColoredBox(color: cs.surface),
+        errorBuilder: (_, __, ___) => ColoredBox(color: cs.surfaceContainerHighest),
       );
     }
     return CachedNetworkImage(
@@ -96,7 +96,7 @@ class CoverGlassBackground extends StatelessWidget {
       fadeInDuration: const Duration(milliseconds: 300),
       fadeOutDuration: const Duration(milliseconds: 200),
       placeholder: (_, __) => ColoredBox(color: cs.surfaceContainerHighest),
-      errorWidget: (_, __, ___) => ColoredBox(color: cs.surface),
+      errorWidget: (_, __, ___) => ColoredBox(color: cs.surfaceContainerHighest),
     );
   }
 }

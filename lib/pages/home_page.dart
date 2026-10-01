@@ -228,7 +228,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// QQ 精选歌单详情：qzone 老接口拉歌曲（songmid），进列表页，播放走 QQ→网易云/酷我兜底。
-  Future<void> _openQqPlaylist(String name, String dissid) async {
+  Future<void> _openQqPlaylist(String name, String dissid, [String? coverUrl]) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
     List<Song> songs;
@@ -249,15 +249,16 @@ class _HomePageState extends State<HomePage> {
         client: _client,
         settings: widget.settings,
         controller: widget.controller,
+        coverUrl: coverUrl,
         error: error,
-        onRetry: () => _openQqPlaylist(name, dissid),
+        onRetry: () => _openQqPlaylist(name, dissid, coverUrl),
         onPlay: (i) => _playSongs(songs, i, source: name),
       ),
     ));
   }
 
   /// QQ 电台：拉电台推荐歌曲（匿名接口，每电台固定5首），进列表页播放。
-  Future<void> _openQqRadio(String name, int radioId, {bool replace = false}) async {
+  Future<void> _openQqRadio(String name, int radioId, {bool replace = false, String? coverUrl}) async {
     final ext = widget.controller.external;
     showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
     List<Song> songs;
@@ -278,8 +279,9 @@ class _HomePageState extends State<HomePage> {
         client: _client,
         settings: widget.settings,
         controller: widget.controller,
+        coverUrl: coverUrl,
         error: error,
-        onRetry: () => _openQqRadio(name, radioId, replace: true),
+        onRetry: () => _openQqRadio(name, radioId, replace: true, coverUrl: coverUrl),
         onPlay: (i) => _playSongs(songs, i, source: 'QQ电台 · $name'),
       ),
     );
@@ -493,7 +495,7 @@ class _HomePageState extends State<HomePage> {
                               final rid =
                                   int.tryParse(r['id'].toString()) ?? 0;
                               if (rid > 0) {
-                                _openQqRadio(r['name'] as String, rid);
+                                _openQqRadio(r['name'] as String, rid, coverUrl: r['coverUrl'] as String?);
                               }
                             },
                             child: SizedBox(
@@ -926,7 +928,7 @@ class _HomePageState extends State<HomePage> {
         MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => _openQqPlaylist(name, dissid),
+      onTap: () => _openQqPlaylist(name, dissid, coverUrl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
