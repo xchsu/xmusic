@@ -81,6 +81,66 @@ class _PlaylistPageState extends State<PlaylistPage> {
     }
   }
 
+  /// 下载整个歌单到 NAS（WebDAV）：逐首上传，对话框显示进度，结束汇总结果。
+  Future<void> _downloadAllToNas(List<Song> songs) async {
+    if (!widget.settings.webdavConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('未配置 NAS (WebDAV)，请到 设置-个性化 中配置')));
+      return;
+    }
+    final list = songs.where((s) => !_removed.contains(s.id)).toList();
+    if (list.isEmpty) return;
+    var done = 0;
+    var ok = 0;
+    String? firstErr;
+    void Function(void Function())? setDlg;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) {
+          setDlg = set;
+          return AlertDialog(
+            title: const Text('下载到 NAS'),
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                const SizedBox(width: 16),
+                Text('正在上传 $done/${list.length}…'),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    for (final s in list) {
+      try {
+        final msg = await widget.controller.uploadSongToNas(s);
+        if (msg.startsWith('已上传')) {
+          ok++;
+        } else {
+          firstErr ??= msg;
+        }
+      } catch (e) {
+        firstErr ??= '$e';
+      }
+      done++;
+      setDlg?.call(() {});
+    }
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok == list.length
+          ? '已上传全部 $ok 首到 NAS'
+          : '完成：成功 $ok/${list.length} 首' +
+              (firstErr != null ? '，失败示例：$firstErr' : '')),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,6 +206,12 @@ class _PlaylistPageState extends State<PlaylistPage> {
                               final s = vis.map((i) => songs[i]).toList()..shuffle();
                               _playSongs(s, 0);
                             },
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.filledTonal(
+                            icon: const Icon(Icons.download_rounded),
+                            tooltip: '下载整个歌单到NAS',
+                            onPressed: vis.isEmpty ? null : () => _downloadAllToNas(songs),
                           ),
                         ],
                       ),

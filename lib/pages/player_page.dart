@@ -367,8 +367,8 @@ class _PlayerPageState extends State<PlayerPage> {
         IconTheme(
           data: IconThemeData(size: side),
           child: IconButton(
-            tooltip: '上传到NAS',
-            icon: Icon(Icons.cloud_upload_outlined),
+            tooltip: '下载当前歌曲到NAS',
+            icon: Icon(Icons.download_rounded),
             onPressed: () async {
               showTopToast(context, '正在上传到NAS…');
               final msg = await widget.controller.uploadCurrentToNas();
@@ -1446,32 +1446,6 @@ class _Controls extends StatelessWidget {
   final bool compact;
   final VoidCallback? onShowQueue;
 
-  /// 下载整个播放列表到 NAS（WebDAV）：逐首上传，顶部提示进度，结束汇总结果。
-  Future<void> _downloadAllToNas(BuildContext context) async {
-    final songs = List<Song>.of(controller.queue);
-    if (songs.isEmpty) return;
-    showTopToast(context, '开始下载 ${songs.length} 首到 NAS…');
-    int ok = 0;
-    String? firstErr;
-    for (final s in songs) {
-      final r = await controller.uploadSongToNas(s);
-      if (r.startsWith('已上传')) {
-        ok++;
-      } else {
-        firstErr ??= r;
-      }
-    }
-    if (!context.mounted) return;
-    showTopToast(
-      context,
-      ok == songs.length
-          ? '已上传全部 $ok 首到 NAS'
-          : '完成：成功 $ok/${songs.length} 首' +
-              (firstErr != null ? '，失败示例：$firstErr' : ''),
-      duration: const Duration(seconds: 3),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final gap = compact ? 20.0 : 20.0;
@@ -1528,14 +1502,6 @@ class _Controls extends StatelessWidget {
           ),
           icon: const Icon(Icons.skip_next_rounded),
           onPressed: controller.hasNext ? controller.next : null,
-        ),
-        IconButton(
-          iconSize: sideIcon,
-          tooltip: '下载整个歌单到NAS',
-          icon: const Icon(Icons.cloud_download_rounded),
-          onPressed: controller.queue.isEmpty
-              ? null
-              : () => _downloadAllToNas(context),
         ),
         IconButton(
           iconSize: sideIcon,

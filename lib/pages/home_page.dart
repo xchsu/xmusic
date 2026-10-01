@@ -1119,6 +1119,14 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                   icon: const Icon(Icons.shuffle_rounded),
                   label: const Text('随机'),
                 ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: _visibleIndices.isEmpty || error != null
+                      ? null
+                      : _downloadAllToNas,
+                  icon: const Icon(Icons.download_rounded),
+                  tooltip: '下载整个歌单到NAS',
+                ),
               ],
             ),
           ),
