@@ -133,10 +133,18 @@ class _HomeShellState extends State<HomeShell> {
       SettingsPage(settings: widget.settings, controller: widget.controller),
     ];
 
+    final cs = Theme.of(context).colorScheme;
+    final coverBg = widget.settings.coverColorBg;
     return PageBackground(
         controller: widget.controller,
         settings: widget.settings,
-        child: Scaffold(
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+      value: (Theme.of(context).brightness == Brightness.dark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark)
+          .copyWith(
+              statusBarColor: coverBg ? Colors.transparent : cs.surfaceContainer),
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       body: IndexedStack(index: _tab, children: pages),
       bottomNavigationBar: Column(
@@ -173,7 +181,8 @@ class _HomeShellState extends State<HomeShell> {
             // [xmusic] 2026-09-24 车机图标适配：底部导航图标放大
             // NavigationBar 无 iconSize 参数，图标尺寸由 NavigationBarThemeData.iconTheme 控制
             data: NavigationBarThemeData(
-              backgroundColor: Colors.transparent,
+              backgroundColor:
+                  coverBg ? Colors.transparent : cs.surfaceContainer,
               height: isCarScreen ? 84 : 64,
               iconTheme: WidgetStateProperty.resolveWith((states) =>
                   IconThemeData(size: isCarScreen ? 34 : 24)),
@@ -214,6 +223,7 @@ class _HomeShellState extends State<HomeShell> {
           ),
           ),
         ],
+      ),
       ),
       ),
     );

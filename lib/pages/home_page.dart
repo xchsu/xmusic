@@ -1246,7 +1246,10 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
             value: (Theme.of(context).brightness == Brightness.dark
                 ? SystemUiOverlayStyle.light
                 : SystemUiOverlayStyle.dark)
-                .copyWith(statusBarColor: Colors.transparent),
+                .copyWith(
+                    statusBarColor: settings.coverColorBg
+                        ? Colors.transparent
+                        : Theme.of(context).colorScheme.surfaceContainer),
             child: Scaffold(
         backgroundColor: Colors.transparent,
       appBar: AppBar(backgroundColor: Colors.transparent, title: Text(title)),

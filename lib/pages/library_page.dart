@@ -1224,7 +1224,10 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
           value: (Theme.of(context).brightness == Brightness.dark
               ? SystemUiOverlayStyle.light
               : SystemUiOverlayStyle.dark)
-              .copyWith(statusBarColor: Colors.transparent),
+              .copyWith(
+                  statusBarColor: widget.settings.coverColorBg
+                      ? Colors.transparent
+                      : Theme.of(context).colorScheme.surfaceContainer),
           child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(backgroundColor: Colors.transparent, title: Text(widget.name)),

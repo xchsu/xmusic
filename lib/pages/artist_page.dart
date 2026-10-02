@@ -80,7 +80,10 @@ class _ArtistPageState extends State<ArtistPage> {
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         // 状态栏透明+图标颜色跟随主题：避免深色主题下状态栏变黑（AnnotatedRegion 双保险）
         value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
-            .copyWith(statusBarColor: Colors.transparent),
+            .copyWith(
+                statusBarColor: widget.settings.coverColorBg
+                    ? Colors.transparent
+                    : Theme.of(context).colorScheme.surfaceContainer),
         child: PageBackground(
           controller: widget.controller,
           settings: widget.settings,
