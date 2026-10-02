@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../cover_glass.dart';
@@ -1113,50 +1111,6 @@ class _PlaylistDetail extends StatefulWidget {
 
 class _PlaylistDetailState extends State<_PlaylistDetail> {
   Set<String> _removed = <String>{};
-  Color? _bgColor; // 封面主色背景（提取自歌单/首曲封面，不依赖图片组件渲染，杜绝纯白）
-  bool _bgLoading = false;
-
-  /// 下载封面小图并采样平均主色（提亮混白 40%），成功后铺为详情页背景。
-  Future<void> _loadBgColor(String url) async {
-    if (_bgLoading) return;
-    _bgLoading = true;
-    try {
-      final u = url.replaceFirst('T002R500x500', 'T002R200x200');
-      final resp = await http
-          .get(Uri.parse(u), headers: {
-            'User-Agent': 'Mozilla/5.0',
-            'Referer': 'https://y.qq.com/',
-          })
-          .timeout(const Duration(seconds: 15));
-      if (resp.statusCode != 200 || resp.bodyBytes.isEmpty) return;
-      final codec = await ui.instantiateImageCodec(resp.bodyBytes);
-      final frame = await codec.getNextFrame();
-      final img = frame.image;
-      final data = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
-      img.dispose();
-      if (data == null) return;
-      final b = data.buffer.asUint8List();
-      var r = 0, g = 0, bl = 0, n = 0;
-      for (var i = 0; i + 3 < b.length; i += 16) {
-        final rr = b[i], gg = b[i + 1], bb = b[i + 2], a = b[i + 3];
-        if (a < 128) continue;
-        final lum = (rr * 299 + gg * 587 + bb * 114) ~/ 1000;
-        if (lum > 245 || lum < 12) continue; // 跳过纯白/纯黑像素
-        r += rr; g += gg; bl += bb; n++;
-      }
-      if (n == 0) return;
-      int mx(int c) => (c + (255 - c) * 0.4).round(); // 向白提亮 40%
-      if (mounted) {
-        setState(() {
-          _bgColor =
-              Color.fromARGB(255, mx(r ~/ n), mx(g ~/ n), mx(bl ~/ n));
-        });
-      }
-    } catch (_) {
-    } finally {
-      _bgLoading = false;
-    }
-  }
 
   @override
   void initState() {
@@ -1271,55 +1225,14 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                 : null))
         : null;
     final bgUrl = (fbUrl ?? coverUrl);
-    // [xmusic] 背景层（终极方案）：封面主色渐变 + 半透明封面叠层。
-    // 主色由封面字节采样提取（paint 色块，不依赖图片组件渲染管线），任何情况背景都有色，
-    // 彻底杜绝纯白；封面图加载成功再叠一层（失败/加载中透明，露主色）。
-    final cs = Theme.of(context).colorScheme;
-    if (settings.coverColorBg && bgUrl != null && bgUrl.isNotEmpty) {
-      if (!_bgLoading && _bgColor == null) _loadBgColor(bgUrl);
-    }
-    final bgLayer = settings.coverColorBg && bgUrl != null && bgUrl.isNotEmpty
-        ? Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    (_bgColor ?? cs.surfaceContainerHighest)
-                        .withValues(alpha: 0.9),
-                    cs.surfaceContainer.withValues(alpha: 0.94),
-                  ],
-                ),
-              ),
-              child: Opacity(
-                opacity: 0.35,
-                child: Image.network(
-                  bgUrl,
-                  fit: BoxFit.cover,
-                  headers: {
-                    'User-Agent': 'Mozilla/5.0',
-                    if (bgUrl.contains('qq.com') || bgUrl.contains('gtimg.cn'))
-                      'Referer': 'https://y.qq.com/',
-                    if (bgUrl.contains('163') || bgUrl.contains('126.net'))
-                      'Referer': 'https://music.163.com/',
-                  },
-                  loadingBuilder: (_, child, __) => child,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-          )
-        : Positioned.fill(
-            child: ColoredBox(color: cs.surfaceContainer),
-          );
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        bgLayer,
-        Positioned.fill(
-            child: BigScreenText(
-          child: AnnotatedRegion<SystemUiOverlayStyle>(
+    // [xmusic] 背景与全局统一：PageBackground（当前播放封面模糊玻璃），
+    // 与音乐库/搜索/歌手等页面完全一致；fallback 用歌单封面兜底。
+    return PageBackground(
+      controller: controller,
+      settings: settings,
+      fallbackCoverUrl: bgUrl,
+      child: BigScreenText(
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: (Theme.of(context).brightness == Brightness.dark
                 ? SystemUiOverlayStyle.light
                 : SystemUiOverlayStyle.dark)
@@ -1462,11 +1375,10 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         // 避免个别设备上 bottomNavigationBar 槽位把迷你条撑满全屏、挤没列表（0.2.x 修复回归）
         MiniPlayer(settings: settings, controller: controller),
       ],
-      ))),
-          ),
+        )),
         ),
-      ],
-    );
+        ),
+      );
   }
 }
 
