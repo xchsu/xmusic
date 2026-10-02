@@ -470,7 +470,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 }
-                final list = snap.data ?? const [];
+                // 电台去重（id+name）+ 限 12 个，网格更规整
+                final seen = <String>{};
+                final list = (snap.data ?? const [])
+                    .where((r) => seen.add((r['id']?.toString() ?? '') +
+                        '|' + (r['name'] as String? ?? '')))
+                    .take(12)
+                    .toList();
                 if (list.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -1229,7 +1235,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final coverUrl = widget.coverUrl;
     final error = widget.error;
     final onRetry = widget.onRetry;
-    // 与音乐库详情页同款 fallback：列表第一首有封面歌曲优先，入口封面兜底
+    // 背景封面：列表第一首有封面歌曲优先，入口封面兜底
     final fbUrl = songs.isNotEmpty
         ? (songs.first.coverUrl != null && songs.first.coverUrl!.isNotEmpty
             ? songs.first.coverUrl
@@ -1237,11 +1243,40 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                 ? client?.coverUrl(songs.first.coverArt!, size: 600)?.toString()
                 : null))
         : null;
-    return PageBackground(
-      controller: controller,
-      settings: settings,
-      fallbackCoverUrl: fbUrl ?? coverUrl,
-      child: BigScreenText(
+    final bgUrl = (fbUrl ?? coverUrl);
+    // [xmusic] 背景层：不用模糊封面链（CachedNetworkImage+blur 在首页场景疑似渲染失败），
+    // 直接用 Image.network 确定性渲染，跟随"当前封面透出背景"开关。
+    final cs = Theme.of(context).colorScheme;
+    final bgLayer = settings.coverColorBg && bgUrl != null && bgUrl.isNotEmpty
+        ? Positioned.fill(
+            child: Container(
+              color: cs.surfaceContainer,
+              child: Opacity(
+                opacity: 0.42,
+                child: Image.network(
+                  bgUrl,
+                  fit: BoxFit.cover,
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0',
+                    if (bgUrl.contains('qq.com') || bgUrl.contains('gtimg.cn'))
+                      'Referer': 'https://y.qq.com/',
+                    if (bgUrl.contains('163') || bgUrl.contains('126.net'))
+                      'Referer': 'https://music.163.com/',
+                  },
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          )
+        : Positioned.fill(
+            child: ColoredBox(color: cs.surfaceContainer),
+          );
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        bgLayer,
+        Positioned.fill(
+            child: BigScreenText(
           child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: (Theme.of(context).brightness == Brightness.dark
                 ? SystemUiOverlayStyle.light
@@ -1386,7 +1421,10 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         MiniPlayer(settings: settings, controller: controller),
       ],
       ))),
-    ));
+          ),
+        ),
+      ],
+    );
   }
 }
 
