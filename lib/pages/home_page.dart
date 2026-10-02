@@ -1238,10 +1238,18 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final coverUrl = widget.coverUrl;
     final error = widget.error;
     final onRetry = widget.onRetry;
+    // 与音乐库详情页同款 fallback：列表第一首有封面歌曲优先，入口封面兜底
+    final fbUrl = songs.isNotEmpty
+        ? (songs.first.coverUrl != null && songs.first.coverUrl!.isNotEmpty
+            ? songs.first.coverUrl
+            : (songs.first.coverArt != null && songs.first.coverArt!.isNotEmpty
+                ? client?.coverUrl(songs.first.coverArt!, size: 600)?.toString()
+                : null))
+        : null;
     return PageBackground(
       controller: controller,
       settings: settings,
-      fallbackCoverUrl: coverUrl,
+      fallbackCoverUrl: fbUrl ?? coverUrl,
       child: BigScreenText(
           child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: (Theme.of(context).brightness == Brightness.dark

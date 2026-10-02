@@ -150,7 +150,7 @@ class AppSettings extends ChangeNotifier {
     _lyricScaleLandscape = (_prefs.getDouble(_kScaleL) ?? _lyricScalePortrait).clamp(minScale, maxScale);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;
-    _coverColorBg = _prefs.getBool(_kCoverColorBg) ?? true;
+    _coverColorBg = true; // 用户明确要求封面透出，忽略旧 prefs 的 false
     _lyricActive = _prefs.getInt(_kLyricActive) ?? lyricActiveDefault;
     _lyricPast = _prefs.getInt(_kLyricPast) ?? lyricPastDefault;
     _lyricFuture = _prefs.getInt(_kLyricFuture) ?? lyricFutureDefault;
