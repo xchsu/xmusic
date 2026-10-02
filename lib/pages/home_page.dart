@@ -33,6 +33,7 @@ class _HomePageState extends State<HomePage> {
   late Future<List<Map<String, dynamic>>> _qqPlaylists;
   late Future<List<Map<String, dynamic>>> _qqRadios;
   int _qqCategoryId = 3152; // QQ歌单分类：3152流行/41摇滚/48民谣/45电子/42说唱/61古风/49纯音乐/46爵士/43R&B/47古典
+  int _qqRadioGroupIdx = 0; // QQ电台分组下拉当前选中组索引
   static const List<Map<String, dynamic>> _qqCategories = [
     {'id': 3152, 'name': '流行'},
     {'id': 41, 'name': '摇滚'},
@@ -352,24 +353,36 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            // QQ歌单分类切换（歌单广场）：不横向滑动，一行一行自动换行
+            // QQ歌单分类切换（歌单广场）：下拉菜单选择分类
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final c in _qqCategories)
-                    ChoiceChip(
-                      label: Text(c['name']),
-                      selected: _qqCategoryId == c['id'],
-                      onSelected: (_) => setState(() {
-                        _qqCategoryId = c['id'] as int;
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _qqCategoryId,
+                    borderRadius: BorderRadius.circular(10),
+                    isDense: true,
+                    icon: const Icon(Icons.arrow_drop_down_rounded),
+                    items: [
+                      for (final c in _qqCategories)
+                        DropdownMenuItem<int>(
+                          value: c['id'] as int,
+                          child: Text('${c['name']}',
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.w600)),
+                        ),
+                    ],
+                    onChanged: (v) {
+                      if (v == null || v == _qqCategoryId) return;
+                      setState(() {
+                        _qqCategoryId = v;
                         _qqPlaylists = widget.controller.external
-                            .qqPlaylists(categoryId: c['id'] as int);
-                      }),
-                    ),
-                ],
+                            .qqPlaylists(categoryId: v);
+                      });
+                    },
+                  ),
+                ),
               ),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
@@ -471,7 +484,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 }
-                // 电台按组渲染：每组组名标题 + 横向滑动卡片（不截断电台，排列规整）
+                // 电台按组渲染：下拉菜单选择分组，下方只显示当前组的电台卡片（不截断，排列规整）
                 final groups = snap.data ?? const <Map<String, dynamic>>[];
                 if (groups.isEmpty) {
                   return const Padding(
@@ -480,22 +493,53 @@ class _HomePageState extends State<HomePage> {
                         style: TextStyle(color: Colors.grey, fontSize: 13)),
                   );
                 }
+                final gi = _qqRadioGroupIdx >= groups.length ? 0 : _qqRadioGroupIdx;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final g in groups)
-                      _RadioGroup(
-                        groupName: (g['groupName'] as String?) ?? '电台',
-                        radios: ((g['radios'] as List?) ?? const [])
-                            .cast<Map<String, dynamic>>(),
-                        onTap: (r) {
-                          final rid = int.tryParse(r['id'].toString()) ?? 0;
-                          if (rid > 0) {
-                            _openQqRadio(r['name'] as String, rid,
-                                coverUrl: r['coverUrl'] as String?);
-                          }
-                        },
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: gi,
+                            borderRadius: BorderRadius.circular(10),
+                            isDense: true,
+                            icon: const Icon(Icons.arrow_drop_down_rounded),
+                            items: [
+                              for (var i = 0; i < groups.length; i++)
+                                DropdownMenuItem<int>(
+                                  value: i,
+                                  child: Text(
+                                      ((groups[i]['groupName'] as String?) ??
+                                          '电台'),
+                                      style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600)),
+                                ),
+                            ],
+                            onChanged: (v) {
+                              if (v == null || v == gi) return;
+                              setState(() => _qqRadioGroupIdx = v);
+                            },
+                          ),
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    _RadioGroup(
+                      groupName: ((groups[gi]['groupName'] as String?) ?? '电台'),
+                      radios: ((groups[gi]['radios'] as List?) ?? const [])
+                          .cast<Map<String, dynamic>>(),
+                      onTap: (r) {
+                        final rid = int.tryParse(r['id'].toString()) ?? 0;
+                        if (rid > 0) {
+                          _openQqRadio(r['name'] as String, rid,
+                              coverUrl: r['coverUrl'] as String?);
+                        }
+                      },
+                    ),
                   ],
                 );
               },
