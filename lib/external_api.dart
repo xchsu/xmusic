@@ -827,7 +827,8 @@ class ExternalApi {
     }
   }
 
-  /// QQ 电台列表（fcg_v8_radiolist 匿名接口）：返回 [{id, name, coverUrl, listenNum}]
+  /// QQ 电台列表（fcg_v8_radiolist 匿名接口）：返回按组分组的结构
+  /// [{groupName, radios: [{id, name, coverUrl, listenNum}]}]
   Future<List<Map<String, dynamic>>> qqRadios() async {
     final uri = Uri.parse('https://c.y.qq.com/v8/fcg-bin/fcg_v8_radiolist.fcg')
         .replace(queryParameters: {
@@ -842,13 +843,15 @@ class ExternalApi {
     final groupList = (j['data']?['data']?['groupList'] as List?) ?? const [];
     final out = <Map<String, dynamic>>[];
     for (final g in groupList.cast<Map>()) {
+      final gname = (g['groupName'] ?? g['name'] ?? '').toString().trim();
       final radios = (g['radioList'] as List?) ?? const [];
+      final items = <Map<String, dynamic>>[];
       for (final r in radios.cast<Map>()) {
         final id = r['radioId'];
         final name = (r['radioName'] ?? '').toString();
         if (id == null || name.isEmpty) continue;
         final img = (r['radioImg'] ?? '').toString();
-        out.add({
+        items.add({
           'id': id,
           'name': name,
           'coverUrl': img.startsWith('http')
@@ -857,6 +860,11 @@ class ExternalApi {
           'listenNum': (r['listenNum'] ?? 0),
         });
       }
+      if (items.isEmpty) continue;
+      out.add({
+        'groupName': gname.isEmpty ? '电台' : gname,
+        'radios': items,
+      });
     }
     return out;
   }

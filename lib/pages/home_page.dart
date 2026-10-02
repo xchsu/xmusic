@@ -470,93 +470,30 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 }
-                // 电台去重（id+name）+ 限 12 个，网格更规整
-                final seen = <String>{};
-                final list = (snap.data ?? const [])
-                    .where((r) => seen.add((r['id']?.toString() ?? '') +
-                        '|' + (r['name'] as String? ?? '')))
-                    .take(12)
-                    .toList();
-                if (list.isEmpty) {
+                // 电台按组渲染：每组组名标题 + 横向滑动卡片（不截断电台，排列规整）
+                final groups = snap.data ?? const <Map<String, dynamic>>[];
+                if (groups.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: Text('电台暂无数据',
                         style: TextStyle(color: Colors.grey, fontSize: 13)),
                   );
                 }
-                final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
-                return GridView(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  gridDelegate: _carP
-                      ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
-                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.7 : 0.72),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final r in list)
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          final rid =
-                              int.tryParse(r['id'].toString()) ?? 0;
+                    for (final g in groups)
+                      _RadioGroup(
+                        groupName: (g['groupName'] as String?) ?? '电台',
+                        radios: ((g['radios'] as List?) ?? const [])
+                            .cast<Map<String, dynamic>>(),
+                        onTap: (r) {
+                          final rid = int.tryParse(r['id'].toString()) ?? 0;
                           if (rid > 0) {
-                            _openQqRadio(r['name'] as String, rid, coverUrl: r['coverUrl'] as String?);
+                            _openQqRadio(r['name'] as String, rid,
+                                coverUrl: r['coverUrl'] as String?);
                           }
                         },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: (r['coverUrl'] is String &&
-                                        (r['coverUrl'] as String).isNotEmpty)
-                                    ? CachedNetworkImage(
-                                        imageUrl: r['coverUrl'] as String,
-                                        fit: BoxFit.cover,
-                                        httpHeaders: const {
-                                          'User-Agent': 'Mozilla/5.0',
-                                          'Referer': 'https://y.qq.com/',
-                                        },
-                                        placeholder: (_, __) => Container(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .surfaceContainerHighest),
-                                        errorWidget: (_, __, ___) =>
-                                            Container(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .surfaceContainerHighest,
-                                          alignment: Alignment.center,
-                                          child: Icon(
-                                              Icons.radio_rounded,
-                                              size: 28,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurfaceVariant),
-                                        ),
-                                      )
-                                    : Container(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .surfaceContainerHighest,
-                                        alignment: Alignment.center,
-                                        child: Icon(
-                                            Icons.radio_rounded,
-                                            size: 28,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant),
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(r['name'] as String,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12)),
-                          ],
-                        ),
                       ),
                   ],
                 );
@@ -1424,6 +1361,100 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// QQ 电台分组：组名标题 + 横向滑动卡片
+class _RadioGroup extends StatelessWidget {
+  const _RadioGroup({
+    required this.groupName,
+    required this.radios,
+    required this.onTap,
+  });
+
+  final String groupName;
+  final List<Map<String, dynamic>> radios;
+  final void Function(Map<String, dynamic>) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (radios.isEmpty) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(groupName,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 116,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: radios.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, i) {
+                final r = radios[i];
+                final cover = r['coverUrl'] as String?;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => onTap(r),
+                  child: SizedBox(
+                    width: 86,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 86,
+                            height: 86,
+                            child: (cover != null && cover.isNotEmpty)
+                                ? CachedNetworkImage(
+                                    imageUrl: cover,
+                                    fit: BoxFit.cover,
+                                    httpHeaders: const {
+                                      'User-Agent': 'Mozilla/5.0',
+                                      'Referer': 'https://y.qq.com/',
+                                    },
+                                    placeholder: (_, __) =>
+                                        Container(color: cs.surfaceContainerHighest),
+                                    errorWidget: (_, __, ___) => Container(
+                                      color: cs.surfaceContainerHighest,
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.radio_rounded,
+                                          size: 28, color: cs.onSurfaceVariant),
+                                    ),
+                                  )
+                                : Container(
+                                    color: cs.surfaceContainerHighest,
+                                    alignment: Alignment.center,
+                                    child: Icon(Icons.radio_rounded,
+                                        size: 28, color: cs.onSurfaceVariant),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(r['name'] as String? ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
