@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -1237,29 +1238,68 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final coverUrl = widget.coverUrl;
     final error = widget.error;
     final onRetry = widget.onRetry;
-    return PageBackground(
-        controller: widget.controller,
-        settings: widget.settings,
-        fallbackCoverUrl: coverUrl != null && coverUrl!.isNotEmpty
-            ? coverUrl
-            : () {
-                for (final s0 in songs) {
-                  if (s0.coverUrl != null && s0.coverUrl!.isNotEmpty) return s0.coverUrl;
-                  if (s0.coverArt != null && s0.coverArt!.isNotEmpty) {
-                    final u = client?.coverUrl(s0.coverArt!, size: 600)?.toString();
-                    if (u != null && u.isNotEmpty) return u;
-                  }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 背景层（强制渲染，不依赖全局开关）：入口封面硬铺 + 当前歌曲封面叠加，
+        // 歌曲封面加载失败（透明占位）时露出入口封面，任何网络/任何状态均有色。
+        Positioned.fill(
+          child: ListenableBuilder(
+            listenable: Listenable.merge([widget.controller, widget.settings]),
+            builder: (context, _) {
+              final cs = Theme.of(context).colorScheme;
+              final song = widget.controller.current;
+              String? songUrl;
+              if (song != null) {
+                if ((song.coverUrl ?? '').isNotEmpty) {
+                  songUrl = song.coverUrl;
+                } else if (song.coverArt != null && song.coverArt!.isNotEmpty) {
+                  songUrl = client?.coverUrl(song.coverArt!, size: 600)?.toString();
                 }
-                return widget.coverUrl;
-              }(),
-        child: BigScreenText(
-        child: AnnotatedRegion<SystemUiOverlayStyle>(
-          value: (Theme.of(context).brightness == Brightness.dark
-              ? SystemUiOverlayStyle.light
-              : SystemUiOverlayStyle.dark)
-              .copyWith(statusBarColor: Colors.transparent),
-          child: Scaffold(
-      backgroundColor: Colors.transparent,
+              }
+              final entry = (coverUrl ?? '').isNotEmpty ? coverUrl : null;
+              final base = widget.settings.bgColor != 0
+                  ? Color(widget.settings.bgColor).withValues(alpha: 0.78)
+                  : cs.surfaceContainer;
+              Widget? img;
+              final urls = <String>[];
+              if (entry != null) urls.add(entry);
+              if (songUrl != null && songUrl != entry) urls.add(songUrl!);
+              if (urls.isNotEmpty) {
+                img = Opacity(
+                  opacity: 0.38,
+                  child: ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        for (final u in urls)
+                          CachedNetworkImage(
+                            imageUrl: u,
+                            fit: BoxFit.cover,
+                            httpHeaders: _imgHeaders(u),
+                            placeholder: (_, __) => const SizedBox.shrink(),
+                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return ColoredBox(color: base, child: img);
+            },
+          ),
+        ),
+        // 内容层
+        Positioned.fill(
+          child: BigScreenText(
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: (Theme.of(context).brightness == Brightness.dark
+                ? SystemUiOverlayStyle.light
+                : SystemUiOverlayStyle.dark)
+                .copyWith(statusBarColor: Colors.transparent),
+            child: Scaffold(
+        backgroundColor: Colors.transparent,
       appBar: AppBar(backgroundColor: Colors.transparent, title: Text(title)),
       body: Column(
         children: [
@@ -1394,7 +1434,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         MiniPlayer(settings: settings, controller: controller),
       ],
       ))),
-    ));
+    )));
   }
 }
 
