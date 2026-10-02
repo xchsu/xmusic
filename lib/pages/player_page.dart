@@ -160,7 +160,7 @@ class _PlayerPageState extends State<PlayerPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant, fontSize: 14),
+                              color: theme.colorScheme.onSurfaceVariant, fontSize: 16),
                         ),
                       ),
                     ),
@@ -464,7 +464,7 @@ class _PlayerPageState extends State<PlayerPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 14),
+                              color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 20 : 16),
                         ),
                       ),
                     ),
