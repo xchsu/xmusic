@@ -1242,13 +1242,16 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         settings: widget.settings,
         fallbackCoverUrl: coverUrl != null && coverUrl!.isNotEmpty
             ? coverUrl
-            : (songs.isNotEmpty
-                ? (songs.first.coverUrl != null && songs.first.coverUrl!.isNotEmpty
-                    ? songs.first.coverUrl
-                    : (songs.first.coverArt != null && songs.first.coverArt!.isNotEmpty
-                        ? client?.coverUrl(songs.first.coverArt!, size: 600)?.toString()
-                        : null))
-                : null),
+            : () {
+                for (final s0 in songs) {
+                  if (s0.coverUrl != null && s0.coverUrl!.isNotEmpty) return s0.coverUrl;
+                  if (s0.coverArt != null && s0.coverArt!.isNotEmpty) {
+                    final u = client?.coverUrl(s0.coverArt!, size: 600)?.toString();
+                    if (u != null && u.isNotEmpty) return u;
+                  }
+                }
+                return null;
+              }(),
         child: BigScreenText(
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: (Theme.of(context).brightness == Brightness.dark
@@ -1273,7 +1276,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                     child: CachedNetworkImage(
                       imageUrl: coverUrl!,
                       width: 80, height: 80, fit: BoxFit.cover,
-                      httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://music.163.com/'},
+                      httpHeaders: _imgHeaders(coverUrl!),
                     ),
                   ),
                   const SizedBox(width: 16),
