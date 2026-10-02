@@ -1260,7 +1260,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                     if (bgUrl.contains('163') || bgUrl.contains('126.net'))
                       'Referer': 'https://music.163.com/',
                   },
-                  loadingBuilder: (_, child, _) => child,
+                  loadingBuilder: (_, child, __) => child,
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
