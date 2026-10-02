@@ -29,6 +29,12 @@ class CoverGlassBackground extends StatelessWidget {
         final customBg = settings.bgColor != 0
             ? Color(settings.bgColor).withValues(alpha: isDark ? 0.55 : 0.78)
             : null;
+        // 无封面/封面加载失败时的底色：浅色主题下不直接用纯 F5F5F5（观感纯白），
+        // 以主题主色极低比例染色，得到有层次感的浅底（深色主题同样微亮），
+        // 保证任何状态下背景都不再是纯白。
+        final plainBg = customBg ??
+            Color.alphaBlend(
+                cs.primary.withValues(alpha: 0.07), cs.surfaceContainer);
         // 当前歌曲封面图片 URL（coverUrl 优先，其次服务器 coverArt；本地 file:// 也可）
         String? coverUrl;
         if (song != null) {
@@ -53,7 +59,7 @@ class CoverGlassBackground extends StatelessWidget {
               // 歌曲封面加载失败（透明 errorWidget）时露出入口封面，保证背景始终有色。
               Positioned.fill(
                 child: ColoredBox(
-                  color: customBg ?? cs.surfaceContainer,
+                  color: plainBg,
                   child: Opacity(
                     opacity: 0.38,
                     child: ImageFiltered(
@@ -62,8 +68,8 @@ class CoverGlassBackground extends StatelessWidget {
                         fit: StackFit.expand,
                         children: [
                           if (fallbackCoverUrl != null && fallbackCoverUrl!.isNotEmpty)
-                            _coverImage(fallbackCoverUrl!, cs),
-                          _coverImage(coverUrl!, cs),
+                            _coverImage(fallbackCoverUrl!, cs, plainBg),
+                          _coverImage(coverUrl!, cs, plainBg),
                         ],
                       ),
                     ),
@@ -73,7 +79,7 @@ class CoverGlassBackground extends StatelessWidget {
             else
               // 未开启封面：保持原有自定义色或系统主题表面底
               ColoredBox(
-                color: customBg ?? cs.surfaceContainer,
+                color: plainBg,
               ),
             // 仅未开启封面时可选叠加自定义颜色（开启封面后不加任何颜色）
             if (!useCover && customBg != null)
@@ -85,14 +91,14 @@ class CoverGlassBackground extends StatelessWidget {
   }
 
 
-  Widget _coverImage(String url, ColorScheme cs) {
+  Widget _coverImage(String url, ColorScheme cs, Color fallback) {
     final uri = Uri.tryParse(url);
-    if (uri == null) return ColoredBox(color: cs.surfaceContainerHighest);
+    if (uri == null) return ColoredBox(color: fallback);
     if (uri.scheme == 'file') {
       return Image.file(
         File(uri.toFilePath()),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        errorBuilder: (_, __, ___) => ColoredBox(color: fallback),
       );
     }
     return CachedNetworkImage(
@@ -101,8 +107,8 @@ class CoverGlassBackground extends StatelessWidget {
       httpHeaders: _imgHeaders(url),
       fadeInDuration: const Duration(milliseconds: 300),
       fadeOutDuration: const Duration(milliseconds: 200),
-      placeholder: (_, __) => const SizedBox.shrink(),
-      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+      placeholder: (_, __) => ColoredBox(color: fallback),
+      errorWidget: (_, __, ___) => ColoredBox(color: fallback),
     );
   }
 }
