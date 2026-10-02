@@ -1260,14 +1260,14 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
               final entry = (coverUrl ?? '').isNotEmpty ? coverUrl : null;
               final base = widget.settings.bgColor != 0
                   ? Color(widget.settings.bgColor).withValues(alpha: 0.78)
-                  : cs.surfaceContainer;
+                  : cs.primaryContainer.withValues(alpha: 0.85);
               Widget? img;
               final urls = <String>[];
               if (entry != null) urls.add(entry);
               if (songUrl != null && songUrl != entry) urls.add(songUrl!);
               if (urls.isNotEmpty) {
                 img = Opacity(
-                  opacity: 0.38,
+                  opacity: 0.5,
                   child: ImageFiltered(
                     imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
                     child: Stack(
