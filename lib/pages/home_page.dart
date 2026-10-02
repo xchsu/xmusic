@@ -1434,7 +1434,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         MiniPlayer(settings: settings, controller: controller),
       ],
       ))),
-    ])));
+    ))]);
   }
 }
 
