@@ -146,7 +146,7 @@ class AppSettings extends ChangeNotifier {
     webdavPass = _prefs.getString(_kDavPass) ?? '';
     webdavPath = _prefs.getString(_kDavPath) ?? '';
     webdavName = _prefs.getString(_kDavName) ?? '';
-    _lyricScalePortrait = (_prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
+    _lyricScalePortrait = (_prefs.getDouble(_kScaleP) ?? _prefs.getDouble(_kScale) ?? 1.0).clamp(minScale, maxScale);
     _lyricScaleLandscape = (_prefs.getDouble(_kScaleL) ?? _lyricScalePortrait).clamp(minScale, maxScale);
     _themeMode = AppThemeMode.values[_prefs.getInt(_kTheme) ?? 0];
     _bgColor = _prefs.getInt(_kBgColor) ?? 0;

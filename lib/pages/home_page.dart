@@ -61,6 +61,36 @@ class _HomePageState extends State<HomePage> {
     _lastBlRev = widget.settings.blacklistRev;
     widget.settings.addListener(_onSettingsChanged);
     _load();
+    _loadPrefs();
+  }
+
+  /// 恢复歌单广场分类 / QQ电台分组的下拉选择（用户要求下次启动记住）
+  Future<void> _loadPrefs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final cid = p.getInt('qq_category_id');
+      final ridx = p.getInt('qq_radio_group_idx');
+      if (!mounted) return;
+      setState(() {
+        _qqCategoryId = cid ?? 3152;
+        _qqRadioGroupIdx = ridx ?? 0;
+      });
+      if (cid != null && cid != 3152) {
+        _qqPlaylists = widget.controller.external.qqPlaylists(categoryId: cid);
+      }
+    } catch (_) {}
+  }
+
+  void _saveCategory(int v) {
+    SharedPreferences.getInstance()
+        .then((p) => p.setInt('qq_category_id', v))
+        .catchError((_) {});
+  }
+
+  void _saveRadioGroup(int v) {
+    SharedPreferences.getInstance()
+        .then((p) => p.setInt('qq_radio_group_idx', v))
+        .catchError((_) {});
   }
 
   void _load() {
@@ -378,6 +408,7 @@ class _HomePageState extends State<HomePage> {
                         _qqPlaylists = widget.controller.external
                             .qqPlaylists(categoryId: v);
                       });
+                      _saveCategory(v);
                     },
                   ),
                 ),
@@ -482,7 +513,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 }
-                // 电台按组渲染：下拉菜单选择分组，下方只显示当前组的电台卡片（不截断，排列规整）
+                // 电台按组渲染：下拉菜单选择分组（选择持久化），下方网格卡片（与歌单广场同尺寸同排列）
                 final groups = snap.data ?? const <Map<String, dynamic>>[];
                 if (groups.isEmpty) {
                   return const Padding(
@@ -492,6 +523,12 @@ class _HomePageState extends State<HomePage> {
                   );
                 }
                 final gi = _qqRadioGroupIdx >= groups.length ? 0 : _qqRadioGroupIdx;
+                final radios = ((groups[gi]['radios'] as List?) ?? const [])
+                    .cast<Map<String, dynamic>>();
+                final car = isCarScreen(context);
+                final carP = car &&
+                    MediaQuery.sizeOf(context).width <
+                        MediaQuery.sizeOf(context).height;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -520,23 +557,36 @@ class _HomePageState extends State<HomePage> {
                             onChanged: (v) {
                               if (v == null || v == gi) return;
                               setState(() => _qqRadioGroupIdx = v);
+                              _saveRadioGroup(v);
                             },
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    _RadioGroup(
-                      groupName: ((groups[gi]['groupName'] as String?) ?? '电台'),
-                      radios: ((groups[gi]['radios'] as List?) ?? const [])
-                          .cast<Map<String, dynamic>>(),
-                      onTap: (r) {
-                        final rid = int.tryParse(r['id'].toString()) ?? 0;
-                        if (rid > 0) {
-                          _openQqRadio(r['name'] as String, rid,
-                              coverUrl: r['coverUrl'] as String?);
-                        }
-                      },
+                    const SizedBox(height: 8),
+                    GridView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      gridDelegate: carP
+                          ? const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 10,
+                              childAspectRatio: 0.86)
+                          : SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: car ? 176 : 118,
+                              mainAxisSpacing: car ? 12 : 10,
+                              crossAxisSpacing: 10,
+                              childAspectRatio: car ? 0.7 : 0.72),
+                      children: [
+                        for (final r in radios)
+                          _radioCard(
+                            (r['name'] as String?) ?? '',
+                            int.tryParse(r['id'].toString()) ?? 0,
+                            r['coverUrl'] as String?,
+                          ),
+                      ],
                     ),
                   ],
                 );
@@ -900,6 +950,69 @@ class _HomePageState extends State<HomePage> {
     );
   }
   /// QQ 精选歌单卡：方形圆角封面 + 下方标题（文字放图下完整显示，不叠在图上截断；横竖屏同排布）。
+  /// QQ 电台卡（与歌单广场同尺寸同排列）：圆角方块封面 + 下方电台名，点击进电台歌曲。
+  Widget _radioCard(String name, int id, String? coverUrl) {
+    final theme = Theme.of(context);
+    final carP = isCarScreen(context) &&
+        MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => id > 0 ? _openQqRadio(name, id, coverUrl: coverUrl) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isCarScreen(context))
+            SizedBox(
+              height: carP ? 116 : 132,
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (coverUrl != null && coverUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
+                        placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                        errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                      )
+                    : Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.radio_rounded, color: theme.colorScheme.onSurfaceVariant),
+                      ),
+              ),
+            )
+          else
+            AspectRatio(
+              aspectRatio: 1,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: (coverUrl != null && coverUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        httpHeaders: const {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://y.qq.com/'},
+                        placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                        errorWidget: (_, __, ___) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                      )
+                    : Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.radio_rounded, color: theme.colorScheme.onSurfaceVariant),
+                      ),
+              ),
+            ),
+          const SizedBox(height: 6),
+          Text(name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500, height: 1.25)),
+        ],
+      ),
+    );
+  }
+
   Widget _qqPlaylistCard(String name, String dissid, String? coverUrl) {
     final theme = Theme.of(context);
     final carP = isCarScreen(context) &&
@@ -1216,7 +1329,9 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
     final coverUrl = widget.coverUrl;
     final error = widget.error;
     final onRetry = widget.onRetry;
-    // 背景封面：列表第一首有封面歌曲优先，入口封面兜底
+    // 背景封面：列表第一首有封面歌曲优先，入口封面兜底。
+    // QQ 封面 URL 带尺寸段（T002R80x80 等），小封面全屏模糊后颜色极淡、观感接近纯白，
+    // 统一放大到 T002R500x500，保证模糊背景颜色明显（与音乐库当前歌曲大封面观感一致）。
     final fbUrl = songs.isNotEmpty
         ? (songs.first.coverUrl != null && songs.first.coverUrl!.isNotEmpty
             ? songs.first.coverUrl
@@ -1224,7 +1339,13 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                 ? client?.coverUrl(songs.first.coverArt!, size: 600)?.toString()
                 : null))
         : null;
-    final bgUrl = (fbUrl ?? coverUrl);
+    String bigCover(String? u) {
+      if (u == null || u.isEmpty) return u ?? '';
+      return u.replaceFirstMapped(
+          RegExp(r'T002R\d+x\d+'), (_) => 'T002R500x500');
+    }
+
+    final bgUrl = bigCover(fbUrl ?? coverUrl);
     // [xmusic] 背景与全局统一：PageBackground（当前播放封面模糊玻璃），
     // 与音乐库/搜索/歌手等页面完全一致；fallback 用歌单封面兜底。
     return PageBackground(
@@ -1379,100 +1500,6 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
         ),
         ),
       );
-  }
-}
-
-/// QQ 电台分组：组名标题 + 横向滑动卡片
-class _RadioGroup extends StatelessWidget {
-  const _RadioGroup({
-    required this.groupName,
-    required this.radios,
-    required this.onTap,
-  });
-
-  final String groupName;
-  final List<Map<String, dynamic>> radios;
-  final void Function(Map<String, dynamic>) onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (radios.isEmpty) return const SizedBox.shrink();
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(groupName,
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 116,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: radios.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, i) {
-                final r = radios[i];
-                final cover = r['coverUrl'] as String?;
-                return InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => onTap(r),
-                  child: SizedBox(
-                    width: 86,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: SizedBox(
-                            width: 86,
-                            height: 86,
-                            child: (cover != null && cover.isNotEmpty)
-                                ? CachedNetworkImage(
-                                    imageUrl: cover,
-                                    fit: BoxFit.cover,
-                                    httpHeaders: const {
-                                      'User-Agent': 'Mozilla/5.0',
-                                      'Referer': 'https://y.qq.com/',
-                                    },
-                                    placeholder: (_, __) =>
-                                        Container(color: cs.surfaceContainerHighest),
-                                    errorWidget: (_, __, ___) => Container(
-                                      color: cs.surfaceContainerHighest,
-                                      alignment: Alignment.center,
-                                      child: Icon(Icons.radio_rounded,
-                                          size: 28, color: cs.onSurfaceVariant),
-                                    ),
-                                  )
-                                : Container(
-                                    color: cs.surfaceContainerHighest,
-                                    alignment: Alignment.center,
-                                    child: Icon(Icons.radio_rounded,
-                                        size: 28, color: cs.onSurfaceVariant),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(r['name'] as String? ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
