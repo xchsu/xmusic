@@ -1028,6 +1028,7 @@ class _HomePageState extends State<HomePage> {
         client: _client,
         settings: widget.settings,
         controller: widget.controller,
+        coverUrl: songs.isNotEmpty ? songs.first.coverUrl : null,
         error: error,
         onRetry: () => _openLxPlaylist(name, id),
         onPlay: (i) => _playSongs(songs, i, source: name),
