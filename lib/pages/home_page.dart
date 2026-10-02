@@ -1250,7 +1250,7 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                     if (u != null && u.isNotEmpty) return u;
                   }
                 }
-                return null;
+                return widget.coverUrl;
               }(),
         child: BigScreenText(
         child: AnnotatedRegion<SystemUiOverlayStyle>(

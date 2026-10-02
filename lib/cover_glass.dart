@@ -48,15 +48,24 @@ class CoverGlassBackground extends StatelessWidget {
           children: [
             if (useCover)
               // 开启「当前歌曲封面」：主体仍为系统浅色/深色或自定义背景色，
-              // 上方只叠加一层很淡（15% 透明）的模糊封面，透一点即可，随切歌自动更新。
+              // 上方只叠加一层很淡的模糊封面，随切歌自动更新。
+              // 兜底：底层先铺页面入口封面（歌单/榜单/电台封面），上层再铺当前歌曲封面，
+              // 歌曲封面加载失败（透明 errorWidget）时露出入口封面，保证背景始终有色。
               Positioned.fill(
                 child: ColoredBox(
-                  color: customBg ?? cs.surfaceContainerHighest,
+                  color: customBg ?? cs.surfaceContainer,
                   child: Opacity(
                     opacity: 0.38,
                     child: ImageFiltered(
                       imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                      child: _coverImage(coverUrl!, cs),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (fallbackCoverUrl != null && fallbackCoverUrl!.isNotEmpty)
+                            _coverImage(fallbackCoverUrl!, cs),
+                          _coverImage(coverUrl!, cs),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -64,7 +73,7 @@ class CoverGlassBackground extends StatelessWidget {
             else
               // 未开启封面：保持原有自定义色或系统主题表面底
               ColoredBox(
-                color: customBg ?? cs.surfaceContainerHighest,
+                color: customBg ?? cs.surfaceContainer,
               ),
             // 仅未开启封面时可选叠加自定义颜色（开启封面后不加任何颜色）
             if (!useCover && customBg != null)
@@ -83,7 +92,7 @@ class CoverGlassBackground extends StatelessWidget {
       return Image.file(
         File(uri.toFilePath()),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => ColoredBox(color: cs.surfaceContainerHighest),
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       );
     }
     return CachedNetworkImage(
@@ -92,8 +101,8 @@ class CoverGlassBackground extends StatelessWidget {
       httpHeaders: _imgHeaders(url),
       fadeInDuration: const Duration(milliseconds: 300),
       fadeOutDuration: const Duration(milliseconds: 200),
-      placeholder: (_, __) => ColoredBox(color: cs.surfaceContainerHighest),
-      errorWidget: (_, __, ___) => ColoredBox(color: cs.surfaceContainerHighest),
+      placeholder: (_, __) => const SizedBox.shrink(),
+      errorWidget: (_, __, ___) => const SizedBox.shrink(),
     );
   }
 }
