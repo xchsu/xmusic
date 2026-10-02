@@ -351,25 +351,22 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            // QQ歌单分类切换（歌单广场）
-            SizedBox(
-              height: 34,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+            // QQ歌单分类切换（歌单广场）：不横向滑动，一行一行自动换行
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   for (final c in _qqCategories)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(c['name']),
-                        selected: _qqCategoryId == c['id'],
-                        onSelected: (_) => setState(() {
-                          _qqCategoryId = c['id'] as int;
-                          _qqPlaylists = widget.controller.external
-                              .qqPlaylists(categoryId: c['id'] as int);
-                        }),
-                      ),
+                    ChoiceChip(
+                      label: Text(c['name']),
+                      selected: _qqCategoryId == c['id'],
+                      onSelected: (_) => setState(() {
+                        _qqCategoryId = c['id'] as int;
+                        _qqPlaylists = widget.controller.external
+                            .qqPlaylists(categoryId: c['id'] as int);
+                      }),
                     ),
                 ],
               ),
@@ -481,87 +478,81 @@ class _HomePageState extends State<HomePage> {
                         style: TextStyle(color: Colors.grey, fontSize: 13)),
                   );
                 }
-                return SizedBox(
-                  height: 116,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      for (final r in list)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              final rid =
-                                  int.tryParse(r['id'].toString()) ?? 0;
-                              if (rid > 0) {
-                                _openQqRadio(r['name'] as String, rid, coverUrl: r['coverUrl'] as String?);
-                              }
-                            },
-                            child: SizedBox(
-                              width: 86,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: (r['coverUrl'] is String &&
-                                            (r['coverUrl'] as String).isNotEmpty)
-                                        ? CachedNetworkImage(
-                                            imageUrl: r['coverUrl'] as String,
-                                            height: 86,
-                                            fit: BoxFit.cover,
-                                            httpHeaders: const {
-                                              'User-Agent': 'Mozilla/5.0',
-                                              'Referer': 'https://y.qq.com/',
-                                            },
-                                            placeholder: (_, __) => Container(
-                                                height: 86,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainerHighest),
-                                            errorWidget: (_, __, ___) =>
-                                                Container(
-                                              height: 86,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .surfaceContainerHighest,
-                                              alignment: Alignment.center,
-                                              child: Icon(
-                                                  Icons.radio_rounded,
-                                                  size: 28,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant),
-                                            ),
-                                          )
-                                        : Container(
-                                            height: 86,
+                final _carP = isCarScreen(context) && MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height;
+                return GridView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  gridDelegate: _carP
+                      ? const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 10, childAspectRatio: 0.86)
+                      : SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: isCarScreen(context) ? 176 : 118, mainAxisSpacing: isCarScreen(context) ? 12 : 10, crossAxisSpacing: 10, childAspectRatio: isCarScreen(context) ? 0.7 : 0.72),
+                  children: [
+                    for (final r in list)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          final rid =
+                              int.tryParse(r['id'].toString()) ?? 0;
+                          if (rid > 0) {
+                            _openQqRadio(r['name'] as String, rid, coverUrl: r['coverUrl'] as String?);
+                          }
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: (r['coverUrl'] is String &&
+                                        (r['coverUrl'] as String).isNotEmpty)
+                                    ? CachedNetworkImage(
+                                        imageUrl: r['coverUrl'] as String,
+                                        fit: BoxFit.cover,
+                                        httpHeaders: const {
+                                          'User-Agent': 'Mozilla/5.0',
+                                          'Referer': 'https://y.qq.com/',
+                                        },
+                                        placeholder: (_, __) => Container(
                                             color: Theme.of(context)
                                                 .colorScheme
-                                                .surfaceContainerHighest,
-                                            alignment: Alignment.center,
-                                            child: Icon(
-                                                Icons.radio_rounded,
-                                                size: 28,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurfaceVariant),
-                                          ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  Text(r['name'] as String,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 12)),
-                                ],
+                                                .surfaceContainerHighest),
+                                        errorWidget: (_, __, ___) =>
+                                            Container(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                          alignment: Alignment.center,
+                                          child: Icon(
+                                              Icons.radio_rounded,
+                                              size: 28,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant),
+                                        ),
+                                      )
+                                    : Container(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHighest,
+                                        alignment: Alignment.center,
+                                        child: Icon(
+                                            Icons.radio_rounded,
+                                            size: 28,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant),
+                                      ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 5),
+                            Text(r['name'] as String,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12)),
+                          ],
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 );
               },
             ),
