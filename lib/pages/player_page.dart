@@ -160,7 +160,7 @@ class _PlayerPageState extends State<PlayerPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                              color: theme.colorScheme.onSurfaceVariant, fontSize: 14),
                         ),
                       ),
                     ),
@@ -373,8 +373,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 );
               },
             ),
-            const SizedBox(height: 12),
-            _MiniCornerButton(icon: Icons.equalizer_rounded, onTap: () => _openEq(context)),
+
             const SizedBox(height: 12),
             ListenableBuilder(
               listenable: widget.controller,
@@ -465,7 +464,7 @@ class _PlayerPageState extends State<PlayerPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                              color: theme.colorScheme.onSurfaceVariant, fontSize: car ? 17 : 14),
                         ),
                       ),
                     ),
