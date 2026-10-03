@@ -284,25 +284,34 @@ class _SongTileState extends State<SongTile> {
           top: 0,
           bottom: 0,
           right: 0,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.onFavorite != null)
-                _swipeBtn(
-                    widget.song.starred
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    Colors.redAccent,
-                    widget.onFavorite!,
-                    active: widget.song.starred),
-              if (widget.onBlacklist != null)
-                _swipeBtn(Icons.heart_broken_rounded, Colors.orange,
-                    widget.onBlacklist!,
-                    active: widget.blacklisted),
-              if (widget.onDelete != null)
-                _swipeBtn(Icons.delete_outline_rounded, Colors.blueGrey,
-                    widget.onDelete!),
-            ],
+          child: IgnorePointer(
+            // 未左滑开时按钮不可点也不可见（AnimatedOpacity 0），
+            // 左滑（_dx<0）才渐显——既保留"左滑露出"交互，又不让按钮平时透出透明列表项。
+            ignoring: _dx >= -20,
+            child: AnimatedOpacity(
+              opacity: _dx < -20 ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 150),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.onFavorite != null)
+                    _swipeBtn(
+                        widget.song.starred
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        Colors.redAccent,
+                        widget.onFavorite!,
+                        active: widget.song.starred),
+                  if (widget.onBlacklist != null)
+                    _swipeBtn(Icons.heart_broken_rounded, Colors.orange,
+                        widget.onBlacklist!,
+                        active: widget.blacklisted),
+                  if (widget.onDelete != null)
+                    _swipeBtn(Icons.delete_outline_rounded, Colors.blueGrey,
+                        widget.onDelete!),
+                ],
+              ),
+            ),
           ),
         ),
         GestureDetector(
