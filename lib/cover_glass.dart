@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -55,21 +56,24 @@ class CoverGlassBackground extends StatelessWidget {
               // 开启「当前歌曲封面」：主体仍为系统浅色/深色或自定义背景色，
               // 上方只叠加一层很淡的模糊封面，随切歌自动更新。
               // 兜底：底层先铺页面入口封面（歌单/榜单/电台封面），上层再铺当前歌曲封面，
-              // 歌曲封面加载失败（透明 errorWidget）时露出入口封面，保证背景始终有色。
+              // 两层封面加载中/失败均显示为**透明**（不是不透明底色块），
+              // 失败时自然露出下一层：当前封面失败→露入口封面，入口封面也失败→露 plainBg 染色底，
+              // 任何状态下背景都不会被不透明占位块盖成纯白。
               Positioned.fill(
                 child: ColoredBox(
                   color: plainBg,
                   child: Opacity(
-                    // 封面直接平铺透出（500x500 大图已保证清晰），不用 ImageFiltered 模糊：
-                    // 部分设备/透明窗口上 GPU 模糊会渲染失败成整块发白（miniplayer 同因）。
                     opacity: 0.38,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (fallbackCoverUrl != null && fallbackCoverUrl!.isNotEmpty)
-                          _coverImage(fallbackCoverUrl!, cs, plainBg),
-                        _coverImage(coverUrl!, cs, plainBg),
-                      ],
+                    child: ImageFiltered(
+                      imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (fallbackCoverUrl != null && fallbackCoverUrl!.isNotEmpty)
+                            _coverImage(fallbackCoverUrl!, cs),
+                          _coverImage(coverUrl!, cs),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -89,14 +93,18 @@ class CoverGlassBackground extends StatelessWidget {
   }
 
 
-  Widget _coverImage(String url, ColorScheme cs, Color fallback) {
+  Widget _coverImage(String url, ColorScheme cs) {
+    // 加载中/失败/非法URL 一律渲染为透明（SizedBox.shrink），
+    // 让底层 fallback 封面或 plainBg 染色底透出；不能铺不透明占位色块，
+    // 否则会盖住下层封面，背景整块变浅白。
+    final transparent = const SizedBox.shrink();
     final uri = Uri.tryParse(url);
-    if (uri == null) return ColoredBox(color: fallback);
+    if (uri == null) return transparent;
     if (uri.scheme == 'file') {
       return Image.file(
         File(uri.toFilePath()),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => ColoredBox(color: fallback),
+        errorBuilder: (_, __, ___) => transparent,
       );
     }
     return CachedNetworkImage(
@@ -105,8 +113,8 @@ class CoverGlassBackground extends StatelessWidget {
       httpHeaders: _imgHeaders(url),
       fadeInDuration: const Duration(milliseconds: 300),
       fadeOutDuration: const Duration(milliseconds: 200),
-      placeholder: (_, __) => ColoredBox(color: fallback),
-      errorWidget: (_, __, ___) => ColoredBox(color: fallback),
+      placeholder: (_, __) => transparent,
+      errorWidget: (_, __, ___) => transparent,
     );
   }
 }
