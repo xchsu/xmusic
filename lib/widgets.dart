@@ -315,7 +315,9 @@ class _SongTileState extends State<SongTile> {
           child: Transform.translate(
             offset: Offset(_dx, 0),
             child: Container(
-              color: theme.colorScheme.surface,
+              // 透明底：列表项不再是白色瓷砖，露出页面封面玻璃背景
+              // （此前 colorScheme.surface=纯白 255 是"详情页/播放列表背景发白"的根源）
+              color: Colors.transparent,
               child: _content(context),
             ),
           ),
