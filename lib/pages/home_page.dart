@@ -1421,16 +1421,17 @@ class _PlaylistDetailState extends State<_PlaylistDetail> {
                       padding: const EdgeInsets.symmetric(horizontal: 10)),
                 ),
                 const SizedBox(width: 4),
-                TextButton.icon(
-                  onPressed: _visibleIndices.isEmpty || error != null
-                      ? null
-                      : _downloadAllToNas,
-                  icon: const Icon(Icons.cloud_download_rounded, size: 20),
-                  label: const Text('全部下载'),
-                  style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 10)),
-                ),
+                if (!isCarScreen(context))
+                  TextButton.icon(
+                    onPressed: _visibleIndices.isEmpty || error != null
+                        ? null
+                        : _downloadAllToNas,
+                    icon: const Icon(Icons.cloud_download_rounded, size: 20),
+                    label: const Text('全部下载'),
+                    style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10)),
+                  ),
               ],
             ),
           ),

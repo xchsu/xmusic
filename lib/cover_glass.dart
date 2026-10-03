@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -61,17 +60,16 @@ class CoverGlassBackground extends StatelessWidget {
                 child: ColoredBox(
                   color: plainBg,
                   child: Opacity(
+                    // 封面直接平铺透出（500x500 大图已保证清晰），不用 ImageFiltered 模糊：
+                    // 部分设备/透明窗口上 GPU 模糊会渲染失败成整块发白（miniplayer 同因）。
                     opacity: 0.38,
-                    child: ImageFiltered(
-                      imageFilter: ui.ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (fallbackCoverUrl != null && fallbackCoverUrl!.isNotEmpty)
-                            _coverImage(fallbackCoverUrl!, cs, plainBg),
-                          _coverImage(coverUrl!, cs, plainBg),
-                        ],
-                      ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (fallbackCoverUrl != null && fallbackCoverUrl!.isNotEmpty)
+                          _coverImage(fallbackCoverUrl!, cs, plainBg),
+                        _coverImage(coverUrl!, cs, plainBg),
+                      ],
                     ),
                   ),
                 ),

@@ -336,8 +336,10 @@ class _SearchPageState extends State<SearchPage> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(leading: const Icon(Icons.playlist_add), title: const Text('添加到播放列表'), onTap: () => Navigator.of(ctx).pop('enqueue')),
           ListTile(leading: const Icon(Icons.queue_music), title: const Text('添加到歌单'), onTap: () => Navigator.of(ctx).pop('playlist')),
-          ListTile(leading: const Icon(Icons.download), title: const Text('下载到手机'), onTap: () => Navigator.of(ctx).pop('local')),
-          ListTile(leading: const Icon(Icons.cloud_upload_outlined), title: const Text('上传到 NAS'), onTap: () => Navigator.of(ctx).pop('nas')),
+          if (!isCarScreen(context))
+            ListTile(leading: const Icon(Icons.download), title: const Text('下载到手机'), onTap: () => Navigator.of(ctx).pop('local')),
+          if (!isCarScreen(context))
+            ListTile(leading: const Icon(Icons.cloud_upload_outlined), title: const Text('上传到 NAS'), onTap: () => Navigator.of(ctx).pop('nas')),
         ]),
       ),
     );
@@ -618,8 +620,10 @@ class _SearchPageState extends State<SearchPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(icon: const Icon(Icons.playlist_add), tooltip: '加入列表', iconSize: 20, onPressed: () async { await widget.controller.enqueue(s); _showSnack('已加入播放列表'); }),
-              IconButton(icon: const Icon(Icons.download), tooltip: '下载到手机', iconSize: 20, onPressed: () async { _showSnack('正在下载…'); _showSnack(await widget.controller.downloadSongToLocal(s)); }),
-              IconButton(icon: const Icon(Icons.cloud_upload_outlined), tooltip: '上传到NAS', iconSize: 20, onPressed: () async { _showSnack('正在上传…'); _showSnack(await widget.controller.uploadSongToNas(s)); }),
+              if (!isCarScreen(context))
+                IconButton(icon: const Icon(Icons.download), tooltip: '下载到手机', iconSize: 20, onPressed: () async { _showSnack('正在下载…'); _showSnack(await widget.controller.downloadSongToLocal(s)); }),
+              if (!isCarScreen(context))
+                IconButton(icon: const Icon(Icons.cloud_upload_outlined), tooltip: '上传到NAS', iconSize: 20, onPressed: () async { _showSnack('正在上传…'); _showSnack(await widget.controller.uploadSongToNas(s)); }),
             ],
           ),
           onTap: () => _playExternal(songs, e.key),

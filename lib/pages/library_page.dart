@@ -1255,14 +1255,15 @@ class _ImportedSongsPageState extends State<_ImportedSongsPage> {
                     onPressed: widget.songs.isEmpty ? null : () => _play(0),
                   ),
                   const SizedBox(width: 4),
-                  TextButton.icon(
-                    icon: const Icon(Icons.cloud_download_rounded, size: 20),
-                    label: const Text('全部下载'),
-                    style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 10)),
-                    onPressed: widget.songs.isEmpty ? null : _downloadAllToNas,
-                  ),
+                  if (!isCarScreen(context))
+                    TextButton.icon(
+                      icon: const Icon(Icons.cloud_download_rounded, size: 20),
+                      label: const Text('全部下载'),
+                      style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 10)),
+                      onPressed: widget.songs.isEmpty ? null : _downloadAllToNas,
+                    ),
                 ],
               ),
             ),
